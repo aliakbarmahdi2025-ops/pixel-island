@@ -8,53 +8,11 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// سیستم تولید صدا با مرورگر (بدون نیاز به فایل خارجی)
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-function playSound(type) {
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
-    const osc = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-    osc.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-
-    if (type === 'hit') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.1);
-    } else if (type === 'coin') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-        osc.frequency.setValueAtTime(900, audioCtx.currentTime + 0.08);
-        gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.2);
-    } else if (type === 'levelup') {
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-        osc.frequency.setValueAtTime(450, audioCtx.currentTime + 0.1);
-        osc.frequency.setValueAtTime(600, audioCtx.currentTime + 0.2);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.3);
-    }
-}
-
-// وضعیت بازیکن
 const player = {
     x: canvas.width / 2,
     y: canvas.height / 2,
-    size: 24,
+    size: 28,
     speed: 4,
-    color: '#e74c3c',
     coins: 0,
     level: 1,
     xp: 0,
@@ -63,23 +21,20 @@ const player = {
     toolTier: 1
 };
 
-// سیستم کارگر خودکار (Bot)
 const worker = {
     x: canvas.width / 2 + 40,
     y: canvas.height / 2 + 40,
-    size: 18,
+    size: 20,
     speed: 2,
-    color: '#3498db',
     active: false,
     cost: 150
 };
 
-// لیست منابع
 const resources = [
-    { x: 80, y: 120, type: 'tree', color: '#27ae60', hp: 5, maxHp: 5, coins: 10, xp: 15, size: 30 },
-    { x: 250, y: 220, type: 'tree', color: '#27ae60', hp: 5, maxHp: 5, coins: 10, xp: 15, size: 30 },
-    { x: 150, y: 380, type: 'rock', color: '#7f8c8d', hp: 12, maxHp: 12, coins: 30, xp: 35, size: 26 },
-    { x: 300, y: 450, type: 'gold', color: '#f1c40f', hp: 25, maxHp: 25, coins: 100, xp: 80, size: 24 }
+    { x: 80, y: 120, type: 'tree', hp: 5, maxHp: 5, coins: 10, xp: 15, size: 36 },
+    { x: 250, y: 220, type: 'tree', hp: 5, maxHp: 5, coins: 10, xp: 15, size: 36 },
+    { x: 150, y: 380, type: 'rock', hp: 12, maxHp: 12, coins: 30, xp: 35, size: 32 },
+    { x: 300, y: 450, type: 'gold', hp: 25, maxHp: 25, coins: 100, xp: 80, size: 28 }
 ];
 
 const floatingTexts = [];
@@ -114,8 +69,6 @@ function updateUI() {
     if (toolElem) toolElem.innerText = `ابزار T${player.toolTier} | ${botStatus}`;
 }
 
-let hitCooldown = 0;
-
 function update() {
     if (touchX !== null && touchY !== null) {
         const dx = touchX - player.x;
@@ -137,8 +90,7 @@ function update() {
     if (!worker.active && player.coins >= worker.cost) {
         player.coins -= worker.cost;
         worker.active = true;
-        playSound('levelup');
-        addFloatingText('کارگر جدید استخدام شد! 🤖', player.x, player.y - 30, '#3498db');
+        addFloatingText('کارگر استخدام شد! 🤖', player.x, player.y - 30, '#3498db');
         updateUI();
     }
 
@@ -164,12 +116,10 @@ function update() {
         }
     }
 
-    hitCooldown++;
     resources.forEach(res => {
         const distP = Math.hypot(player.x - res.x, player.y - res.y);
         if (distP < (player.size / 2 + res.size / 2)) {
             res.hp -= 0.04 * player.power;
-            if (hitCooldown % 15 === 0) playSound('hit');
         }
 
         if (worker.active) {
@@ -182,7 +132,6 @@ function update() {
         if (res.hp <= 0) {
             player.coins += res.coins;
             player.xp += res.xp;
-            playSound('coin');
 
             addFloatingText(`+${res.coins} 💰`, res.x, res.y);
 
@@ -191,7 +140,6 @@ function update() {
                 player.level++;
                 player.xpToNextLevel = Math.floor(player.xpToNextLevel * 1.6);
                 player.power += 0.3;
-                playSound('levelup');
                 addFloatingText('LEVEL UP! ⭐', player.x, player.y - 20, '#2ecc71');
             }
 
@@ -200,7 +148,6 @@ function update() {
                 player.coins -= upgradeCost;
                 player.toolTier++;
                 player.power += 1.2;
-                playSound('levelup');
                 addFloatingText(`ارتقای ابزار! ⛏️`, player.x, player.y - 40, '#e67e22');
             }
 
@@ -220,52 +167,66 @@ function update() {
     }
 }
 
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+// رسم گرافیگی درخت پیکسلی
+function drawTree(x, y) {
+    // تنه درخت
+    ctx.fillStyle = '#5c4033';
+    ctx.fillRect(x - 4, y + 2, 8, 14);
+    // سایه تنه
+    ctx.fillStyle = '#3d2b22';
+    ctx.fillRect(x + 1, y + 2, 3, 14);
 
-    resources.forEach(res => {
-        ctx.fillStyle = res.color;
-        ctx.fillRect(res.x - res.size / 2, res.y - res.size / 2, res.size, res.size);
-        
-        const hpPercent = Math.max(0, res.hp / res.maxHp);
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(res.x - 15, res.y - res.size / 2 - 8, 30, 4);
-        ctx.fillStyle = '#2ecc71';
-        ctx.fillRect(res.x - 15, res.y - res.size / 2 - 8, 30 * hpPercent, 4);
-
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(res.x - res.size / 2, res.y - res.size / 2, res.size, res.size);
-    });
-
-    if (worker.active) {
-        ctx.fillStyle = worker.color;
-        ctx.fillRect(worker.x - worker.size / 2, worker.y - worker.size / 2, worker.size, worker.size);
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(worker.x - worker.size / 2, worker.y - worker.size / 2, worker.size, worker.size);
-    }
-
-    ctx.fillStyle = player.color;
-    ctx.fillRect(player.x - player.size / 2, player.y - player.size / 2, player.size, player.size);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(player.x - player.size / 2, player.y - player.size / 2, player.size, player.size);
-
-    floatingTexts.forEach(ft => {
-        ctx.fillStyle = ft.color;
-        ctx.globalAlpha = ft.alpha;
-        ctx.font = 'bold 13px monospace';
-        ctx.fillText(ft.text, ft.x - 15, ft.y);
-        ctx.globalAlpha = 1;
-    });
+    // برگ‌های پیکسلی (سه لایه)
+    ctx.fillStyle = '#1e824c';
+    ctx.fillRect(x - 16, y - 8, 32, 14);
+    ctx.fillStyle = '#27ae60';
+    ctx.fillRect(x - 12, y - 18, 24, 14);
+    ctx.fillStyle = '#2ecc71';
+    ctx.fillRect(x - 8, y - 24, 16, 10);
 }
 
-function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
+// رسم پیکسلی سنگ
+function drawRock(x, y) {
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fillRect(x - 14, y - 10, 28, 20);
+    // سایه‌زنی سه بعدی
+    ctx.fillStyle = '#95a5a6';
+    ctx.fillRect(x - 14, y - 10, 20, 6);
+    ctx.fillStyle = '#34495e';
+    ctx.fillRect(x - 6, y + 2, 20, 8);
 }
 
-updateUI();
-loop();
+// رسم پیکسلی سنگ طلا
+function drawGold(x, y) {
+    ctx.fillStyle = '#f1c40f';
+    ctx.fillRect(x - 12, y - 10, 24, 20);
+    ctx.fillStyle = '#f39c12';
+    ctx.fillRect(x - 4, y + 2, 16, 8);
+    // برق پیکسلی
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x - 8, y - 8, 4, 4);
+}
+
+// رسم کاراکتر اصلی پیکسلی
+function drawPlayer(x, y) {
+    // بدن/لباس
+    ctx.fillStyle = '#e74c3c';
+    ctx.fillRect(x - 10, y - 4, 20, 16);
+    // سر / صورت
+    ctx.fillStyle = '#ffcc99';
+    ctx.fillRect(x - 8, y - 16, 16, 12);
+    // مو
+    ctx.fillStyle = '#4a2c11';
+    ctx.fillRect(x - 8, y - 18, 16, 4);
+    // چشم‌ها
+    ctx.fillStyle = '#000';
+    ctx.fillRect(x - 5, y - 12, 3, 3);
+    ctx.fillRect(x + 2, y - 12, 3, 3);
+}
+
+// رسم ربات کارگر
+function drawWorker(x, y) {
+    ctx.fillStyle = '#3498db';
+    ctx.fillRect(x - 8, y - 8, 16, 16);
+    ctx.fillStyle = '#2980b9';
+    ctx
