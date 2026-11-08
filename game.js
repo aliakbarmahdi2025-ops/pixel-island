@@ -8,7 +8,6 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// وضعیت سیستم ارتقاء و سطح‌ها
 const toolTiers = [
     { name: 'چوبی (Tier 1)', cost: 0, power: 1, color: '#8b5a2b' },
     { name: 'سنگی (Tier 2)', cost: 50, power: 2.5, color: '#7f8c8d' },
@@ -17,7 +16,6 @@ const toolTiers = [
     { name: 'کیهانی (Tier 5)', cost: 2000, power: 30, color: '#9b59b6' }
 ];
 
-// وضعیت بازیکن
 const player = {
     x: canvas.width / 2,
     y: canvas.height / 2,
@@ -31,7 +29,6 @@ const player = {
     xpToNextLevel: 50
 };
 
-// لیست منابع
 const resources = [
     { x: 100, y: 150, type: 'tree', size: 30, hp: 5, maxHp: 5, color: '#27ae60' },
     { x: 250, y: 300, type: 'tree', size: 30, hp: 5, maxHp: 5, color: '#27ae60' },
@@ -77,12 +74,11 @@ function updateUI() {
         tierText += ` (حداکثر)`;
     }
     
-    document.getElementById('coins').innerText = `${player.coins} | لول: ${player.level} (XP: ${player.xp}/${player.xpToNextLevel})`;
+    document.getElementById('coins').innerText = `${player.coins} | Lvl ${player.level} (${player.xp}/${player.xpToNextLevel} XP)`;
     document.getElementById('toolTier').innerText = tierText;
 }
 
 function update() {
-    // حرکت بازیکن
     if (touchX !== null && touchY !== null) {
         const dx = touchX - player.x;
         const dy = touchY - player.y;
@@ -94,14 +90,12 @@ function update() {
         }
     }
 
-    // مرزبندی صفحه
     const halfSize = player.size / 2;
     if (player.x - halfSize < 0) player.x = halfSize;
     if (player.x + halfSize > canvas.width) player.x = canvas.width - halfSize;
     if (player.y - halfSize < 0) player.y = halfSize;
     if (player.y + halfSize > canvas.height) player.y = canvas.height - halfSize;
 
-    // ضربه زدن به منابع براساس قدرت ابزار
     const currentPower = toolTiers[player.tierIndex].power;
     
     resources.forEach((res) => {
@@ -115,7 +109,6 @@ function update() {
                 player.coins += coinReward;
                 addXP(xpReward);
                 
-                // بررسی ارتقاء خودکار ابزار در صورت داشتن سکه کافی
                 const nextTier = toolTiers[player.tierIndex + 1];
                 if (nextTier && player.coins >= nextTier.cost) {
                     player.coins -= nextTier.cost;
@@ -124,7 +117,6 @@ function update() {
 
                 updateUI();
 
-                // اسپاون مجدد
                 res.x = Math.random() * (canvas.width - 60) + 30;
                 res.y = Math.random() * (canvas.height - 140) + 70;
                 res.hp = res.maxHp;
@@ -136,12 +128,10 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // رندر منابع
     resources.forEach(res => {
         ctx.fillStyle = res.color;
         ctx.fillRect(res.x - res.size / 2, res.y - res.size / 2, res.size, res.size);
         
-        // کشیدن نوار سلامت برای هر منبع
         const hpPercent = res.hp / res.maxHp;
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(res.x - 15, res.y - res.size / 2 - 8, 30, 4);
@@ -153,11 +143,9 @@ function draw() {
         ctx.strokeRect(res.x - res.size / 2, res.y - res.size / 2, res.size, res.size);
     });
 
-    // رندر کاراکتر و رنگ ابزارش
     ctx.fillStyle = player.color;
     ctx.fillRect(player.x - player.size / 2, player.y - player.size / 2, player.size, player.size);
     
-    // نشانگر ابزار دور کاراکتر
     ctx.strokeStyle = toolTiers[player.tierIndex].color;
     ctx.lineWidth = 3;
     ctx.strokeRect(player.x - player.size / 2, player.y - player.size / 2, player.size, player.size);
