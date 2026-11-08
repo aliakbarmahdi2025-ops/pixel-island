@@ -85,7 +85,7 @@
         function updateUI() {
             const coinsElem = document.getElementById('coins');
             const toolElem = document.getElementById('toolTier');
-            let botStatus = worker.active ? '🤖 کارگر فعال' : `🤖 کارگر (${worker.cost} 💰)`;
+            let botStatus = worker.active ? '🤖 فعال' : `🤖 (${worker.cost} 💰)`;
             
             if (coinsElem) coinsElem.innerText = `${Math.floor(player.coins)} 💰 | Lvl ${player.level}`;
             if (toolElem) toolElem.innerText = `ابزار T${player.toolTier} | ${botStatus}`;
@@ -247,4 +247,37 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             resources.forEach(res => {
-                if (res.type ===
+                if (res.type === 'tree') drawTree(res.x, res.y);
+                else if (res.type === 'rock') drawRock(res.x, res.y);
+                else if (res.type === 'gold') drawGold(res.x, res.y);
+
+                const hpPercent = Math.max(0, res.hp / res.maxHp);
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(res.x - 15, res.y - res.size / 2 - 12, 30, 4);
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(res.x - 15, res.y - res.size / 2 - 12, 30 * hpPercent, 4);
+            });
+
+            if (worker.active) drawWorker(worker.x, worker.y);
+            drawPlayer(player.x, player.y);
+
+            floatingTexts.forEach(ft => {
+                ctx.fillStyle = ft.color;
+                ctx.globalAlpha = ft.alpha;
+                ctx.font = 'bold 13px monospace';
+                ctx.fillText(ft.text, ft.x - 15, ft.y);
+                ctx.globalAlpha = 1;
+            });
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        updateUI();
+        loop();
+    </script>
+</body>
+</html>
