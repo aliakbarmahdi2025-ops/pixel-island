@@ -15,6 +15,7 @@ let caveResources = [], caveChests = [];
 let resources = [];
 let quests = { wood: 0, slime: 0, iron: 0, claimed: { wood: false, slime: false, iron: false } };
 let npcMet = false, npcTalkIndex = 0;
+let npcQuest = { accepted: false, progress: 0, claimed: false };
 const forestNpc = { x: 1320, y: 1010, name: "سامان", role: "جنگلبان" };
 let enemies = [], caveEnemies = [];
 let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
@@ -65,13 +66,14 @@ function load() {
     caveMode = !!data.caveMode; if(data.caveReturn)caveReturn=data.caveReturn; if(Array.isArray(data.openedChests))openedChests=data.openedChests;
     if(data.quests)quests={...quests,...data.quests,claimed:{...quests.claimed,...(data.quests.claimed||{})}};
     npcMet = !!data.npcMet; npcTalkIndex = Number.isInteger(data.npcTalkIndex) ? data.npcTalkIndex : 0;
+    if (data.npcQuest) npcQuest = { ...npcQuest, ...data.npcQuest };
   } catch (e) { console.warn("Save could not be loaded", e); }
 }
 function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -107,6 +109,7 @@ function updateUI() {
   $("xpFill").style.width = Math.min(100, player.xp / xpNeeded() * 100) + "%";
   updateUpgradeUI();
   updateQuestUI();
+  if ($("npcQuestStatus")) updateNpcQuestUI();
   if ($("craftPanel")) updateCraftUI();
 }
 load();
@@ -133,7 +136,7 @@ function toggleCave(){
 }
 
 function harvest() {
-  if(caveMode){const chest=caveChests.find(c=>!c.opened&&Math.hypot(player.x-c.x,player.y-c.y)<76);if(chest){chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;const leveled=addXP(25);bag.crystal=(bag.crystal||0)+1;updateUI();saveQuietly();showToast(leveled?"سطح جدید! یک امتیاز مهارت گرفتی ⭐":"صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
+  if(caveMode){const chest=caveChests.find(c=>!c.opened&&Math.hypot(player.x-c.x,player.y-c.y)<76);if(chest){chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;const leveled=addXP(25);bag.crystal=(bag.crystal||0)+1;progressNpcCrystal(1);updateUI();saveQuietly();showToast(leveled?"سطح جدید! یک امتیاز مهارت گرفتی ⭐":"صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
   let nearest = null, best = 76;
   for (const r of activeNodes()) {
     const d = Math.hypot(player.x - r.x, player.y - r.y);
@@ -146,7 +149,7 @@ function harvest() {
     if (nearest.type === "tree") { bag.wood += 3; quests.wood = Math.min(10, quests.wood + 3); }
     if (nearest.type === "stone") bag.stone += 2;
     if (nearest.type === "iron") { bag.iron += 1; quests.iron = Math.min(5, quests.iron + 1); }
-    if (nearest.type === "crystal") bag.crystal = (bag.crystal||0)+1;
+    if (nearest.type === "crystal") { bag.crystal = (bag.crystal||0)+1; progressNpcCrystal(1); }
     const leveled = addXP(10);
     if (leveled) showToast("سطح جدید! یک امتیاز مهارت گرفتی ⭐");
     else showToast(nearest.type === "tree" ? "۳ چوب جمع کردی 🪵" : nearest.type === "stone" ? "۲ سنگ جمع کردی 🪨" : nearest.type === "iron" ? "۱ آهن جمع کردی ⛏️" : "۱ کریستال جمع کردی 💎");
@@ -167,7 +170,7 @@ function attack() {
   if (target.hp <= 0) {
     target.alive=false;
     if (caveMode) {
-      target.respawnTimer=20; player.coins+=10; bag.crystal=(bag.crystal||0)+2;
+      target.respawnTimer=20; player.coins+=10; bag.crystal=(bag.crystal||0)+2; progressNpcCrystal(2);
       const leveled=addXP(25); updateUI(); saveQuietly();
       showToast(leveled?"نگهبان کریستالی شکست خورد! +۱۰ سکه و ۲ کریستال؛ سطح جدید ⭐":"نگهبان کریستالی شکست خورد! +۱۰ سکه، ۲ کریستال و ۲۵ تجربه 💎");
     } else {
@@ -181,7 +184,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest
     }));
   } catch (e) {}
 }
@@ -220,6 +223,8 @@ $("actionBtn").addEventListener("pointerdown", e => { e.preventDefault(); harves
 $("attackBtn").addEventListener("pointerdown", e => { e.preventDefault(); attack(); });
 $("npcBtn").addEventListener("click", openNpcDialogue);
 $("npcNext").addEventListener("click", advanceNpcDialogue);
+$("npcQuestAccept").addEventListener("click", acceptNpcQuest);
+$("npcQuestClaim").addEventListener("click", claimNpcQuest);
 $("npcClose").addEventListener("click", () => { $("npcPanel").hidden = true; syncXpPanel(); });
 $("saveBtn").addEventListener("click", save);
 $("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); syncXpPanel(); });
@@ -257,6 +262,50 @@ const npcLines = [
   "برای قوی‌تر شدن، منابع جمع کن و از میز ساخت تجهیزات استفاده کن.",
   "راه غار از بخش شرقی جنگل می‌گذره. اونجا چیزهای ارزشمندی پیدا می‌کنی."
 ];
+function updateNpcQuestUI() {
+  const status = $("npcQuestStatus");
+  const accept = $("npcQuestAccept");
+  const claim = $("npcQuestClaim");
+  if (!npcQuest.accepted) {
+    status.textContent = "سامان: سه کریستال از غار برام پیدا می‌کنی؟ پاداشش با من!";
+    accept.hidden = false;
+    claim.hidden = true;
+  } else if (npcQuest.claimed) {
+    status.textContent = "این مأموریت رو با موفقیت انجام دادی. ممنون قهرمان! ✓";
+    accept.hidden = true;
+    claim.hidden = true;
+  } else {
+    status.textContent = "جمع‌آوری کریستال: " + Math.min(3, npcQuest.progress) + " / 3";
+    accept.hidden = true;
+    claim.hidden = npcQuest.progress < 3;
+  }
+}
+function acceptNpcQuest() {
+  if (npcQuest.accepted || npcQuest.claimed) return;
+  npcQuest.accepted = true;
+  updateNpcQuestUI();
+  saveQuietly();
+  showToast("مأموریت سامان شروع شد: ۳ کریستال پیدا کن 💎");
+}
+function progressNpcCrystal(amount) {
+  if (!npcQuest.accepted || npcQuest.claimed) return;
+  const before = npcQuest.progress;
+  npcQuest.progress = Math.min(3, npcQuest.progress + amount);
+  if (npcQuest.progress !== before) {
+    updateNpcQuestUI();
+    if (npcQuest.progress >= 3) showToast("مأموریت سامان کامل شد! برگرد پیشش 🎉");
+  }
+}
+function claimNpcQuest() {
+  if (!npcQuest.accepted || npcQuest.claimed || npcQuest.progress < 3) return;
+  npcQuest.claimed = true;
+  player.coins += 40;
+  const leveled = addXP(50);
+  updateUI();
+  updateNpcQuestUI();
+  saveQuietly();
+  showToast(leveled ? "پاداش سامان رو گرفتی! +۴۰ سکه و ارتقای سطح ⭐" : "پاداش سامان: +۴۰ سکه و +۵۰ تجربه 🎁");
+}
 function openNpcDialogue() {
   if (!npcMet) {
     npcMet = true;
@@ -265,6 +314,7 @@ function openNpcDialogue() {
     showToast(leveled ? "با سامان آشنا شدی؛ جایزه خوش‌آمدگویی و ارتقای سطح! ⭐" : "با سامان آشنا شدی؛ ۱۰ سکه جایزه گرفتی! 🎁");
   }
   $("npcPanel").hidden = false;
+  updateNpcQuestUI();
   advanceNpcDialogue();
   updateUI();
   saveQuietly();
