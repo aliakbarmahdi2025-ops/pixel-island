@@ -10,7 +10,7 @@ const camera = { x: 0, y: 0 };
 const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, level: 1, xp: 0, coins: 0 };
 const bag = { wood: 0, stone: 0, iron: 0 };
 let harvested = new Set(), caveHarvested = new Set();
-let caveMode = false, caveReturn = {x:1200,y:900};
+let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
 let caveResources = [], caveChests = [];
 let resources = [];
 let enemies = [];
@@ -56,14 +56,14 @@ function load() {
     if (data.bag) Object.assign(bag, data.bag);
     if (Array.isArray(data.harvested)) harvested = new Set(data.harvested);
     if (Array.isArray(data.caveHarvested)) caveHarvested = new Set(data.caveHarvested);
-    caveMode = !!data.caveMode; if(data.caveReturn)caveReturn=data.caveReturn;
+    caveMode = !!data.caveMode; if(data.caveReturn)caveReturn=data.caveReturn; if(Array.isArray(data.openedChests))openedChests=data.openedChests;
   } catch (e) { console.warn("Save could not be loaded", e); }
 }
 function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, level: player.level, xp: player.xp, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested:[...caveHarvested], caveMode, caveReturn
+      bag, harvested: [...harvested], caveHarvested:[...caveHarvested], caveMode, caveReturn, openedChests
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -96,7 +96,7 @@ function makeCave(){
  {id:"cs1",x:250,y:250,type:"stone",hp:4,max:4},{id:"cs2",x:900,y:250,type:"stone",hp:4,max:4},
  {id:"ci1",x:420,y:450,type:"iron",hp:5,max:5},{id:"ci2",x:970,y:650,type:"iron",hp:5,max:5},
  {id:"cc1",x:760,y:360,type:"crystal",hp:4,max:4},{id:"cc2",x:300,y:680,type:"crystal",hp:4,max:4}];
- caveChests=[{x:590,y:230,opened:false},{x:1030,y:420,opened:false}];
+ caveChests=[{x:590,y:230,opened:!!openedChests[0]},{x:1030,y:420,opened:!!openedChests[1]}];
 }
 function activeNodes(){return caveMode?caveResources.filter(r=>!caveHarvested.has(r.id)):resources.filter(r=>!harvested.has(r.id));}
 function toggleCave(){
@@ -106,7 +106,7 @@ function toggleCave(){
 }
 
 function harvest() {
-  if(caveMode){const chest=caveChests.find(c=>!c.opened&&Math.hypot(player.x-c.x,player.y-c.y)<76);if(chest){chest.opened=true;player.coins+=15;player.xp+=25;bag.crystal=(bag.crystal||0)+1;if(player.xp>=player.level*50){player.xp-=player.level*50;player.level++;}updateUI();saveQuietly();showToast("صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
+  if(caveMode){const chest=caveChests.find(c=>!c.opened&&Math.hypot(player.x-c.x,player.y-c.y)<76);if(chest){chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;player.xp+=25;bag.crystal=(bag.crystal||0)+1;if(player.xp>=player.level*50){player.xp-=player.level*50;player.level++;}updateUI();saveQuietly();showToast("صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
   let nearest = null, best = 76;
   for (const r of activeNodes()) {
     const d = Math.hypot(player.x - r.x, player.y - r.y);
