@@ -68,3 +68,9 @@ button:active{transform:translateY(2px)}
 .npc-quest-card p{margin:0;font-size:13px;line-height:1.8;color:#e5f1ce}
 #npcQuestAccept{background:#386b52;border-color:#a8d7a4;min-height:44px}
 #npcQuestClaim{background:#72552b;border-color:#e6c77c;min-height:44px}
+
+/* Stage 10: tiny CSS-only feedback; character animation is drawn with a few Canvas rectangles. */
+.npc-quest-card{border-width:2px;box-shadow:0 0 0 2px #18291e inset}
+.npc-quest-hint{display:block;color:#b9d8a8;font-size:11px;line-height:1.6}
+#npcBtn{animation:npcPrompt 1.8s ease-in-out infinite}
+@keyframes npcPrompt{0%,100%{filter:brightness(1)}50%{filter:brightness(1.16)}}
