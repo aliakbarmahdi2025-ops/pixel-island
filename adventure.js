@@ -22,6 +22,7 @@ let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
 let move = { x: 0, y: 0 };
 let toastTimer = 0;
 let lastTime = 0;
+let animTime = 0, playerMoving = false, playerFacing = "down";
 
 function resize() {
   dpr = Math.min(devicePixelRatio || 1, 2);
@@ -275,7 +276,7 @@ function updateNpcQuestUI() {
     accept.hidden = true;
     claim.hidden = true;
   } else {
-    status.textContent = "جمع‌آوری کریستال: " + Math.min(3, npcQuest.progress) + " / 3";
+    status.textContent = (npcQuest.progress >= 3 ? "هر سه کریستال پیدا شد! برگرد پیش سامان 🎉  " : "جمع‌آوری کریستال: ") + Math.min(3, npcQuest.progress) + " / 3";
     accept.hidden = true;
     claim.hidden = npcQuest.progress < 3;
   }
@@ -283,9 +284,11 @@ function updateNpcQuestUI() {
 function acceptNpcQuest() {
   if (npcQuest.accepted || npcQuest.claimed) return;
   npcQuest.accepted = true;
+  // Count crystals already collected so the quest never feels stuck after acceptance.
+  npcQuest.progress = Math.max(npcQuest.progress || 0, Math.min(3, bag.crystal || 0));
   updateNpcQuestUI();
   saveQuietly();
-  showToast("مأموریت سامان شروع شد: ۳ کریستال پیدا کن 💎");
+  showToast(npcQuest.progress >= 3 ? "مأموریت آماده تحویل است! برگرد پیش سامان 🎉" : "مأموریت سامان شروع شد: ۳ کریستال پیدا کن 💎");
 }
 function progressNpcCrystal(amount) {
   if (!npcQuest.accepted || npcQuest.claimed) return;
@@ -416,10 +419,14 @@ function update(dt) {
   if (keys.has("w") || keys.has("arrowup")) dy -= 1;
   if (keys.has("s") || keys.has("arrowdown")) dy += 1;
   const len = Math.hypot(dx, dy);
-  if (len > 0) {
+  playerMoving = len > 0.08;
+  if (playerMoving) {
+    if (Math.abs(dx) > Math.abs(dy)) playerFacing = dx > 0 ? "right" : "left";
+    else playerFacing = dy > 0 ? "down" : "up";
     player.x += dx / len * player.speed * dt;
     player.y += dy / len * player.speed * dt;
   }
+  animTime += dt;
   const mw=caveMode?1200:WORLD.w,mh=caveMode?900:WORLD.h;
   player.x=Math.max(caveMode?55:24,Math.min(mw-(caveMode?55:24),player.x));
   player.y=Math.max(caveMode?55:24,Math.min(mh-(caveMode?55:24),player.y));
@@ -427,7 +434,7 @@ function update(dt) {
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
   $("caveBtn").hidden=caveMode?false:Math.hypot(player.x-2080,player.y-1450)>115;
   $("caveBtn").textContent=caveMode?"🚪 خروج از غار":"🕳️ ورود به غار";
-  $("npcBtn").hidden = caveMode || Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y) > 105;
+  $("npcBtn").hidden = caveMode || Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y) > 145;
 }
 function drawCaveGround(){
  const t=WORLD.tile,sx=Math.floor(camera.x/t),sy=Math.floor(camera.y/t),ex=Math.ceil((camera.x+viewW)/t),ey=Math.ceil((camera.y+viewH)/t);
@@ -472,8 +479,9 @@ function drawIron(r) {
 }
 function drawSlime(e) {
   const x=e.x-camera.x,y=e.y-camera.y;
+  const bounce = Math.sin(animTime * 5 + e.spawnX * 0.01) * 2.2;
   ctx.fillStyle="#173d2b";ctx.fillRect(x-18,y+8,36,7);
-  ctx.fillStyle="#6dbb59";ctx.fillRect(x-17,y-8,34,17);ctx.fillRect(x-11,y-15,22,9);
+  ctx.fillStyle="#6dbb59";ctx.fillRect(x-17,y-8+bounce,34,17-bounce*0.25);ctx.fillRect(x-11,y-15+bounce,22,9);
   ctx.fillStyle="#a4df72";ctx.fillRect(x-9,y-12,7,4);
   ctx.fillStyle="#17301f";ctx.fillRect(x-8,y-3,4,5);ctx.fillRect(x+5,y-3,4,5);
   ctx.fillStyle="#203b29";ctx.fillRect(x-18,y-25,36,5);
@@ -481,8 +489,9 @@ function drawSlime(e) {
 }
 function drawCrystalGuardian(e) {
   const x=e.x-camera.x,y=e.y-camera.y;
+  const hover = Math.sin(animTime * 2.2) * 2.5;
   ctx.fillStyle="#182b39";ctx.fillRect(x-24,y+13,48,8);
-  ctx.fillStyle="#536b86";ctx.fillRect(x-22,y-12,44,28);ctx.fillRect(x-16,y-22,32,12);
+  ctx.fillStyle="#536b86";ctx.fillRect(x-22,y-12+hover,44,28);ctx.fillRect(x-16,y-22+hover,32,12);
   ctx.fillStyle="#78dce8";ctx.fillRect(x-15,y-28,10,17);ctx.fillRect(x+5,y-25,10,14);ctx.fillRect(x-5,y-39,10,16);
   ctx.fillStyle="#b5f6ff";ctx.fillRect(x-11,y-8,6,6);ctx.fillRect(x+6,y-8,6,6);
   ctx.fillStyle="#17232e";ctx.fillRect(x-24,y-49,48,5);
@@ -490,21 +499,32 @@ function drawCrystalGuardian(e) {
 }
 function drawForestNpc() {
   const x=forestNpc.x-camera.x,y=forestNpc.y-camera.y;
+  const near = Math.hypot(player.x-forestNpc.x, player.y-forestNpc.y) < 145;
+  const bob = Math.sin(animTime * 2.4) * 1.5;
+  const wave = near ? Math.sin(animTime * 5) * 2.5 : 0;
   if(x < -60 || x > viewW+60 || y < -70 || y > viewH+60) return;
   ctx.fillStyle="#263b2b";ctx.fillRect(x-13,y+9,26,8);
-  ctx.fillStyle="#4f7651";ctx.fillRect(x-12,y-7,24,20);
-  ctx.fillStyle="#e7bd91";ctx.fillRect(x-9,y-23,18,16);
+  ctx.fillStyle="#4f7651";ctx.fillRect(x-12,y-7+bob,24,20);
+  ctx.fillStyle="#e7bd91";ctx.fillRect(x-9,y-23+bob,18,16);
   ctx.fillStyle="#6b4a2e";ctx.fillRect(x-11,y-27,22,7);ctx.fillRect(x-15,y-22,30,4);
-  ctx.fillStyle="#243021";ctx.fillRect(x-5,y-17,3,3);ctx.fillRect(x+3,y-17,3,3);
-  ctx.fillStyle="#fff2c7";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText(forestNpc.name+" • "+forestNpc.role,x,y-38);ctx.textAlign="start";
+  ctx.fillStyle="#243021";ctx.fillRect(x-5,y-17+bob,3,3);ctx.fillRect(x+3,y-17+bob,3,3);
+  ctx.fillStyle="#4f7651";ctx.fillRect(x+10,y-2+bob+wave,5,12);
+  if (!npcQuest.claimed) { ctx.fillStyle="#ffe58a";ctx.font="bold 17px Tahoma";ctx.textAlign="center";ctx.fillText("!",x,y-53+bob); }
+  ctx.fillStyle="#fff2c7";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText(forestNpc.name+" • "+forestNpc.role,x,y-38+bob);ctx.textAlign="start";
 }
 function drawPlayer() {
   const x = player.x - camera.x, y = player.y - camera.y;
-  ctx.fillStyle = "#243c28"; ctx.fillRect(x - 11, y + 7, 22, 9);
-  ctx.fillStyle = "#3d75ad"; ctx.fillRect(x - 10, y - 5, 20, 19);
+  const step = playerMoving ? Math.sin(animTime * 13) * 3 : Math.sin(animTime * 2.2) * 0.8;
+  const legA = playerMoving ? step : 0, legB = -legA;
+  ctx.fillStyle = "#243c28";
+  ctx.fillRect(x - 9, y + 7 + legA, 7, 10);
+  ctx.fillRect(x + 2, y + 7 + legB, 7, 10);
+  ctx.fillStyle = "#3d75ad"; ctx.fillRect(x - 10, y - 5 + (playerMoving ? Math.abs(step)*0.25 : 0), 20, 19);
   ctx.fillStyle = "#edbd8c"; ctx.fillRect(x - 8, y - 18, 16, 15);
   ctx.fillStyle = "#553c2d"; ctx.fillRect(x - 9, y - 20, 18, 6);
-  ctx.fillStyle = "#17251d"; ctx.fillRect(x - 4, y - 12, 3, 3); ctx.fillRect(x + 3, y - 12, 3, 3);
+  ctx.fillStyle = "#17251d";
+  if(playerFacing === "left"){ctx.fillRect(x-6,y-12,3,3);} else if(playerFacing === "right"){ctx.fillRect(x+3,y-12,3,3);} else {ctx.fillRect(x-4,y-12,3,3);ctx.fillRect(x+3,y-12,3,3);}
+  if (attackFlash > 0) { ctx.strokeStyle = "#fff0a8"; ctx.lineWidth = 3; ctx.beginPath(); const a = playerFacing === "left" ? Math.PI : playerFacing === "up" ? -Math.PI/2 : playerFacing === "down" ? Math.PI/2 : 0; ctx.arc(x,y,34,a-0.75,a+0.75); ctx.stroke(); }
 }
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
@@ -520,7 +540,6 @@ function draw() {
   for(const e of visibleEnemies){if(!e.alive)continue;if(e.x<camera.x-60||e.x>camera.x+viewW+60||e.y<camera.y-60||e.y>camera.y+viewH+60)continue;if(caveMode)drawCrystalGuardian(e);else drawSlime(e);}
   if(!caveMode) drawForestNpc();
   drawPlayer();
-  if(attackFlash>0){const px=player.x-camera.x,py=player.y-camera.y;ctx.strokeStyle="#fff0a8";ctx.lineWidth=4;ctx.beginPath();ctx.arc(px,py,43,-0.8,0.8);ctx.stroke();}
   ctx.strokeStyle = "#d6f0a8"; ctx.lineWidth = 3;
   ctx.strokeRect(2-camera.x,2-camera.y,(caveMode?1200:WORLD.w)-4,(caveMode?900:WORLD.h)-4);
   if(!caveMode){let x=2080-camera.x,y=1450-camera.y;ctx.fillStyle='#151719';ctx.beginPath();ctx.ellipse(x,y,42,27,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#a9bd8d';ctx.lineWidth=4;ctx.stroke();ctx.fillStyle='#fff';ctx.font='12px Tahoma';ctx.fillText('غار',x-12,y-36);}
