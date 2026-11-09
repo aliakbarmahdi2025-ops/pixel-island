@@ -74,3 +74,11 @@ button:active{transform:translateY(2px)}
 .npc-quest-hint{display:block;color:#b9d8a8;font-size:11px;line-height:1.6}
 #npcBtn{animation:npcPrompt 1.8s ease-in-out infinite}
 @keyframes npcPrompt{0%,100%{filter:brightness(1)}50%{filter:brightness(1.16)}}
+
+/* Stage 11: home-building interface and richer world details. */
+#homeBtn{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);background:#8a6336;border-color:#f0cf8d;pointer-events:auto;white-space:nowrap;box-shadow:0 3px 0 #332317}
+#homeBtn:active{transform:translateX(-50%) translateY(2px)}
+.home-description{font-size:12px;line-height:1.9;color:#e5d7b7}
+#homeStatus{padding:10px;background:#294532;border:1px solid #8bbd83;border-radius:9px;font-size:12px;line-height:1.9}
+#buildHome,#upgradeHome{background:#79572f;border-color:#e6c77c;min-height:44px}
+#enterHome{background:#356b55;border-color:#a8d7a4;min-height:44px}
