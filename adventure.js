@@ -133,7 +133,7 @@ function harvest() {
   if (!nearest) { showToast("به درخت یا سنگ نزدیک‌تر شو"); return; }
   nearest.hp--;
   if (nearest.hp <= 0) {
-    harvested.add(nearest.id);
+    (caveMode ? caveHarvested : harvested).add(nearest.id);
     if (nearest.type === "tree") bag.wood += 3;
     if (nearest.type === "stone") bag.stone += 2;
     if (nearest.type === "iron") bag.iron += 1;
