@@ -94,3 +94,5 @@ button:active{transform:translateY(2px)}
 #townShopHours{padding:9px 12px;border-radius:10px;background:#e9dfc4;color:#59452e;font-weight:800;text-align:center}
 #townShopPanel .upgrade-list button{min-height:46px;border-radius:12px}
 #townNpcPanel,#townShopPanel{border:2px solid #c9a879;box-shadow:0 12px 34px #17120d66}
+
+#townClock{position:fixed;top:calc(env(safe-area-inset-top,0px) + 72px);right:12px;z-index:5;padding:7px 12px;border:1px solid #e7d2a0;border-radius:12px;background:#263c30dd;color:#fff1c8;font:800 14px Tahoma;box-shadow:0 3px 10px #0005;pointer-events:none}
