@@ -614,44 +614,58 @@ function drawTownBuilding(x,y,label,roof,kind){
 }
 const townSpriteCache = {};
 function makePixelTownSprite(id, frame) {
- const c=document.createElement("canvas");c.width=48;c.height=64;
+ const c=document.createElement("canvas");c.width=64;c.height=96;
  const g=c.getContext("2d");
  const mina=id==="mina";
- const hair=mina?"#542c2d":"#211d2a",hairHi=mina?"#874a45":"#514252";
- const shirt=mina?"#e34f91":"#287db8",shirtHi=mina?"#f58db4":"#65b3dc";
- const pants=mina?"#303044":"#c9cbd0",skin="#f0bd9d",skinHi="#ffd5b8";
- const sway=frame===1?-2:frame===2?2:0;
- // shoes, legs and a tiny walking pose
- g.fillStyle="#342d32";g.fillRect(15,51+sway,7,8);g.fillRect(27,51-sway,7,8);
- g.fillStyle="#f0e8dc";g.fillRect(13,58+sway,10,4);g.fillRect(26,58-sway,11,4);
- g.fillStyle=pants;g.fillRect(14,42,21,12);g.fillRect(16,48+sway,7,7);g.fillRect(27,48-sway,7,7);
- // torso and sleeves
- g.fillStyle=shirt;g.fillRect(11,25,26,21);g.fillRect(8,29,7,15);g.fillRect(33,29,7,15);
- g.fillStyle=shirtHi;g.fillRect(13,27,22,4);g.fillRect(9,31,4,9);g.fillRect(35,31,3,8);
- g.fillStyle="#d9a45e";g.fillRect(20,42,9,3);g.fillRect(23,41,3,5);
- // neck and face
- g.fillStyle=skin;g.fillRect(20,21,9,8);
- g.fillStyle=skinHi;g.fillRect(17,11,16,17);g.fillRect(15,15,3,8);g.fillRect(32,15,3,8);
- g.fillStyle="#d98d83";g.fillRect(16,20,3,3);g.fillRect(31,20,3,3);
- // long hair behind shoulders
- g.fillStyle=hair;g.fillRect(12,8,24,23);g.fillRect(10,15,6,24);g.fillRect(33,15,6,25);
- g.fillRect(13,27,5,13);g.fillRect(32,27,5,14);
- g.fillStyle=hairHi;g.fillRect(14,9,7,3);g.fillRect(24,7,8,3);g.fillRect(11,18,3,10);
- // face front fringe, parted to keep eyes clear
- g.fillStyle=hair;g.fillRect(14,7,21,7);g.fillRect(13,10,5,7);g.fillRect(29,10,6,5);
- g.fillStyle=hairHi;g.fillRect(18,8,8,2);g.fillRect(27,9,5,2);
- // expressive eyes and brows
- g.fillStyle="#3b2930";g.fillRect(19,17,3,4);g.fillRect(28,17,3,4);
- g.fillStyle="#fff1df";g.fillRect(19,17,1,1);g.fillRect(28,17,1,1);
- g.fillStyle=hair;g.fillRect(18,15,4,1);g.fillRect(27,15,4,1);
- g.fillStyle="#d88b7e";g.fillRect(24,21,2,2);
- g.fillStyle="#b95f70";g.fillRect(23,24,5,1);
- g.fillStyle="#e9959b";g.fillRect(16,22,3,2);g.fillRect(31,22,3,2);
- // signature accessories
- if(mina){g.fillStyle="#f7d16e";g.fillRect(35,27,3,5);g.fillStyle="#fff0b2";g.fillRect(36,28,1,2);}
- else{g.fillStyle="#d9ecf5";g.fillRect(22,29,5,3);g.fillStyle="#f5d58b";g.fillRect(23,43,3,2);}
- // subtle outline pixels for crisp sprite-sheet style
- g.strokeStyle="#382833";g.lineWidth=1;g.strokeRect(11.5,25.5,25,20);
+ const hair=mina?"#54282b":"#211c29",hairLight=mina?"#92514b":"#5a4a5c";
+ const skin="#ffe0ca",skinLight="#fff0df",skinShade="#e9b69d";
+ const shirt=mina?"#e94f91":"#287db8",shirtLight=mina?"#ff9bc0":"#76c4e7",shirtShade=mina?"#b93872":"#1b5e91";
+ const skirt=mina?"#302b40":"#c8cbd4";
+ const walk=frame===1?-3:frame===2?3:0;
+ // Back hair silhouette and long side locks
+ g.fillStyle=hair;g.fillRect(17,8,31,34);g.fillRect(12,19,8,37);g.fillRect(45,18,8,39);
+ g.fillRect(14,43,8,15);g.fillRect(43,43,8,17);
+ g.fillStyle=hairLight;g.fillRect(19,11,9,4);g.fillRect(33,9,10,3);g.fillRect(13,25,4,15);
+ // Shoes and legs, separated for readable walk cycles
+ g.fillStyle="#302a30";g.fillRect(21,79+walk,8,9);g.fillRect(36,79-walk,8,9);
+ g.fillStyle="#f5eadf";g.fillRect(18,87+walk,13,5);g.fillRect(34,87-walk,14,5);
+ g.fillStyle="#b9aeb0";g.fillRect(20,90+walk,9,2);g.fillRect(36,90-walk,10,2);
+ g.fillStyle=skirt;g.fillRect(19,61,28,18);g.fillRect(17,66,32,9);
+ g.fillStyle=mina?"#4a4050":"#e5e1e3";g.fillRect(20,64,25,3);
+ // Torso and puff sleeves
+ g.fillStyle=shirtShade;g.fillRect(16,38,34,28);g.fillRect(11,43,9,19);g.fillRect(46,43,9,19);
+ g.fillStyle=shirt;g.fillRect(18,38,30,26);g.fillRect(13,43,7,16);g.fillRect(46,43,7,16);
+ g.fillStyle=shirtLight;g.fillRect(21,40,23,5);g.fillRect(14,45,4,10);g.fillRect(47,45,4,10);
+ g.fillStyle="#f4d38a";g.fillRect(28,61,10,3);g.fillRect(32,59,3,7);
+ // Neck and broad, bright face
+ g.fillStyle=skinShade;g.fillRect(28,30,12,12);
+ g.fillStyle=skin;g.fillRect(24,17,21,23);g.fillRect(21,22,4,10);g.fillRect(44,22,4,10);
+ g.fillStyle=skinLight;g.fillRect(27,19,14,13);g.fillRect(25,25,3,7);
+ g.fillStyle=skinShade;g.fillRect(22,29,3,4);g.fillRect(44,29,3,4);
+ // Hair cap and fringe, leaving a clear face window
+ g.fillStyle=hair;g.fillRect(19,9,29,13);g.fillRect(17,13,8,12);g.fillRect(43,12,7,12);
+ g.fillRect(22,7,20,5);
+ g.fillStyle=hairLight;g.fillRect(23,10,9,3);g.fillRect(36,9,7,2);
+ // side curls frame the face and continue down the shoulders
+ g.fillStyle=hair;g.fillRect(17,22,6,24);g.fillRect(45,21,6,25);
+ g.fillRect(14,39,7,13);g.fillRect(46,39,7,14);
+ g.fillStyle=hairLight;g.fillRect(17,31,3,9);g.fillRect(47,29,2,10);
+ // Fringe strands
+ g.fillStyle=hair;g.fillRect(22,16,8,4);g.fillRect(29,13,8,5);g.fillRect(37,15,8,4);
+ g.fillStyle=hairLight;g.fillRect(25,15,5,2);g.fillRect(36,14,5,2);
+ // Eyes, eyebrows, nose, smile and blush
+ g.fillStyle=hair;g.fillRect(25,24,6,2);g.fillRect(37,24,6,2);
+ g.fillStyle="#3b2830";g.fillRect(26,27,4,5);g.fillRect(38,27,4,5);
+ g.fillStyle="#fffaf0";g.fillRect(27,27,2,2);g.fillRect(39,27,2,2);
+ g.fillStyle="#7a514d";g.fillRect(27,32,3,1);g.fillRect(39,32,3,1);
+ g.fillStyle=skinShade;g.fillRect(33,32,2,3);
+ g.fillStyle="#d66d7c";g.fillRect(31,36,7,2);g.fillStyle="#ffe5d9";g.fillRect(33,36,3,1);
+ g.fillStyle="#f3a2a2";g.fillRect(23,33,5,3);g.fillRect(42,33,5,3);
+ // jewelry / signature details
+ if(mina){g.fillStyle="#f8d477";g.fillRect(48,45,3,6);g.fillStyle="#fff0b7";g.fillRect(49,46,1,3);}
+ else{g.fillStyle="#e6f3fa";g.fillRect(31,43,6,4);g.fillStyle="#f4d68d";g.fillRect(33,61,3,2);}
+ // pixel outline accents keep the silhouette crisp at game scale
+ g.strokeStyle="#34242e";g.lineWidth=1;g.strokeRect(16.5,37.5,33,28);
  return c;
 }
 function getTownSpriteFrames(id){
@@ -661,19 +675,20 @@ function getTownSpriteFrames(id){
 function drawTownPeople(){
  townPeople.forEach(p=>{
   const x=p.x-camera.x,y=p.y-camera.y;
-  if(x< -90||x>viewW+90||y< -120||y>viewH+90)return;
-  const walking=!!p.walking,phase=animTime*9+(p.x*.013);
+  if(x< -100||x>viewW+100||y< -135||y>viewH+100)return;
+  const walking=!!p.walking,phase=animTime*8+(p.x*.013);
   const frame=walking?(Math.floor(phase)%2+1):0;
+  const bob=walking?Math.abs(Math.sin(phase))*1.2:Math.sin(animTime*2+p.x*.01)*.45;
   const blink=Math.floor(animTime*2.1+p.x*.017)%9===0;
   if(p.id==="mina"||p.id==="hana"){
-   const frames=getTownSpriteFrames(p.id),bob=walking?Math.abs(Math.sin(phase))*1.5:Math.sin(animTime*2.2+p.x)*.7;
-   ctx.fillStyle="#352d2b";ctx.globalAlpha=.24;ctx.beginPath();ctx.ellipse(x,y+5,23,8,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+   const frames=getTownSpriteFrames(p.id);
+   ctx.fillStyle="#302923";ctx.globalAlpha=.22;ctx.beginPath();ctx.ellipse(x,y+5,24,8,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
    ctx.save();ctx.imageSmoothingEnabled=false;
-   ctx.drawImage(frames[frame],x-31,y-73+bob,62,83);
+   ctx.drawImage(frames[frame],x-34,y-104+bob,68,102);
    ctx.restore();
-   if(blink){ctx.fillStyle="#fff0df";ctx.fillRect(x-9,y-50+bob,3,1);ctx.fillRect(x+4,y-50+bob,3,1);}
-   ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#44352f";ctx.strokeText(p.name,x,y-82+bob);ctx.fillStyle="#fff7df";ctx.fillText(p.name,x,y-82+bob);
-   if(Math.hypot(player.x-p.x,player.y-p.y)<125){ctx.fillStyle="#ffe9a0";ctx.font="bold 18px Tahoma";ctx.fillText("✦",x,y-98+bob);}
+   if(blink){ctx.fillStyle="#fff7ed";ctx.fillRect(x-8,y-73+bob,4,1);ctx.fillRect(x+5,y-73+bob,4,1);}
+   ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#44352f";ctx.strokeText(p.name,x,y-112+bob);ctx.fillStyle="#fff7df";ctx.fillText(p.name,x,y-112+bob);
+   if(Math.hypot(player.x-p.x,player.y-p.y)<125){ctx.fillStyle="#ffe9a0";ctx.font="bold 18px Tahoma";ctx.fillText("✦",x,y-128+bob);}
    ctx.textAlign="start";return;
   }
   const step=walking?Math.sin(phase)*3:Math.sin(animTime*2+p.x*.01)*.5;
