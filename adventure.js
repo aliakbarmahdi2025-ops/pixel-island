@@ -612,54 +612,96 @@ function drawTownBuilding(x,y,label,roof,kind){
   // small clay pots and step
   ctx.fillStyle="#b96d4b";ctx.fillRect(sx-30,sy+94,12,10);ctx.fillRect(sx+20,sy+94,12,10);ctx.fillStyle="#4d884b";ctx.fillRect(sx-27,sy+87,6,9);ctx.fillRect(sx+23,sy+87,6,9);
 }
+const townSpriteCache = {};
+function makePixelTownSprite(id, frame) {
+ const c=document.createElement("canvas");c.width=48;c.height=64;
+ const g=c.getContext("2d");
+ const mina=id==="mina";
+ const hair=mina?"#542c2d":"#211d2a",hairHi=mina?"#874a45":"#514252";
+ const shirt=mina?"#e34f91":"#287db8",shirtHi=mina?"#f58db4":"#65b3dc";
+ const pants=mina?"#303044":"#c9cbd0",skin="#f0bd9d",skinHi="#ffd5b8";
+ const sway=frame===1?-2:frame===2?2:0;
+ // shoes, legs and a tiny walking pose
+ g.fillStyle="#342d32";g.fillRect(15,51+sway,7,8);g.fillRect(27,51-sway,7,8);
+ g.fillStyle="#f0e8dc";g.fillRect(13,58+sway,10,4);g.fillRect(26,58-sway,11,4);
+ g.fillStyle=pants;g.fillRect(14,42,21,12);g.fillRect(16,48+sway,7,7);g.fillRect(27,48-sway,7,7);
+ // torso and sleeves
+ g.fillStyle=shirt;g.fillRect(11,25,26,21);g.fillRect(8,29,7,15);g.fillRect(33,29,7,15);
+ g.fillStyle=shirtHi;g.fillRect(13,27,22,4);g.fillRect(9,31,4,9);g.fillRect(35,31,3,8);
+ g.fillStyle="#d9a45e";g.fillRect(20,42,9,3);g.fillRect(23,41,3,5);
+ // neck and face
+ g.fillStyle=skin;g.fillRect(20,21,9,8);
+ g.fillStyle=skinHi;g.fillRect(17,11,16,17);g.fillRect(15,15,3,8);g.fillRect(32,15,3,8);
+ g.fillStyle="#d98d83";g.fillRect(16,20,3,3);g.fillRect(31,20,3,3);
+ // long hair behind shoulders
+ g.fillStyle=hair;g.fillRect(12,8,24,23);g.fillRect(10,15,6,24);g.fillRect(33,15,6,25);
+ g.fillRect(13,27,5,13);g.fillRect(32,27,5,14);
+ g.fillStyle=hairHi;g.fillRect(14,9,7,3);g.fillRect(24,7,8,3);g.fillRect(11,18,3,10);
+ // face front fringe, parted to keep eyes clear
+ g.fillStyle=hair;g.fillRect(14,7,21,7);g.fillRect(13,10,5,7);g.fillRect(29,10,6,5);
+ g.fillStyle=hairHi;g.fillRect(18,8,8,2);g.fillRect(27,9,5,2);
+ // expressive eyes and brows
+ g.fillStyle="#3b2930";g.fillRect(19,17,3,4);g.fillRect(28,17,3,4);
+ g.fillStyle="#fff1df";g.fillRect(19,17,1,1);g.fillRect(28,17,1,1);
+ g.fillStyle=hair;g.fillRect(18,15,4,1);g.fillRect(27,15,4,1);
+ g.fillStyle="#d88b7e";g.fillRect(24,21,2,2);
+ g.fillStyle="#b95f70";g.fillRect(23,24,5,1);
+ g.fillStyle="#e9959b";g.fillRect(16,22,3,2);g.fillRect(31,22,3,2);
+ // signature accessories
+ if(mina){g.fillStyle="#f7d16e";g.fillRect(35,27,3,5);g.fillStyle="#fff0b2";g.fillRect(36,28,1,2);}
+ else{g.fillStyle="#d9ecf5";g.fillRect(22,29,5,3);g.fillStyle="#f5d58b";g.fillRect(23,43,3,2);}
+ // subtle outline pixels for crisp sprite-sheet style
+ g.strokeStyle="#382833";g.lineWidth=1;g.strokeRect(11.5,25.5,25,20);
+ return c;
+}
+function getTownSpriteFrames(id){
+ if(!townSpriteCache[id]) townSpriteCache[id]=[makePixelTownSprite(id,0),makePixelTownSprite(id,1),makePixelTownSprite(id,2)];
+ return townSpriteCache[id];
+}
 function drawTownPeople(){
  townPeople.forEach(p=>{
-  const x=p.x-camera.x,y=p.y-camera.y;if(x< -80||x>viewW+80||y< -110||y>viewH+80)return;
-  const walking=!!p.walking,phase=animTime*10+(p.x*.013),step=walking?Math.sin(phase)*3:Math.sin(animTime*2+p.x*.01)*.5;
+  const x=p.x-camera.x,y=p.y-camera.y;
+  if(x< -90||x>viewW+90||y< -120||y>viewH+90)return;
+  const walking=!!p.walking,phase=animTime*9+(p.x*.013);
+  const frame=walking?(Math.floor(phase)%2+1):0;
   const blink=Math.floor(animTime*2.1+p.x*.017)%9===0;
+  if(p.id==="mina"||p.id==="hana"){
+   const frames=getTownSpriteFrames(p.id),bob=walking?Math.abs(Math.sin(phase))*1.5:Math.sin(animTime*2.2+p.x)*.7;
+   ctx.fillStyle="#352d2b";ctx.globalAlpha=.24;ctx.beginPath();ctx.ellipse(x,y+5,23,8,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+   ctx.save();ctx.imageSmoothingEnabled=false;
+   ctx.drawImage(frames[frame],x-31,y-73+bob,62,83);
+   ctx.restore();
+   if(blink){ctx.fillStyle="#fff0df";ctx.fillRect(x-9,y-50+bob,3,1);ctx.fillRect(x+4,y-50+bob,3,1);}
+   ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#44352f";ctx.strokeText(p.name,x,y-82+bob);ctx.fillStyle="#fff7df";ctx.fillText(p.name,x,y-82+bob);
+   if(Math.hypot(player.x-p.x,player.y-p.y)<125){ctx.fillStyle="#ffe9a0";ctx.font="bold 18px Tahoma";ctx.fillText("✦",x,y-98+bob);}
+   ctx.textAlign="start";return;
+  }
+  const step=walking?Math.sin(phase)*3:Math.sin(animTime*2+p.x*.01)*.5;
   const palettes={
-   mina:{hair:"#56342f",hair2:"#805044",top:"#dc7898",light:"#f3b3c6",bottom:"#394054",skin:"#e9b58f",accent:"#f2d38b"},
-   hana:{hair:"#292431",hair2:"#51404b",top:"#477fae",light:"#9cc7db",bottom:"#c6c2b7",skin:"#e7b18c",accent:"#eadbb6"},
    nahid:{hair:"#604044",hair2:"#8c5d58",top:"#984d62",light:"#d28a94",bottom:"#57434a",skin:"#dca987",accent:"#e6c37c"},
    saeed:{hair:"#29272a",hair2:"#514449",top:"#3b5368",light:"#8297a5",bottom:"#343b45",skin:"#d9a17e",accent:"#d8cbb0"},
    rezaei:{hair:"#68483c",hair2:"#98705a",top:"#527d58",light:"#a9c18a",bottom:"#554a42",skin:"#dfae8d",accent:"#e7ca84"}
   };const a=palettes[p.id]||palettes.rezaei;
-  // ground shadow and soft contact shade
   ctx.fillStyle="#3d352a";ctx.globalAlpha=.22;ctx.beginPath();ctx.ellipse(x,y+3,19,6,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
-  // shoes and legs with walking cycle
   ctx.fillStyle="#493b34";ctx.fillRect(x-8,y+27+step,7,13);ctx.fillRect(x+2,y+27-step,7,13);
   ctx.fillStyle="#292b32";ctx.fillRect(x-10,y+38+step,10,5);ctx.fillRect(x+1,y+38-step,11,5);
-  // clothing silhouette, coat seams and sleeves
   ctx.fillStyle=a.bottom;ctx.fillRect(x-14,y+20,28,12);
   ctx.fillStyle=a.top;ctx.beginPath();ctx.moveTo(x-12,y-2);ctx.lineTo(x+12,y-2);ctx.lineTo(x+16,y+23);ctx.lineTo(x+11,y+28);ctx.lineTo(x-11,y+28);ctx.lineTo(x-16,y+23);ctx.closePath();ctx.fill();
   ctx.fillStyle=a.light;ctx.fillRect(x-11,y+2,22,3);ctx.fillRect(x-17,y+3,5,15);ctx.fillRect(x+12,y+3,5,15);
   ctx.fillStyle="#f0c39e";ctx.fillRect(x-19,y+17,6,7);ctx.fillRect(x+13,y+17,6,7);
   ctx.fillStyle=a.accent;ctx.fillRect(x-2,y+5,4,8);ctx.fillRect(x-1,y+14,2,5);
-  // neck and face with cheek shading
-  ctx.fillStyle=a.skin;ctx.fillRect(x-5,y-9,10,10);
-  ctx.fillStyle=a.skin;ctx.beginPath();ctx.roundRect(x-12,y-36,24,28,7);ctx.fill();
+  ctx.fillStyle=a.skin;ctx.fillRect(x-5,y-9,10,10);ctx.beginPath();ctx.roundRect(x-12,y-36,24,28,7);ctx.fill();
   ctx.fillStyle="#d38f78";ctx.fillRect(x-12,y-22,3,6);ctx.fillRect(x+9,y-22,3,6);
   ctx.fillStyle="#efc4a5";ctx.fillRect(x-8,y-31,16,14);
-  // hair cap, side locks and signature hairstyle
   ctx.fillStyle=a.hair;ctx.beginPath();ctx.moveTo(x-13,y-24);ctx.quadraticCurveTo(x-17,y-43,x,y-43);ctx.quadraticCurveTo(x+17,y-43,x+13,y-23);ctx.lineTo(x+10,y-29);ctx.lineTo(x-10,y-29);ctx.closePath();ctx.fill();
   ctx.fillStyle=a.hair2;ctx.fillRect(x-10,y-38,7,3);ctx.fillRect(x+2,y-40,7,3);
-  if(p.id==="mina"){ctx.fillStyle=a.hair;ctx.beginPath();ctx.moveTo(x-12,y-29);ctx.quadraticCurveTo(x-21,y-5,x-14,y+7);ctx.lineTo(x-9,y-8);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(x+10,y-29);ctx.quadraticCurveTo(x+21,y-4,x+15,y+8);ctx.lineTo(x+8,y-8);ctx.closePath();ctx.fill();}
-  if(p.id==="hana"){ctx.fillStyle=a.hair;ctx.beginPath();ctx.moveTo(x-12,y-28);ctx.quadraticCurveTo(x-20,y-4,x-16,y+15);ctx.lineTo(x-9,y+4);ctx.lineTo(x-8,y-12);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(x+12,y-28);ctx.quadraticCurveTo(x+20,y-4,x+16,y+15);ctx.lineTo(x+9,y+4);ctx.closePath();ctx.fill();}
   if(p.id==="nahid"||p.id==="rezaei"){ctx.fillStyle=a.hair;ctx.beginPath();ctx.arc(x+9,y-38,8,0,Math.PI*2);ctx.fill();ctx.fillRect(x-13,y-31,5,16);ctx.fillRect(x+8,y-30,5,16);}
   if(p.id==="saeed"){ctx.fillStyle=a.hair;ctx.fillRect(x-11,y-41,8,5);ctx.fillRect(x-2,y-43,9,6);ctx.fillRect(x+6,y-39,7,5);}
-  // eyes, brows, nose, smile and blush
   if(!blink){ctx.fillStyle="#302a2b";ctx.fillRect(x-7,y-23,3,3);ctx.fillRect(x+4,y-23,3,3);ctx.fillStyle="#fff1dc";ctx.fillRect(x-6,y-23,1,1);ctx.fillRect(x+5,y-23,1,1);}else{ctx.fillStyle="#6b4c43";ctx.fillRect(x-7,y-22,3,1);ctx.fillRect(x+4,y-22,3,1);}
   ctx.fillStyle=a.hair;ctx.fillRect(x-8,y-27,5,2);ctx.fillRect(x+3,y-27,5,2);
-  ctx.fillStyle="#c58a70";ctx.fillRect(x,y-20,2,3);
-  ctx.fillStyle="#a85e65";ctx.fillRect(x-3,y-13,6,2);
+  ctx.fillStyle="#c58a70";ctx.fillRect(x,y-20,2,3);ctx.fillStyle="#a85e65";ctx.fillRect(x-3,y-13,6,2);
   if(p.id==="saeed"){ctx.fillStyle="#684c40";ctx.fillRect(x-8,y-13,16,5);ctx.fillRect(x-10,y-16,4,4);ctx.fillRect(x+6,y-16,4,4);}
-  if(p.id==="mina"||p.id==="hana"){ctx.fillStyle="#eaa6a1";ctx.globalAlpha=.55;ctx.fillRect(x-10,y-17,4,3);ctx.fillRect(x+7,y-17,4,3);ctx.globalAlpha=1;}
   if(p.id==="nahid"||p.id==="rezaei"){ctx.fillStyle=a.accent;ctx.fillRect(x-14,y-17,3,5);ctx.fillRect(x+11,y-17,3,5);}
-  // character-specific accessory
-  if(p.id==="mina"){ctx.fillStyle="#f5d28a";ctx.fillRect(x+9,y+4,4,4);}
-  if(p.id==="hana"){ctx.fillStyle="#d9e7ef";ctx.fillRect(x-2,y+5,4,3);}
-  if(p.id==="saeed"){ctx.fillStyle="#d8d2c2";ctx.fillRect(x-9,y+4,18,3);}
-  // grounded shadow-free nameplate
   ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#43392f";ctx.strokeText(p.name,x,y-51);ctx.fillStyle="#fff7df";ctx.fillText(p.name,x,y-51);
   if(Math.hypot(player.x-p.x,player.y-p.y)<115){ctx.fillStyle="#ffe9a0";ctx.font="bold 17px Tahoma";ctx.fillText("✦",x,y-65);}
   ctx.textAlign="start";
