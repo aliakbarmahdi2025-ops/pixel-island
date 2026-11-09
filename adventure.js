@@ -472,10 +472,15 @@ function update(dt) {
   player.y=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mh-((caveMode || homeInterior || townMode)?55:24),player.y));
   camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
-  $("caveBtn").hidden = homeInterior || (caveMode ? false : Math.hypot(player.x-2080,player.y-1450)>115);
+  $("caveBtn").hidden = townMode || homeInterior || (caveMode ? false : Math.hypot(player.x-2080,player.y-1450)>115);
+  $("townBtn").hidden=townMode||caveMode||homeInterior||Math.hypot(player.x-2310,player.y-900)>115;
+  $("townExitBtn").hidden=!townMode;
+  const nearTownPerson=townMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
+  $("townNpcBtn").hidden=!nearTownPerson;
+  $("townNpcBtn").textContent=nearTownPerson?"💬 صحبت با "+nearTownPerson.name:"💬 صحبت با اهالی";
   $("caveBtn").textContent=caveMode?"🚪 خروج از غار":"🕳️ ورود به غار";
   $("npcBtn").hidden = caveMode || homeInterior || Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y) > 145;
-  $("homeBtn").hidden = caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
+  $("homeBtn").hidden = townMode || caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
   $("homeBtn").textContent = homeInterior ? "🚪 خروج از خانه" : "🏡 خانه";
 }
 
