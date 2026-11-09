@@ -10,14 +10,13 @@
         #gameCanvas { display: block; background: #2d5a27; image-rendering: pixelated; }
         #ui { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: center; color: white; font-size: 13px; pointer-events: none; z-index: 5; }
         .ui-box { background: rgba(0, 0, 0, 0.7); padding: 8px 12px; border-radius: 8px; border: 2px solid #555; }
-        #shopBtn { pointer-events: auto; background: #f39c12; color: #fff; border: 2px solid #d35400; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: monospace; }
-        #shopBtn:active { transform: scale(0.95); }
+        .btn-ui { pointer-events: auto; background: #f39c12; color: #fff; border: 2px solid #d35400; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: monospace; }
+        .btn-ui:active { transform: scale(0.95); }
+        #travelBtn { background: #e74c3c; border-color: #c0392b; display: none; }
         
-        /* استایل منوی فروشگاه */
         #shopMenu { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 340px; background: rgba(20, 20, 30, 0.95); border: 3px solid #f1c40f; border-radius: 12px; padding: 15px; color: white; z-index: 10; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
         #shopMenu h2 { text-align: center; color: #f1c40f; margin-bottom: 12px; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 5px; }
         .shop-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; }
-        .shop-item span { font-size: 12px; }
         .buy-btn { background: #2ecc71; color: white; border: none; padding: 6px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-family: monospace; }
         .buy-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
         #closeShop { display: block; width: 100%; background: #e74c3c; color: white; border: none; padding: 8px; border-radius: 6px; margin-top: 10px; font-weight: bold; cursor: pointer; font-family: monospace; }
@@ -26,10 +25,12 @@
 <body>
     <div id="ui">
         <div class="ui-box">💰 <span id="coins">0</span> | Lvl <span id="level">1</span></div>
-        <button id="shopBtn">🛒 فروشگاه</button>
+        <div>
+            <button id="travelBtn" class="btn-ui" onclick="switchIsland()">🌋 جزیره آتشفشان</button>
+            <button id="shopBtn" class="btn-ui">🛒 فروشگاه</button>
+        </div>
     </div>
 
-    <!-- پنجره فروشگاه -->
     <div id="shopMenu">
         <h2>🛒 فروشگاه ارتقا</h2>
         <div class="shop-item">
@@ -69,6 +70,8 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
+        let currentIsland = 'forest'; // 'forest' یا 'volcano'
+
         const player = {
             x: canvas.width / 2,
             y: canvas.height / 2,
@@ -86,13 +89,22 @@
         const workers = [];
         let workerCost = 150;
 
-        const resources = [
+        // منابع جزیره اول (جنگل)
+        const forestResources = [
             { x: 80, y: 120, type: 'tree', hp: 5, maxHp: 5, coins: 10, xp: 15, size: 36 },
             { x: 250, y: 220, type: 'tree', hp: 5, maxHp: 5, coins: 10, xp: 15, size: 36 },
             { x: 150, y: 380, type: 'rock', hp: 12, maxHp: 12, coins: 30, xp: 35, size: 32 },
             { x: 300, y: 450, type: 'gold', hp: 25, maxHp: 25, coins: 100, xp: 80, size: 28 }
         ];
 
+        // منابع جزیره دوم (آتشفشانی - گران‌تر و سخت‌تر)
+        const volcanoResources = [
+            { x: 100, y: 150, type: 'crystal', hp: 20, maxHp: 20, coins: 80, xp: 60, size: 34 },
+            { x: 280, y: 250, type: 'crystal', hp: 20, maxHp: 20, coins: 80, xp: 60, size: 34 },
+            { x: 180, y: 400, type: 'lava_rock', hp: 45, maxHp: 45, coins: 200, xp: 120, size: 36 }
+        ];
+
+        let activeResources = forestResources;
         const floatingTexts = [];
         let touchX = null;
         let touchY = null;
@@ -115,6 +127,22 @@
             touchX = null;
             touchY = null;
         });
+
+        function switchIsland() {
+            if (currentIsland === 'forest') {
+                currentIsland = 'volcano';
+                activeResources = volcanoResources;
+                canvas.style.background = '#3a1e1e';
+                document.getElementById('travelBtn').innerText = '🌲 جزیره سرسبز';
+                addFloatingText('خوش آمدید به جزیره آتشفشان! 🌋', player.x, player.y - 30, '#e74c3c');
+            } else {
+                currentIsland = 'forest';
+                activeResources = forestResources;
+                canvas.style.background = '#2d5a27';
+                document.getElementById('travelBtn').innerText = '🌋 جزیره آتشفشان';
+                addFloatingText('بازگشت به جنگل! 🌲', player.x, player.y - 30, '#2ecc71');
+            }
+        }
 
         function toggleShop() {
             const menu = document.getElementById('shopMenu');
@@ -165,7 +193,10 @@
             document.getElementById('coins').innerText = Math.floor(player.coins);
             document.getElementById('level').innerText = player.level;
 
-            // محاسبه قیمت‌های جدید
+            if (player.level >= 5) {
+                document.getElementById('travelBtn').style.display = 'inline-block';
+            }
+
             const speedCost = Math.floor(50 * Math.pow(1.5, player.speedLvl - 1));
             const powerCost = Math.floor(80 * Math.pow(1.6, player.powerLvl - 1));
 
@@ -200,11 +231,10 @@
             if (player.y - half < 0) player.y = half;
             if (player.y + half > canvas.height) player.y = canvas.height - half;
 
-            // رفتار کارگرها
             workers.forEach(w => {
-                let nearestRes = resources[0];
+                let nearestRes = activeResources[0];
                 let minDist = Infinity;
-                resources.forEach(res => {
+                activeResources.forEach(res => {
                     const d = Math.hypot(w.x - res.x, w.y - res.y);
                     if (d < minDist) {
                         minDist = d;
@@ -223,8 +253,7 @@
                 }
             });
 
-            // تعامل با منابع
-            resources.forEach(res => {
+            activeResources.forEach(res => {
                 const distP = Math.hypot(player.x - res.x, player.y - res.y);
                 if (distP < (player.size / 2 + res.size / 2)) {
                     res.hp -= 0.04 * player.power;
@@ -267,12 +296,10 @@
             }
         }
 
+        // رسم گرافیکی
         function drawTree(x, y) {
             ctx.fillStyle = '#5c4033';
             ctx.fillRect(x - 4, y + 2, 8, 14);
-            ctx.fillStyle = '#3d2b22';
-            ctx.fillRect(x + 1, y + 2, 3, 14);
-
             ctx.fillStyle = '#1e824c';
             ctx.fillRect(x - 16, y - 8, 32, 14);
             ctx.fillStyle = '#27ae60';
@@ -286,17 +313,31 @@
             ctx.fillRect(x - 14, y - 10, 28, 20);
             ctx.fillStyle = '#95a5a6';
             ctx.fillRect(x - 14, y - 10, 20, 6);
-            ctx.fillStyle = '#34495e';
-            ctx.fillRect(x - 6, y + 2, 20, 8);
         }
 
         function drawGold(x, y) {
             ctx.fillStyle = '#f1c40f';
             ctx.fillRect(x - 12, y - 10, 24, 20);
-            ctx.fillStyle = '#f39c12';
-            ctx.fillRect(x - 4, y + 2, 16, 8);
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(x - 8, y - 8, 4, 4);
+        }
+
+        function drawCrystal(x, y) {
+            ctx.fillStyle = '#9b59b6';
+            ctx.fillRect(x - 10, y - 14, 20, 28);
+            ctx.fillStyle = '#8e44ad';
+            ctx.fillRect(x - 4, y - 14, 14, 28);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(x - 4, y - 10, 4, 8);
+        }
+
+        function drawLavaRock(x, y) {
+            ctx.fillStyle = '#e67e22';
+            ctx.fillRect(x - 16, y - 12, 32, 24);
+            ctx.fillStyle = '#d35400';
+            ctx.fillRect(x - 8, y - 4, 20, 10);
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(x - 12, y - 8, 8, 8);
         }
 
         function drawPlayer(x, y) {
@@ -314,8 +355,6 @@
         function drawWorker(x, y) {
             ctx.fillStyle = '#3498db';
             ctx.fillRect(x - 8, y - 8, 16, 16);
-            ctx.fillStyle = '#2980b9';
-            ctx.fillRect(x - 8, y + 2, 16, 6);
             ctx.fillStyle = '#2ecc71';
             ctx.fillRect(x - 5, y - 4, 3, 3);
             ctx.fillRect(x + 2, y - 4, 3, 3);
@@ -324,10 +363,12 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            resources.forEach(res => {
+            activeResources.forEach(res => {
                 if (res.type === 'tree') drawTree(res.x, res.y);
                 else if (res.type === 'rock') drawRock(res.x, res.y);
                 else if (res.type === 'gold') drawGold(res.x, res.y);
+                else if (res.type === 'crystal') drawCrystal(res.x, res.y);
+                else if (res.type === 'lava_rock') drawLavaRock(res.x, res.y);
 
                 const hpPercent = Math.max(0, res.hp / res.maxHp);
                 ctx.fillStyle = 'rgba(0,0,0,0.6)';
