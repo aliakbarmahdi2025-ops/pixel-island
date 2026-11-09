@@ -48,12 +48,14 @@ function makeWorld() {
   for (let i = 0; i < 115; i++) {
     const x = 100 + rand() * (WORLD.w - 200);
     const y = 100 + rand() * (WORLD.h - 200);
-    if (Math.hypot(x - player.x, y - player.y) < 130) continue;
+    if (Math.hypot(x - player.x, y - player.y) < 130 || Math.hypot(x-playerHome.x,y-playerHome.y)<155 || Math.hypot(x-samanHome.x,y-samanHome.y)<155) continue;
     const type = rand() < 0.72 ? "tree" : "stone";
     resources.push({ id: "node-" + i, x, y, type, hp: type === "tree" ? 3 : 4, max: type === "tree" ? 3 : 4 });
   }
   for (let i = 0; i < 18; i++) {
-    resources.push({ id: "iron-" + i, x: 120 + rand() * (WORLD.w - 240), y: 120 + rand() * (WORLD.h - 240), type: "iron", hp: 5, max: 5 });
+    const x = 120 + rand() * (WORLD.w - 240), y = 120 + rand() * (WORLD.h - 240);
+    if (Math.hypot(x-playerHome.x,y-playerHome.y)<145 || Math.hypot(x-samanHome.x,y-samanHome.y)<145) continue;
+    resources.push({ id: "iron-" + i, x, y, type: "iron", hp: 5, max: 5 });
   }
 }
 function load() {
@@ -73,6 +75,7 @@ function load() {
     npcMet = !!data.npcMet; npcTalkIndex = Number.isInteger(data.npcTalkIndex) ? data.npcTalkIndex : 0;
     if (data.npcQuest) npcQuest = { ...npcQuest, ...data.npcQuest };
     homeLevel = Math.max(0, Math.min(3, Number(data.homeLevel) || 0));
+    homeInterior = !!data.homeInterior; if (data.homeReturn) homeReturn = data.homeReturn;
   } catch (e) { console.warn("Save could not be loaded", e); }
 }
 function save() {
@@ -190,7 +193,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn
     }));
   } catch (e) {}
 }
