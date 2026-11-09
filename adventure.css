@@ -62,3 +62,9 @@ button:active{transform:translateY(2px)}
 .npc-actions button{min-height:44px}
 #npcNext{background:#356b55;border-color:#a8d7a4}
 #npcClose{background:#4b5148;border-color:#aeb6a8}
+
+/* Stage 9: Saman's personal crystal quest. */
+.npc-quest-card{display:grid;gap:9px;margin:14px 0;padding:12px;background:#294532;border:1px solid #8bbd83;border-radius:11px;text-align:center}
+.npc-quest-card p{margin:0;font-size:13px;line-height:1.8;color:#e5f1ce}
+#npcQuestAccept{background:#386b52;border-color:#a8d7a4;min-height:44px}
+#npcQuestClaim{background:#72552b;border-color:#e6c77c;min-height:44px}
