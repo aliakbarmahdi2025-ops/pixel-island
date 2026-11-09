@@ -53,3 +53,12 @@ button:active{transform:translateY(2px)}
 .hud-actions button{padding:7px 8px;font-size:11px}
 #xpPanel{top:0;left:8px;right:auto;width:min(260px,calc(100vw - 16px));max-width:none;padding:5px 8px}
 @media(max-width:420px){.hud-actions button{padding:6px 7px;font-size:10px}.status span{padding:6px 8px;font-size:11px}}
+
+
+/* Stage 8: first forest NPC interaction. */
+#npcBtn{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);background:#356b55;border-color:#a8d7a4;pointer-events:auto;white-space:nowrap;box-shadow:0 3px 0 #17251d}
+#npcBtn:active{transform:translateX(-50%) translateY(2px)}
+.npc-actions{display:grid;gap:9px;margin-top:16px}
+.npc-actions button{min-height:44px}
+#npcNext{background:#356b55;border-color:#a8d7a4}
+#npcClose{background:#4b5148;border-color:#aeb6a8}
