@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#17251d">
+  <title>Pixel Island: Adventure — مرحله اول</title>
+  <link rel="stylesheet" href="adventure.css">
+</head>
+<body>
+  <canvas id="world" aria-label="دنیای بازی"></canvas>
+  <header id="hud">
+    <div class="status">
+      <span>❤️ <b id="health">5</b></span>
+      <span>⭐ سطح <b id="level">1</b></span>
+      <span>🪙 <b id="coins">0</b></span>
+    </div>
+    <div class="hud-actions">
+      <button id="bagBtn">🎒 کوله‌پشتی</button>
+      <button id="saveBtn">💾 ذخیره</button>
+    </div>
+  </header>
+  <section id="inventory" class="panel" hidden>
+    <h2>🎒 کوله‌پشتی</h2>
+    <div class="slots">
+      <div>🪵 چوب: <b id="wood">0</b></div>
+      <div>🪨 سنگ: <b id="stone">0</b></div>
+      <div>⛏️ آهن: <b id="iron">0</b></div>
+    </div>
+    <button id="closeBag">بستن</button>
+  </section>
+  <div id="toast" role="status"></div>
+  <div id="controls">
+    <div id="joystick"><div id="stick"></div></div>
+    <button id="actionBtn">⛏️<small>برداشت</small></button>
+  </div>
+  <div id="help">با جوی‌استیک حرکت کن؛ کنار درخت یا سنگ، دکمه برداشت را بزن.</div>
+  <script src="adventure.js"></script>
+</body>
+</html>
