@@ -475,6 +475,8 @@ function update(dt) {
   $("caveBtn").hidden = townMode || homeInterior || (caveMode ? false : Math.hypot(player.x-2080,player.y-1450)>115);
   $("townBtn").hidden=townMode||caveMode||homeInterior||Math.hypot(player.x-2310,player.y-900)>115;
   $("townExitBtn").hidden=!townMode || Math.hypot(player.x-800,player.y-1110)>105;
+  $("townClock").hidden=!townMode;
+  if(townMode){const hh=Math.floor(worldClock/60),mm=Math.floor(worldClock%60),night=hh>=20||hh<7;$("townClock").textContent=(night?"🌙 ":"☀️ ")+String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");}
   const nearTownPerson=townMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
   $("townNpcBtn").hidden=!nearTownPerson;
   $("townNpcBtn").textContent=nearTownPerson?"💬 صحبت با "+nearTownPerson.name:"💬 صحبت با اهالی";
@@ -559,6 +561,10 @@ function drawTown(){
   ctx.fillStyle="#9b673d";ctx.fillRect(gx-48,gy-78,96,55);ctx.strokeStyle="#e7c98d";ctx.lineWidth=3;ctx.strokeRect(gx-48,gy-78,96,55);
   ctx.fillStyle="#fff0cb";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("جنگل",gx,gy-45);
   ctx.fillStyle="#f5e7c6";ctx.font="bold 17px Tahoma";ctx.fillText("شهر سبز",800-camera.x,115-camera.y);
+  const hour=worldClock/60;
+  if(hour>=20||hour<6){ctx.fillStyle="rgba(22,35,70,.34)";ctx.fillRect(0,0,viewW,viewH);}
+  else if(hour>=18){ctx.fillStyle="rgba(227,126,65,.14)";ctx.fillRect(0,0,viewW,viewH);}
+  else if(hour<8){ctx.fillStyle="rgba(255,203,133,.10)";ctx.fillRect(0,0,viewW,viewH);}
   ctx.textAlign="start";
 }
 function drawTownTree(x,y,i){
