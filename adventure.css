@@ -32,3 +32,7 @@ button:active{transform:translateY(2px)}
 #help{position:fixed;z-index:2;bottom:158px;left:50%;transform:translateX(-50%);background:#17251dcc;padding:7px 11px;border-radius:12px;font-size:11px;white-space:nowrap;pointer-events:none}
 [hidden]{display:none!important}
 @media(min-width:800px){#joystick{left:34px;bottom:24px}#actionBtn{right:34px;bottom:35px}#attackBtn{right:130px;bottom:42px}#help{bottom:22px}}
+
+#craftBtn{background:#72552b;border-color:#e6c77c}
+#usePotion{width:100%;margin-top:12px;background:#6a3f79;border-color:#d8a6e8}
+#usePotion:disabled{opacity:.42;filter:grayscale(1)}
