@@ -13,7 +13,7 @@ let harvested = new Set(), caveHarvested = new Set();
 let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
 let caveResources = [], caveChests = [];
 let resources = [];
-let enemies = [];
+let enemies = [], caveEnemies = [];
 let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
 let move = { x: 0, y: 0 };
 let toastTimer = 0;
@@ -117,6 +117,7 @@ function makeCave(){
  {id:"ci1",x:420,y:450,type:"iron",hp:5,max:5},{id:"ci2",x:970,y:650,type:"iron",hp:5,max:5},
  {id:"cc1",x:760,y:360,type:"crystal",hp:4,max:4},{id:"cc2",x:300,y:680,type:"crystal",hp:4,max:4}];
  caveChests=[{x:590,y:230,opened:!!openedChests[0]},{x:1030,y:420,opened:!!openedChests[1]}];
+ caveEnemies=[{id:"crystal-guardian",x:870,y:470,spawnX:870,spawnY:470,hp:5,max:5,alive:true,respawnTimer:0}];
 }
 function activeNodes(){return caveMode?caveResources.filter(r=>!caveHarvested.has(r.id)):resources.filter(r=>!harvested.has(r.id));}
 function toggleCave(){
@@ -153,12 +154,20 @@ function attack() {
   if (attackCooldown > 0) return;
   attackCooldown = 0.32; attackFlash = 0.18;
   let target = null, best = 104;
-  for (const e of enemies) { if (!e.alive) continue; const d=Math.hypot(player.x-e.x,player.y-e.y); if(d<best){best=d;target=e;} }
+  const targets = caveMode ? caveEnemies : enemies;
+  for (const e of targets) { if (!e.alive) continue; const d=Math.hypot(player.x-e.x,player.y-e.y); if(d<best){best=d;target=e;} }
   if (!target) { showToast("برای حمله به موجود نزدیک‌تر شو"); return; }
   target.hp -= player.attackPower;
   if (target.hp <= 0) {
-    target.alive=false; target.respawnTimer=12; player.coins+=5; const leveled=addXP(15);
-    updateUI(); saveQuietly(); showToast(leveled?"موجود شکست خورد! سطح جدید و یک امتیاز مهارت ⭐":"موجود جنگلی شکست خورد! +۵ سکه و ۱۵ تجربه ⭐");
+    target.alive=false;
+    if (caveMode) {
+      target.respawnTimer=20; player.coins+=10; bag.crystal=(bag.crystal||0)+2;
+      const leveled=addXP(25); updateUI(); saveQuietly();
+      showToast(leveled?"نگهبان کریستالی شکست خورد! +۱۰ سکه و ۲ کریستال؛ سطح جدید ⭐":"نگهبان کریستالی شکست خورد! +۱۰ سکه، ۲ کریستال و ۲۵ تجربه 💎");
+    } else {
+      target.respawnTimer=12; player.coins+=5; const leveled=addXP(15);
+      updateUI(); saveQuietly(); showToast(leveled?"موجود شکست خورد! سطح جدید و یک امتیاز مهارت ⭐":"موجود جنگلی شکست خورد! +۵ سکه و ۱۵ تجربه ⭐");
+    }
   } else showToast("ضربه زدی! ❤️ جان دشمن: "+target.hp);
 }
 
@@ -267,21 +276,20 @@ function buyUpgrade(type) {
 
 function update(dt) {
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt);
-  if(!caveMode) for(const enemy of enemies){
+  const activeEnemies = caveMode ? caveEnemies : enemies;
+  for(const enemy of activeEnemies){
     if(!enemy.alive){
       enemy.respawnTimer = Math.max(0, enemy.respawnTimer - dt);
-      if(enemy.respawnTimer <= 0){
-        enemy.alive = true; enemy.hp = enemy.max;
-        enemy.x = enemy.spawnX; enemy.y = enemy.spawnY;
-      }
+      if(enemy.respawnTimer <= 0){ enemy.alive = true; enemy.hp = enemy.max; enemy.x = enemy.spawnX; enemy.y = enemy.spawnY; }
       continue;
     }
     const ex=player.x-enemy.x,ey=player.y-enemy.y,distance=Math.hypot(ex,ey)||1;
-    if(distance<300&&distance>30){enemy.x+=ex/distance*72*dt;enemy.y+=ey/distance*72*dt;}
+    const chaseSpeed = caveMode ? 48 : 72;
+    if(distance<300&&distance>30){enemy.x+=ex/distance*chaseSpeed*dt;enemy.y+=ey/distance*chaseSpeed*dt;}
     else if(distance<=30&&damageCooldown<=0){
       player.health=Math.max(0,player.health-1);damageCooldown=1;updateUI();saveQuietly();
-      if(player.health<=0){player.health=player.maxHealth;player.x=1200;player.y=900;showToast("انرژیت تمام شد؛ به جنگل برگشتی و جانت بازیابی شد");updateUI();}
-      else showToast("موجود بهت ضربه زد! ❤️");
+      if(player.health<=0){player.health=player.maxHealth;player.x=caveMode?600:1200;player.y=caveMode?790:900;showToast("انرژیت تمام شد؛ جانت بازیابی شد");updateUI();}
+      else showToast(caveMode?"نگهبان کریستالی بهت ضربه زد! 💎":"موجود بهت ضربه زد! ❤️");
     }
   }
   let dx = move.x, dy = move.y;
@@ -352,6 +360,15 @@ function drawSlime(e) {
   ctx.fillStyle="#203b29";ctx.fillRect(x-18,y-25,36,5);
   ctx.fillStyle="#e8d36b";ctx.fillRect(x-18,y-25,36*(e.hp/e.max),5);
 }
+function drawCrystalGuardian(e) {
+  const x=e.x-camera.x,y=e.y-camera.y;
+  ctx.fillStyle="#182b39";ctx.fillRect(x-24,y+13,48,8);
+  ctx.fillStyle="#536b86";ctx.fillRect(x-22,y-12,44,28);ctx.fillRect(x-16,y-22,32,12);
+  ctx.fillStyle="#78dce8";ctx.fillRect(x-15,y-28,10,17);ctx.fillRect(x+5,y-25,10,14);ctx.fillRect(x-5,y-39,10,16);
+  ctx.fillStyle="#b5f6ff";ctx.fillRect(x-11,y-8,6,6);ctx.fillRect(x+6,y-8,6,6);
+  ctx.fillStyle="#17232e";ctx.fillRect(x-24,y-49,48,5);
+  ctx.fillStyle="#55d9e8";ctx.fillRect(x-24,y-49,48*(e.hp/e.max),5);
+}
 function drawPlayer() {
   const x = player.x - camera.x, y = player.y - camera.y;
   ctx.fillStyle = "#243c28"; ctx.fillRect(x - 11, y + 7, 22, 9);
@@ -370,7 +387,8 @@ function draw() {
     else if(r.type==="crystal"){drawRock(r);let cx=r.x-camera.x,cy=r.y-camera.y;ctx.fillStyle="#73e5df";ctx.fillRect(cx-5,cy-22,10,20);ctx.fillRect(cx-10,cy-12,6,10);ctx.fillRect(cx+5,cy-10,6,8);}
     else drawIron(r);
   }
-  if(!caveMode) for(const e of enemies){if(!e.alive)continue;if(e.x<camera.x-50||e.x>camera.x+viewW+50||e.y<camera.y-50||e.y>camera.y+viewH+50)continue;drawSlime(e);}
+  const visibleEnemies = caveMode ? caveEnemies : enemies;
+  for(const e of visibleEnemies){if(!e.alive)continue;if(e.x<camera.x-60||e.x>camera.x+viewW+60||e.y<camera.y-60||e.y>camera.y+viewH+60)continue;if(caveMode)drawCrystalGuardian(e);else drawSlime(e);}
   drawPlayer();
   if(attackFlash>0){const px=player.x-camera.x,py=player.y-camera.y;ctx.strokeStyle="#fff0a8";ctx.lineWidth=4;ctx.beginPath();ctx.arc(px,py,43,-0.8,0.8);ctx.stroke();}
   ctx.strokeStyle = "#d6f0a8"; ctx.lineWidth = 3;
