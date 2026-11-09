@@ -2,12 +2,12 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pixel Island</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background: #1a1c23; font-family: monospace; }
-        #gameCanvas { display: block; background: #2d5a27; image-rendering: pixelated; }
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+        html, body { width: 100vw; height: 100vh; overflow: hidden; background: #1a1c23; font-family: monospace; position: fixed; }
+        #gameCanvas { display: block; width: 100vw; height: 100vh; background: #2d5a27; image-rendering: pixelated; position: absolute; top: 0; left: 0; }
         #ui { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: center; color: white; font-size: 13px; pointer-events: none; z-index: 5; }
         .ui-box { background: rgba(0, 0, 0, 0.7); padding: 8px 12px; border-radius: 8px; border: 2px solid #555; }
         .btn-ui { pointer-events: auto; background: #f39c12; color: #fff; border: 2px solid #d35400; padding: 6px 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: monospace; font-size: 12px; }
@@ -70,6 +70,7 @@
             canvas.height = window.innerHeight;
         }
         window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('orientationchange', resizeCanvas);
         resizeCanvas();
 
         let currentIsland = 'forest';
@@ -167,21 +168,21 @@
         let touchX = null;
         let touchY = null;
 
-        canvas.addEventListener('touchstart', (e) => {
+        window.addEventListener('touchstart', (e) => {
             if (e.target.tagName !== 'BUTTON') {
                 touchX = e.touches[0].clientX;
                 touchY = e.touches[0].clientY;
             }
-        });
+        }, { passive: false });
 
-        canvas.addEventListener('touchmove', (e) => {
-            if (touchX !== null) {
+        window.addEventListener('touchmove', (e) => {
+            if (touchX !== null && e.target.tagName !== 'BUTTON') {
                 touchX = e.touches[0].clientX;
                 touchY = e.touches[0].clientY;
             }
-        });
+        }, { passive: false });
 
-        canvas.addEventListener('touchend', () => {
+        window.addEventListener('touchend', () => {
             touchX = null;
             touchY = null;
         });
@@ -425,5 +426,43 @@
         }
 
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.
-        
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            activeResources.forEach(res => {
+                if (res.type === 'tree') drawTree(res.x, res.y);
+                else if (res.type === 'rock') drawRock(res.x, res.y);
+                else if (res.type === 'gold') drawGold(res.x, res.y);
+                else if (res.type === 'crystal') drawCrystal(res.x, res.y);
+                else if (res.type === 'lava_rock') drawLavaRock(res.x, res.y);
+
+                const hpPercent = Math.max(0, res.hp / res.maxHp);
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(res.x - 15, res.y - res.size / 2 - 12, 30, 4);
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(res.x - 15, res.y - res.size / 2 - 12, 30 * hpPercent, 4);
+            });
+
+            workers.forEach(w => drawWorker(w.x, w.y));
+            drawPlayer(player.x, player.y);
+
+            floatingTexts.forEach(ft => {
+                ctx.fillStyle = ft.color;
+                ctx.globalAlpha = ft.alpha;
+                ctx.font = 'bold 13px monospace';
+                ctx.fillText(ft.text, ft.x - 15, ft.y);
+                ctx.globalAlpha = 1;
+            });
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        resizeCanvas();
+        updateUI();
+        loop();
+    </script>
+</body>
+</html>
