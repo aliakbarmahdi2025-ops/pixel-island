@@ -84,3 +84,8 @@ button:active{transform:translateY(2px)}
 #enterHome{background:#356b55;border-color:#a8d7a4;min-height:44px}
 
 #townBtn,#townNpcBtn,#townExitBtn{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);pointer-events:auto;white-space:nowrap;box-shadow:0 3px 0 #17251d}#townBtn{background:#80603a;border-color:#f0d29a}#townNpcBtn{background:#356b55;border-color:#a8d7a4}#townExitBtn{background:#426b58;border-color:#b7d6a5}#townFade{position:fixed;inset:0;background:#101811;opacity:0;pointer-events:none;z-index:10;transition:opacity .24s}#townFade.active{opacity:1}#townNpcPanel p{line-height:1.9;font-size:13px}#townNpcHeart{color:#f2c6d1;background:#452f3b;border-radius:9px;padding:7px}#townShopPanel .upgrade-list button{background:#76562f;border-color:#e5c887}#townShopStock{font-size:12px;color:#e8dcb9}@media(max-width:420px){#townBtn,#townNpcBtn,#townExitBtn{bottom:112px;font-size:12px;padding:8px 10px}}
+
+/* Stage 13 — town gate interaction */
+#townExitBtn{bottom:118px;z-index:4;background:linear-gradient(180deg,#547c52,#315b3d);border:2px solid #c7d99c;color:#fff8dc;box-shadow:0 4px 0 #203d2c,0 5px 12px #17251d88;font-weight:800;letter-spacing:.1px}
+#townExitBtn:active{transform:translateX(-50%) translateY(3px);box-shadow:0 1px 0 #203d2c}
+#townNpcBtn{z-index:4}
