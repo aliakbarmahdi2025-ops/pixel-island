@@ -17,6 +17,19 @@ let quests = { wood: 0, slime: 0, iron: 0, claimed: { wood: false, slime: false,
 let npcMet = false, npcTalkIndex = 0;
 let npcQuest = { accepted: false, progress: 0, claimed: false };
 let homeLevel = 0, homeInterior = false, homeReturn = { x: 760, y: 590 };
+
+let townMode = false, townReturn = {x:2240,y:900}, townNpcIndex = 0;
+const townFriendship = {mina:0,hana:0,nahid:0,saeed:0,rezaei:0};
+const townStock = {bread:0,seeds:0,apple:0};
+const TOWN = {w:1600,h:1200};
+const townPeople = [
+{id:"mina",name:"مینا",role:"همسایه مهربان",x:470,y:560,color:"#d94f91",hair:"#693b39"},
+{id:"hana",name:"حنا",role:"خواهر مینا",x:560,y:590,color:"#348fc0",hair:"#292431"},
+{id:"nahid",name:"ناهید",role:"مادر مینا و حنا",x:420,y:650,color:"#9b3e60",hair:"#673b40"},
+{id:"saeed",name:"سعید",role:"نگهبان شهر",x:180,y:590,color:"#33465b",hair:"#28252b"},
+{id:"rezaei",name:"خانم رضایی",role:"صاحب خواربارفروشی",x:1120,y:530,color:"#4b8b50",hair:"#74483a"}
+];
+
 let worldClock = 9 * 60;
 const playerHome = { x: 700, y: 520 };
 const samanHome = { x: 1900, y: 450 };
@@ -76,13 +89,14 @@ function load() {
     if (data.npcQuest) npcQuest = { ...npcQuest, ...data.npcQuest };
     homeLevel = Math.max(0, Math.min(3, Number(data.homeLevel) || 0));
     homeInterior = !!data.homeInterior; if (data.homeReturn) homeReturn = data.homeReturn;
+    townMode=!!data.townMode;if(data.townReturn)townReturn=data.townReturn;if(data.townFriendship)Object.assign(townFriendship,data.townFriendship);if(data.townStock)Object.assign(townStock,data.townStock);
   } catch (e) { console.warn("Save could not be loaded", e); }
 }
 function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -193,7 +207,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock
     }));
   } catch (e) {}
 }
@@ -231,6 +245,9 @@ joy.addEventListener("pointercancel", releaseJoy);
 $("actionBtn").addEventListener("pointerdown", e => { e.preventDefault(); harvest(); });
 $("attackBtn").addEventListener("pointerdown", e => { e.preventDefault(); attack(); });
 $("npcBtn").addEventListener("click", openNpcDialogue);
+$("townBtn").addEventListener("click",()=>transitionTown(true));$("townExitBtn").addEventListener("click",()=>transitionTown(false));$("townNpcBtn").addEventListener("click",openTownNpc);$("townNpcTalk").addEventListener("click",nextTownDialogue);$("townNpcShop").addEventListener("click",openTownShop);$("townNpcClose").addEventListener("click",()=>{$("townNpcPanel").hidden=true;syncXpPanel();});$("townShopClose").addEventListener("click",()=>{$("townShopPanel").hidden=true;syncXpPanel();});$("buyBread").addEventListener("click",()=>buyTownItem("bread"));$("buySeeds").addEventListener("click",()=>buyTownItem("seeds"));$("buyApple").addEventListener("click",()=>buyTownItem("apple"));
+$("eatBread").addEventListener("click",()=>consumeTownFood("bread"));
+$("eatApple").addEventListener("click",()=>consumeTownFood("apple"));
 $("npcNext").addEventListener("click", advanceNpcDialogue);
 $("npcQuestAccept").addEventListener("click", acceptNpcQuest);
 $("npcQuestClaim").addEventListener("click", claimNpcQuest);
@@ -262,7 +279,7 @@ $("upgradeSpeed").addEventListener("click", () => buyUpgrade("speed"));
 $("upgradeAttack").addEventListener("click", () => buyUpgrade("attack"));
 
 function syncXpPanel() {
-  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel", "homePanel"];
+  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel"];
   const hud = $("hud");
   const xp = $("xpPanel");
   xp.hidden = panelIds.some(id => !$(id).hidden);
@@ -410,8 +427,9 @@ function buyUpgrade(type) {
 
 function update(dt) {
   worldClock = (worldClock + dt * 8) % 1440;
+  if(townMode)townSchedule();
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt);
-  const activeEnemies = (caveMode || homeInterior) ? (caveMode ? caveEnemies : []) : enemies;
+  const activeEnemies = (caveMode || homeInterior || townMode) ? (caveMode ? caveEnemies : []) : enemies;
   for(const enemy of activeEnemies){
     if(!enemy.alive){
       enemy.respawnTimer = Math.max(0, enemy.respawnTimer - dt);
@@ -427,7 +445,7 @@ function update(dt) {
       else showToast(caveMode?"نگهبان کریستالی بهت ضربه زد! 💎":"موجود بهت ضربه زد! ❤️");
     }
   }
-  if (!caveMode && !homeInterior) {
+  if (!caveMode && !homeInterior && !townMode) {
     const night = worldClock >= 20 * 60 || worldClock < 6 * 60;
     const targetX = night ? samanHome.x : 1690;
     const targetY = night ? samanHome.y + 72 : 650;
@@ -448,18 +466,60 @@ function update(dt) {
     player.y += dy / len * player.speed * dt;
   }
   animTime += dt;
-  const mw = caveMode ? 1200 : homeInterior ? 900 : WORLD.w;
-  const mh = caveMode ? 900 : homeInterior ? 650 : WORLD.h;
-  player.x=Math.max((caveMode || homeInterior)?55:24,Math.min(mw-((caveMode || homeInterior)?55:24),player.x));
-  player.y=Math.max((caveMode || homeInterior)?55:24,Math.min(mh-((caveMode || homeInterior)?55:24),player.y));
+  const mw = caveMode ? 1200 : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
+  const mh = caveMode ? 900 : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h;
+  player.x=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mw-((caveMode || homeInterior || townMode)?55:24),player.x));
+  player.y=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mh-((caveMode || homeInterior || townMode)?55:24),player.y));
   camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
-  $("caveBtn").hidden = homeInterior || (caveMode ? false : Math.hypot(player.x-2080,player.y-1450)>115);
+  $("caveBtn").hidden = townMode || homeInterior || (caveMode ? false : Math.hypot(player.x-2080,player.y-1450)>115);
+  $("townBtn").hidden=townMode||caveMode||homeInterior||Math.hypot(player.x-2310,player.y-900)>115;
+  $("townExitBtn").hidden=!townMode;
+  const nearTownPerson=townMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
+  $("townNpcBtn").hidden=!nearTownPerson;
+  $("townNpcBtn").textContent=nearTownPerson?"💬 صحبت با "+nearTownPerson.name:"💬 صحبت با اهالی";
   $("caveBtn").textContent=caveMode?"🚪 خروج از غار":"🕳️ ورود به غار";
   $("npcBtn").hidden = caveMode || homeInterior || Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y) > 145;
-  $("homeBtn").hidden = caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
+  $("homeBtn").hidden = townMode || caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
   $("homeBtn").textContent = homeInterior ? "🚪 خروج از خانه" : "🏡 خانه";
 }
+
+function transitionTown(enter){
+ $("townFade").classList.add("active");
+ setTimeout(()=>{if(enter){townReturn={x:player.x,y:player.y};townMode=true;caveMode=false;homeInterior=false;player.x=800;player.y=930;showToast("به شهر سبز خوش اومدی! 🏘️");}else{townMode=false;player.x=townReturn.x;player.y=townReturn.y;showToast("به جنگل برگشتی 🌲");}$("townFade").classList.remove("active");saveQuietly();},240);
+}
+function townSchedule(){
+ const night=worldClock>=21*60||worldClock<7*60;
+ townPeople.forEach(p=>{if(p.id==="saeed"){p.x=night?180:240;p.y=night?590:570;}if(p.id==="mina"){p.x=night?500:470;p.y=night?620:560;}if(p.id==="hana"){p.x=night?570:560;p.y=night?640:590;}if(p.id==="nahid"){p.x=night?430:420;p.y=night?680:650;}if(p.id==="rezaei"){p.x=1120;p.y=night?610:530;}});
+}
+function openTownNpc(){
+ const p=townPeople.find(q=>Math.hypot(player.x-q.x,player.y-q.y)<115);if(!p)return;
+ townNpcIndex=townPeople.indexOf(p);
+ const lines={mina:["سلام! چه خوب که اومدی شهر سبز. 🌸","امروز هوا برای قدم زدن توی میدان عالیه!"],hana:["سلام، چه خبر؟","من دوست دارم کوچه‌های قدیمی شهر رو بگردم."],nahid:["خوش اومدی عزیزم، مواظب خودت باش. ❤️","این شهر کوچیکه، اما مردمش دل بزرگی دارن."],saeed:["سلام! به شهر سبز خوش اومدی.","من مراقب ورودی و آرامش شهرم."],rezaei:["سلام عزیزم! به خواربارفروشی من خوش اومدی.","نان تازه و خوراکی محلی دارم؛ هرچی لازم داری بگو. 🌼"]};
+ const n=townFriendship[p.id]||0;$("townNpcTitle").textContent=p.name+" • "+p.role;$("townNpcDialogue").textContent=lines[p.id][n%lines[p.id].length];$("townNpcHeart").textContent="💚 میزان آشنایی: "+n;$("townNpcShop").hidden=p.id!=="rezaei";$("townNpcPanel").hidden=false;townFriendship[p.id]=Math.min(20,n+1);saveQuietly();syncXpPanel();
+}
+function nextTownDialogue(){
+ const p=townPeople[townNpcIndex];if(!p)return;
+ const lines={mina:["از دیدنت خوشحال شدم. 💗","یه روز بیا با هم توی میدان قدم بزنیم!"],hana:["شهر رو بگرد، کلی جای قشنگ داره!","بعداً باز هم با هم حرف می‌زنیم."],nahid:["هر وقت خسته شدی، کمی استراحت کن.","خوشحالم که شهرمون رو دوست داری."],saeed:["مسیر جنگل از همون دروازه‌ایه که وارد شدی.","روز خوبی داشته باشی!"],rezaei:["اگه خرید داشتی، مغازه بازه؛ بفرما.","برای آشنایان قدیمی همیشه پیشنهاد خوب دارم."]};
+ $("townNpcDialogue").textContent=lines[p.id][(townFriendship[p.id]||0)%lines[p.id].length];townFriendship[p.id]=Math.min(20,(townFriendship[p.id]||0)+1);$("townNpcHeart").textContent="💚 میزان آشنایی: "+townFriendship[p.id];saveQuietly();
+}
+function openTownShop(){if(worldClock>=21*60||worldClock<7*60){showToast("مغازه بسته است؛ صبح برگرد! 🌙");return;} $("townNpcPanel").hidden=true;$("townShopPanel").hidden=false;updateTownShop();syncXpPanel();}
+function updateTownShop(){$("townShopStock").textContent="موجودی: نان "+townStock.bread+" • بذر "+townStock.seeds+" • سیب "+townStock.apple+" | سکه: "+player.coins;$("buyBread").disabled=player.coins<8;$("buySeeds").disabled=player.coins<5;$("buyApple").disabled=player.coins<6;}
+function consumeTownFood(type){if(!townStock[type]){showToast("از این خوراکی نداری!");return;}if(player.health>=player.maxHealth){showToast("جان تو کامله!");return;}townStock[type]--;player.health=Math.min(player.maxHealth,player.health+(type==="bread"?2:1));updateUI();updateTownShop();saveQuietly();showToast("خوراکی خوردی و جانت بیشتر شد ❤️");}
+function buyTownItem(type){const item={bread:{price:8,label:"نان"},seeds:{price:5,label:"بذر"},apple:{price:6,label:"سیب"}}[type];if(player.coins<item.price){showToast("سکه کافی نداری! 🪙");return;}player.coins-=item.price;townStock[type]++;updateUI();updateTownShop();saveQuietly();showToast(item.label+" خریدی! 🛍️");}
+function drawTown(){
+ ctx.fillStyle="#c9ae79";ctx.fillRect(0,0,viewW,viewH);const t=48,sx=Math.floor(camera.x/t),sy=Math.floor(camera.y/t),ex=Math.ceil((camera.x+viewW)/t),ey=Math.ceil((camera.y+viewH)/t);
+ for(let y=sy;y<=ey;y++)for(let x=sx;x<=ex;x++){ctx.fillStyle=((x+y)%2===0)?"#d5c08f":"#cbb581";ctx.fillRect(x*t-camera.x,y*t-camera.y,t+1,t+1);}
+ ctx.fillStyle="#b49a70";ctx.fillRect(-camera.x,520-camera.y,TOWN.w,170);ctx.fillStyle="#d8c69a";ctx.fillRect(560-camera.x,430-camera.y,470,390);ctx.fillStyle="#b5a17b";ctx.fillRect(580-camera.x,450-camera.y,430,350);
+ const fx=795-camera.x,fy=610-camera.y;ctx.fillStyle="#8c7659";ctx.beginPath();ctx.ellipse(fx,fy,80,48,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#62b8d0";ctx.beginPath();ctx.ellipse(fx,fy-5,67,37,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#e6dfc5";ctx.fillRect(fx-10,fy-42,20,32);ctx.fillStyle="#78d8e7";ctx.fillRect(fx-5,fy-62,10,25);
+ drawTownBuilding(350,360,"خانه مینا و حنا","#a85c58");drawTownBuilding(500,360,"خانه ناهید","#bd8653");drawTownBuilding(1120,350,"خواربارفروشی","#b65c45");drawTownBuilding(1400,380,"نانوایی","#b97843");drawTownBuilding(180,380,"نگهبانی","#647d79");
+ [[80,180],[260,850],[480,900],[1060,850],[1320,850],[1500,760],[900,260],[650,260]].forEach(a=>{const x=a[0]-camera.x,y=a[1]-camera.y;ctx.fillStyle="#765035";ctx.fillRect(x-7,y+4,14,28);ctx.fillStyle="#2c703d";ctx.fillRect(x-26,y-26,52,36);ctx.fillStyle="#45964b";ctx.fillRect(x-19,y-42,38,24);});
+ [[650,840],[940,840],[300,700],[1260,700]].forEach(a=>{const x=a[0]-camera.x,y=a[1]-camera.y;ctx.fillStyle="#57412d";ctx.fillRect(x-22,y,44,7);ctx.fillRect(x-17,y+7,5,10);ctx.fillRect(x+12,y+7,5,10);});
+ ctx.fillStyle="#fff0c2";ctx.font="bold 18px Tahoma";ctx.textAlign="center";ctx.fillText("شهر سبز",800-camera.x,120-camera.y);ctx.textAlign="start";
+}
+function drawTownBuilding(x,y,label,roof){const sx=x-camera.x,sy=y-camera.y;ctx.fillStyle="#6d5038";ctx.fillRect(sx-68,sy-4,136,92);ctx.fillStyle="#d9bd8a";ctx.fillRect(sx-62,sy,124,78);ctx.fillStyle=roof;ctx.beginPath();ctx.moveTo(sx-82,sy);ctx.lineTo(sx,sy-52);ctx.lineTo(sx+82,sy);ctx.closePath();ctx.fill();ctx.fillStyle="#70452e";ctx.fillRect(sx-15,sy+35,30,43);ctx.fillStyle="#8bc4ca";ctx.fillRect(sx-48,sy+22,22,22);ctx.fillRect(sx+27,sy+22,22,22);ctx.strokeStyle="#f0d8a5";ctx.lineWidth=3;ctx.strokeRect(sx-48,sy+22,22,22);ctx.strokeRect(sx+27,sy+22,22,22);ctx.fillStyle="#fff2d0";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText(label,sx,sy-61);ctx.textAlign="start";}
+function drawTownPeople(){townPeople.forEach(p=>{const x=p.x-camera.x,y=p.y-camera.y;if(x< -40||x>viewW+40||y< -50||y>viewH+50)return;const b=Math.sin(animTime*2.5+p.x*.01)*1.2;ctx.fillStyle="#5c4938";ctx.fillRect(x-9,y+8,7,10);ctx.fillRect(x+2,y+8,7,10);ctx.fillStyle=p.color;ctx.fillRect(x-12,y-8+b,24,20);ctx.fillStyle="#e9bd98";ctx.fillRect(x-9,y-25+b,18,17);ctx.fillStyle=p.hair;ctx.fillRect(x-10,y-29+b,20,8);ctx.fillRect(x-12,y-24+b,5,12);ctx.fillStyle="#28232a";ctx.fillRect(x-5,y-18+b,3,3);ctx.fillRect(x+3,y-18+b,3,3);if(p.id==="saeed"){ctx.fillStyle="#49352d";ctx.fillRect(x-5,y-10+b,10,4);}ctx.fillStyle="#fff5d9";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText(p.name,x,y-36+b);ctx.textAlign="start";if(Math.hypot(player.x-p.x,player.y-p.y)<115){ctx.fillStyle="#ffe58a";ctx.font="bold 16px Tahoma";ctx.textAlign="center";ctx.fillText("…",x,y-48+b);ctx.textAlign="start";}});}
+
 function updateHomeUI() {
   const title = homeLevel === 0 ? "زمین خالی" : homeLevel === 1 ? "کلبه چوبی" : homeLevel === 2 ? "خانه بزرگ" : "خانه لوکس";
   $("homeStatus").textContent = title + " • سطح " + homeLevel + " | چوب: " + bag.wood + " • سنگ: " + bag.stone + " • سکه: " + player.coins;
@@ -662,6 +722,7 @@ function drawPlayer() {
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
+  if(townMode){drawTown();drawTownPeople();drawPlayer();return;}
   if(caveMode){drawCaveGround();drawCaveObjects();}else drawGround();
   if (!caveMode) { drawHouse(playerHome.x, playerHome.y, homeLevel, false); drawHouse(samanHome.x, samanHome.y, 1, true); }
   for (const r of activeNodes()) {
@@ -674,6 +735,7 @@ function draw() {
   const visibleEnemies = caveMode ? caveEnemies : enemies;
   for(const e of visibleEnemies){if(!e.alive)continue;if(e.x<camera.x-60||e.x>camera.x+viewW+60||e.y<camera.y-60||e.y>camera.y+viewH+60)continue;if(caveMode)drawCrystalGuardian(e);else drawSlime(e);}
   if(!caveMode) drawForestNpc();
+  if(!caveMode){const sx=2310-camera.x,sy=900-camera.y;ctx.fillStyle="#65452c";ctx.fillRect(sx-4,sy-2,8,50);ctx.fillStyle="#b77b3e";ctx.fillRect(sx-43,sy-38,86,34);ctx.strokeStyle="#f0d49a";ctx.lineWidth=3;ctx.strokeRect(sx-43,sy-38,86,34);ctx.fillStyle="#fff0c2";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("شهر سبز",sx,sy-16);ctx.textAlign="start";}
   drawPlayer();
   ctx.strokeStyle = "#d6f0a8"; ctx.lineWidth = 3;
   ctx.strokeRect(2-camera.x,2-camera.y,(caveMode?1200:WORLD.w)-4,(caveMode?900:WORLD.h)-4);
