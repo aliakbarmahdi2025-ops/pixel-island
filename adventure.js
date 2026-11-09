@@ -500,6 +500,11 @@ function townSchedule(dt=0){
   rezaei: night?[1120,610]:hour<20?[1120,530]:[1120,610]
  };
  townPeople.forEach(p=>{const target=plans[p.id];if(!target)return;const dx=target[0]-p.x,dy=target[1]-p.y,d=Math.hypot(dx,dy);if(d>2&&dt>0){const step=Math.min(d,48*dt);p.x+=dx/d*step;p.y+=dy/d*step;p.walking=true;}else p.walking=false;});
+ // Keep residents from walking through one another; a small personal-space force separates nearby NPCs.
+ for(let a=0;a<townPeople.length;a++)for(let b=a+1;b<townPeople.length;b++){
+  const p=townPeople[a],q=townPeople[b],dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);
+  if(d>0&&d<62){const push=(62-d)*0.5;p.x-=dx/d*push;p.y-=dy/d*push;q.x+=dx/d*push;q.y+=dy/d*push;}
+ }
 }
 function openTownNpc(){
  const p=townPeople.find(q=>Math.hypot(player.x-q.x,player.y-q.y)<115);if(!p)return;
@@ -658,6 +663,15 @@ function makePixelTownSprite(id, frame) {
  g.fillStyle="#3b2830";g.fillRect(26,27,4,5);g.fillRect(38,27,4,5);
  g.fillStyle="#fffaf0";g.fillRect(27,27,2,2);g.fillRect(39,27,2,2);
  g.fillStyle="#7a514d";g.fillRect(27,32,3,1);g.fillRect(39,32,3,1);
+ g.fillStyle=skinShade;g.fillRect(33,32,2,3);
+ g.fillStyle="#d66d7c";g.fillRect(31,36,7,2);g.fillStyle="#ffe5d9";g.fillRect(33,36,3,1);
+ g.fillStyle="#f3a2a2";g.fillRect(23,33,5,3);g.fillRect(42,33,5,3);
+ // Draw the complete face AFTER the hair silhouette so dark hair never covers the skin.
+ g.fillStyle=skinShade;g.fillRect(22,25,3,10);g.fillRect(44,25,3,10);
+ g.fillStyle=skin;g.fillRect(24,19,21,21);g.fillRect(22,24,3,9);g.fillRect(44,24,3,9);
+ g.fillStyle=skinLight;g.fillRect(27,20,14,12);g.fillRect(26,25,3,6);
+ g.fillStyle="#3b2830";g.fillRect(26,27,4,5);g.fillRect(38,27,4,5);
+ g.fillStyle="#fffaf0";g.fillRect(27,27,2,2);g.fillRect(39,27,2,2);
  g.fillStyle=skinShade;g.fillRect(33,32,2,3);
  g.fillStyle="#d66d7c";g.fillRect(31,36,7,2);g.fillStyle="#ffe5d9";g.fillRect(33,36,3,1);
  g.fillStyle="#f3a2a2";g.fillRect(23,33,5,3);g.fillRect(42,33,5,3);
