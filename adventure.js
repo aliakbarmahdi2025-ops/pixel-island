@@ -16,6 +16,10 @@ let resources = [];
 let quests = { wood: 0, slime: 0, iron: 0, claimed: { wood: false, slime: false, iron: false } };
 let npcMet = false, npcTalkIndex = 0;
 let npcQuest = { accepted: false, progress: 0, claimed: false };
+let homeLevel = 0, homeInterior = false, homeReturn = { x: 760, y: 590 };
+let worldClock = 9 * 60;
+const playerHome = { x: 700, y: 520 };
+const samanHome = { x: 1900, y: 450 };
 const forestNpc = { x: 1320, y: 1010, name: "سامان", role: "جنگلبان" };
 let enemies = [], caveEnemies = [];
 let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
@@ -44,12 +48,14 @@ function makeWorld() {
   for (let i = 0; i < 115; i++) {
     const x = 100 + rand() * (WORLD.w - 200);
     const y = 100 + rand() * (WORLD.h - 200);
-    if (Math.hypot(x - player.x, y - player.y) < 130) continue;
+    if (Math.hypot(x - player.x, y - player.y) < 130 || Math.hypot(x-playerHome.x,y-playerHome.y)<155 || Math.hypot(x-samanHome.x,y-samanHome.y)<155) continue;
     const type = rand() < 0.72 ? "tree" : "stone";
     resources.push({ id: "node-" + i, x, y, type, hp: type === "tree" ? 3 : 4, max: type === "tree" ? 3 : 4 });
   }
   for (let i = 0; i < 18; i++) {
-    resources.push({ id: "iron-" + i, x: 120 + rand() * (WORLD.w - 240), y: 120 + rand() * (WORLD.h - 240), type: "iron", hp: 5, max: 5 });
+    const x = 120 + rand() * (WORLD.w - 240), y = 120 + rand() * (WORLD.h - 240);
+    if (Math.hypot(x-playerHome.x,y-playerHome.y)<145 || Math.hypot(x-samanHome.x,y-samanHome.y)<145) continue;
+    resources.push({ id: "iron-" + i, x, y, type: "iron", hp: 5, max: 5 });
   }
 }
 function load() {
@@ -68,13 +74,15 @@ function load() {
     if(data.quests)quests={...quests,...data.quests,claimed:{...quests.claimed,...(data.quests.claimed||{})}};
     npcMet = !!data.npcMet; npcTalkIndex = Number.isInteger(data.npcTalkIndex) ? data.npcTalkIndex : 0;
     if (data.npcQuest) npcQuest = { ...npcQuest, ...data.npcQuest };
+    homeLevel = Math.max(0, Math.min(3, Number(data.homeLevel) || 0));
+    homeInterior = !!data.homeInterior; if (data.homeReturn) homeReturn = data.homeReturn;
   } catch (e) { console.warn("Save could not be loaded", e); }
 }
 function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -185,7 +193,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn
     }));
   } catch (e) {}
 }
@@ -226,6 +234,11 @@ $("npcBtn").addEventListener("click", openNpcDialogue);
 $("npcNext").addEventListener("click", advanceNpcDialogue);
 $("npcQuestAccept").addEventListener("click", acceptNpcQuest);
 $("npcQuestClaim").addEventListener("click", claimNpcQuest);
+$("homeBtn").addEventListener("click", handleHomeButton);
+$("homeClose").addEventListener("click", () => { $("homePanel").hidden = true; syncXpPanel(); });
+$("buildHome").addEventListener("click", buildPlayerHome);
+$("enterHome").addEventListener("click", enterPlayerHome);
+$("upgradeHome").addEventListener("click", upgradePlayerHome);
 $("npcClose").addEventListener("click", () => { $("npcPanel").hidden = true; syncXpPanel(); });
 $("saveBtn").addEventListener("click", save);
 $("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); syncXpPanel(); });
@@ -249,7 +262,7 @@ $("upgradeSpeed").addEventListener("click", () => buyUpgrade("speed"));
 $("upgradeAttack").addEventListener("click", () => buyUpgrade("attack"));
 
 function syncXpPanel() {
-  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel"];
+  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel", "homePanel"];
   const hud = $("hud");
   const xp = $("xpPanel");
   xp.hidden = panelIds.some(id => !$(id).hidden);
@@ -396,8 +409,9 @@ function buyUpgrade(type) {
 }
 
 function update(dt) {
+  worldClock = (worldClock + dt * 8) % 1440;
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt);
-  const activeEnemies = caveMode ? caveEnemies : enemies;
+  const activeEnemies = (caveMode || homeInterior) ? (caveMode ? caveEnemies : []) : enemies;
   for(const enemy of activeEnemies){
     if(!enemy.alive){
       enemy.respawnTimer = Math.max(0, enemy.respawnTimer - dt);
@@ -413,6 +427,13 @@ function update(dt) {
       else showToast(caveMode?"نگهبان کریستالی بهت ضربه زد! 💎":"موجود بهت ضربه زد! ❤️");
     }
   }
+  if (!caveMode && !homeInterior) {
+    const night = worldClock >= 20 * 60 || worldClock < 6 * 60;
+    const targetX = night ? samanHome.x : 1690;
+    const targetY = night ? samanHome.y + 72 : 650;
+    const sx = targetX - forestNpc.x, sy = targetY - forestNpc.y, sd = Math.hypot(sx, sy);
+    if (sd > 8) { forestNpc.x += sx / sd * Math.min(sd, 42 * dt); forestNpc.y += sy / sd * Math.min(sd, 42 * dt); }
+  }
   let dx = move.x, dy = move.y;
   if (keys.has("a") || keys.has("arrowleft")) dx -= 1;
   if (keys.has("d") || keys.has("arrowright")) dx += 1;
@@ -427,14 +448,68 @@ function update(dt) {
     player.y += dy / len * player.speed * dt;
   }
   animTime += dt;
-  const mw=caveMode?1200:WORLD.w,mh=caveMode?900:WORLD.h;
-  player.x=Math.max(caveMode?55:24,Math.min(mw-(caveMode?55:24),player.x));
-  player.y=Math.max(caveMode?55:24,Math.min(mh-(caveMode?55:24),player.y));
+  const mw = caveMode ? 1200 : homeInterior ? 900 : WORLD.w;
+  const mh = caveMode ? 900 : homeInterior ? 650 : WORLD.h;
+  player.x=Math.max((caveMode || homeInterior)?55:24,Math.min(mw-((caveMode || homeInterior)?55:24),player.x));
+  player.y=Math.max((caveMode || homeInterior)?55:24,Math.min(mh-((caveMode || homeInterior)?55:24),player.y));
   camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
-  $("caveBtn").hidden=caveMode?false:Math.hypot(player.x-2080,player.y-1450)>115;
+  $("caveBtn").hidden = homeInterior || (caveMode ? false : Math.hypot(player.x-2080,player.y-1450)>115);
   $("caveBtn").textContent=caveMode?"🚪 خروج از غار":"🕳️ ورود به غار";
-  $("npcBtn").hidden = caveMode || Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y) > 145;
+  $("npcBtn").hidden = caveMode || homeInterior || Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y) > 145;
+  $("homeBtn").hidden = caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
+  $("homeBtn").textContent = homeInterior ? "🚪 خروج از خانه" : "🏡 خانه";
+}
+function updateHomeUI() {
+  const title = homeLevel === 0 ? "زمین خالی" : homeLevel === 1 ? "کلبه چوبی" : homeLevel === 2 ? "خانه بزرگ" : "خانه لوکس";
+  $("homeStatus").textContent = title + " • سطح " + homeLevel + " | چوب: " + bag.wood + " • سنگ: " + bag.stone + " • سکه: " + player.coins;
+  $("buildHome").hidden = homeLevel > 0;
+  $("enterHome").hidden = homeLevel === 0;
+  $("upgradeHome").hidden = homeLevel === 0 || homeLevel >= 3;
+  $("buildHome").disabled = bag.wood < 12 || bag.stone < 6;
+  $("upgradeHome").disabled = homeLevel === 1 ? (bag.wood < 18 || bag.stone < 10 || player.coins < 10) : (bag.wood < 30 || bag.stone < 20 || player.coins < 35);
+  $("buildHome").textContent = "ساخت کلبه — ۱۲ چوب + ۶ سنگ";
+  $("upgradeHome").textContent = homeLevel === 1 ? "ارتقا به خانه بزرگ — ۱۸ چوب + ۱۰ سنگ + ۱۰ سکه" : "ارتقا به خانه لوکس — ۳۰ چوب + ۲۰ سنگ + ۳۵ سکه";
+}
+function openHomePanel() {
+  $("homePanel").hidden = false;
+  updateHomeUI();
+  syncXpPanel();
+}
+function handleHomeButton() {
+  if (homeInterior) {
+    homeInterior = false;
+    player.x = homeReturn.x; player.y = homeReturn.y;
+    $("homePanel").hidden = true;
+    showToast("به جنگل برگشتی 🌲");
+    saveQuietly();
+    return;
+  }
+  if (Math.hypot(player.x-playerHome.x, player.y-(playerHome.y+45)) > 150) { showToast("به زمین خانه نزدیک‌تر شو"); return; }
+  openHomePanel();
+}
+function buildPlayerHome() {
+  if (homeLevel !== 0 || bag.wood < 12 || bag.stone < 6) { showToast("برای ساخت خانه ۱۲ چوب و ۶ سنگ لازم داری"); return; }
+  bag.wood -= 12; bag.stone -= 6; homeLevel = 1;
+  updateUI(); updateHomeUI(); saveQuietly();
+  showToast("کلبه‌ات ساخته شد! 🏡");
+}
+function upgradePlayerHome() {
+  if (homeLevel === 1 && bag.wood >= 18 && bag.stone >= 10 && player.coins >= 10) {
+    bag.wood -= 18; bag.stone -= 10; player.coins -= 10; homeLevel = 2;
+  } else if (homeLevel === 2 && bag.wood >= 30 && bag.stone >= 20 && player.coins >= 35) {
+    bag.wood -= 30; bag.stone -= 20; player.coins -= 35; homeLevel = 3;
+  } else { showToast("منابع یا سکه کافی نداری"); return; }
+  updateUI(); updateHomeUI(); saveQuietly();
+  showToast("خانه‌ات ارتقا پیدا کرد! ✨");
+}
+function enterPlayerHome() {
+  if (homeLevel < 1) return;
+  homeReturn = { x: player.x, y: player.y };
+  homeInterior = true; player.x = 450; player.y = 500;
+  $("homePanel").hidden = true;
+  showToast("به خانه خودت خوش اومدی 🏡");
+  saveQuietly(); syncXpPanel();
 }
 function drawCaveGround(){
  const t=WORLD.tile,sx=Math.floor(camera.x/t),sy=Math.floor(camera.y/t),ex=Math.ceil((camera.x+viewW)/t),ey=Math.ceil((camera.y+viewH)/t);
@@ -443,6 +518,61 @@ function drawCaveGround(){
  ctx.fillStyle="#e0c58a";ctx.font="bold 15px Tahoma";ctx.fillText("غار جنگلی",520-camera.x,90-camera.y);
 }
 function drawCaveObjects(){for(const c of caveChests){let x=c.x-camera.x,y=c.y-camera.y;ctx.fillStyle=c.opened?"#59452d":"#a66a32";ctx.fillRect(x-17,y-12,34,24);ctx.fillStyle=c.opened?"#76634b":"#e5b75b";ctx.fillRect(x-17,y-12,34,7);}}
+function drawHouse(x, y, level, isSaman) {
+  const sx=x-camera.x, sy=y-camera.y;
+  ctx.fillStyle="#1d3022"; ctx.fillRect(sx-76,sy+26,152,15);
+  if (!isSaman && level === 0) {
+    ctx.fillStyle="#8a7046"; ctx.fillRect(sx-54,sy+10,108,8);
+    ctx.fillStyle="#d8bd78"; ctx.fillRect(sx-48,sy-8,96,18);
+    ctx.fillStyle="#5b4930"; ctx.fillRect(sx-12,sy-24,24,18);
+    ctx.fillStyle="#f0d99b"; ctx.font="bold 12px Tahoma"; ctx.textAlign="center"; ctx.fillText("زمین خانه",sx,sy-35); ctx.textAlign="start";
+    return;
+  }
+  const scale = isSaman ? 1 : 1 + (level-1)*0.12;
+  const w=112*scale,h=72*scale;
+  ctx.fillStyle="#68472e"; ctx.fillRect(sx-w/2,sy-h/2,w,h);
+  ctx.fillStyle="#b77a43"; ctx.fillRect(sx-w/2-9,sy-h/2-19,w+18,28);
+  ctx.fillStyle="#d59a55"; ctx.fillRect(sx-w/2+3,sy-h/2-15,w-6,9);
+  ctx.fillStyle="#75452c"; ctx.fillRect(sx-w/2+12,sy-h/2+12,w-24,h-12);
+  ctx.fillStyle="#8ed0d0"; ctx.fillRect(sx-w/2+13,sy-h/2+5,19,17); ctx.fillRect(sx+w/2-32,sy-h/2+5,19,17);
+  ctx.strokeStyle="#e8d5a0"; ctx.lineWidth=3; ctx.strokeRect(sx-w/2+13,sy-h/2+5,19,17); ctx.strokeRect(sx+w/2-32,sy-h/2+5,19,17);
+  ctx.fillStyle="#4b3021"; ctx.fillRect(sx-12,sy+4,24,32);
+  ctx.fillStyle="#d5a35f"; ctx.fillRect(sx+4,sy+17,3,3);
+  ctx.fillStyle="#553b2a"; ctx.fillRect(sx+w/2-23,sy-h/2-39,13,27);
+  ctx.fillStyle="#b6d6a1"; ctx.fillRect(sx+w/2-21,sy-h/2-36,9,5);
+  ctx.fillStyle="#fff0c2"; ctx.font="bold 12px Tahoma"; ctx.textAlign="center";
+  ctx.fillText(isSaman ? "کلبه سامان" : (level===1?"خانه من":level===2?"خانه بزرگ من":"خانه لوکس من"),sx,sy-h/2-48);
+  ctx.textAlign="start";
+  if (level >= 2 || isSaman) {
+    ctx.fillStyle="#d8c28a"; ctx.fillRect(sx-66,sy+39,132,5);
+    ctx.fillStyle="#4d8b4b"; ctx.fillRect(sx-57,sy+43,12,9); ctx.fillRect(sx+43,sy+43,12,9);
+  }
+  if (!isSaman && level >= 3) {
+    ctx.fillStyle="#e9cf76"; ctx.fillRect(sx-3,sy-h/2-27,6,6);
+    ctx.fillStyle="#6c9a55"; ctx.fillRect(sx-80,sy+12,12,22); ctx.fillRect(sx+68,sy+12,12,22);
+  }
+}
+function drawInterior() {
+  ctx.fillStyle="#69472f"; ctx.fillRect(0,0,viewW,viewH);
+  const ox=(viewW- Math.min(viewW-24,760))/2, oy= Math.max(35,(viewH-520)/2), w=Math.min(viewW-24,760), h=Math.min(viewH-80,520);
+  ctx.fillStyle="#b98250"; ctx.fillRect(ox,oy,w,h);
+  ctx.fillStyle="#d5a66d"; ctx.fillRect(ox+12,oy+12,w-24,h-24);
+  ctx.fillStyle="#7b5134"; ctx.fillRect(ox+18,oy+18,w-36,h-36);
+  for(let x=ox+28;x<ox+w-28;x+=42){ctx.fillStyle="#96663e";ctx.fillRect(x,oy+24,3,h-48);}
+  ctx.fillStyle="#e2bd82";ctx.fillRect(ox+28,oy+28,w-56,38);
+  ctx.fillStyle="#6c432b";ctx.fillRect(ox+45,oy+88,Math.min(170,w*.28),78);
+  ctx.fillStyle="#c28a56";ctx.fillRect(ox+54,oy+96,Math.min(152,w*.28-18),62);
+  ctx.fillStyle="#e9d8aa";ctx.fillRect(ox+65,oy+101,Math.min(130,w*.28-35),25);
+  ctx.fillStyle="#6e4830";ctx.fillRect(ox+w-180,oy+100,120,62);
+  ctx.fillStyle="#b7864e";ctx.fillRect(ox+w-174,oy+106,108,10);
+  ctx.fillStyle="#d9bd80";ctx.fillRect(ox+w-158,oy+162,78,9);
+  ctx.fillStyle="#d1a45e";ctx.fillRect(ox+w/2-32,oy+h-94,64,46);
+  ctx.fillStyle="#f2d78e";ctx.fillRect(ox+w/2-21,oy+h-84,42,27);
+  if(homeLevel>=2){ctx.fillStyle="#a7c7d0";ctx.fillRect(ox+w-90,oy+215,42,58);ctx.fillStyle="#e4c276";ctx.fillRect(ox+65,oy+215,58,35);}
+  if(homeLevel>=3){ctx.fillStyle="#d6bd8d";ctx.fillRect(ox+w/2-65,oy+190,130,28);ctx.fillStyle="#8e6844";ctx.fillRect(ox+w/2-58,oy+196,116,16);}
+  ctx.fillStyle="#fff0c2";ctx.font="bold 16px Tahoma";ctx.textAlign="center";ctx.fillText("خانه من",viewW/2,oy-8);ctx.textAlign="start";
+  ctx.fillStyle="#f0d18c";ctx.fillRect(viewW/2-32,oy+h-18,64,18);
+}
 function drawGround() {
   const t = WORLD.tile;
   const sx = Math.floor(camera.x / t), sy = Math.floor(camera.y / t);
@@ -454,11 +584,14 @@ function drawGround() {
     if (v === 2 || v === 5) {
       ctx.fillStyle = "#639456";
       ctx.fillRect(x * t + 12 - camera.x, y * t + 17 - camera.y, 3, 3);
+      ctx.fillRect(x * t + 29 - camera.x, y * t + 31 - camera.y, 2, 5);
     }
+    if ((x * 7 + y * 11) % 19 === 0) { ctx.fillStyle = "#e8d68b"; ctx.fillRect(x*t+34-camera.x,y*t+10-camera.y,4,4); ctx.fillStyle="#fff0c2"; ctx.fillRect(x*t+35-camera.x,y*t+8-camera.y,2,2); }
   }
 }
 function drawTree(r) {
   const x = r.x - camera.x, y = r.y - camera.y;
+  ctx.fillStyle = "#203d29"; ctx.beginPath(); ctx.ellipse(x,y+16,27,8,0,0,Math.PI*2); ctx.fill();
   ctx.fillStyle = "#68452c"; ctx.fillRect(x - 7, y + 2, 14, 25);
   ctx.fillStyle = "#245b36"; ctx.fillRect(x - 23, y - 22, 46, 34);
   ctx.fillStyle = "#347b42"; ctx.fillRect(x - 18, y - 34, 36, 22);
@@ -528,7 +661,9 @@ function drawPlayer() {
 }
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
+  if (homeInterior) { drawInterior(); drawPlayer(); return; }
   if(caveMode){drawCaveGround();drawCaveObjects();}else drawGround();
+  if (!caveMode) { drawHouse(playerHome.x, playerHome.y, homeLevel, false); drawHouse(samanHome.x, samanHome.y, 1, true); }
   for (const r of activeNodes()) {
     if (r.x < camera.x - 60 || r.x > camera.x + viewW + 60 || r.y < camera.y - 60 || r.y > camera.y + viewH + 60) continue;
     if (r.type === "tree") drawTree(r);
