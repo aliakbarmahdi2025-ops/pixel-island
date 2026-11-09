@@ -7,8 +7,8 @@ const WORLD = { w: 2400, h: 1800, tile: 48 };
 const SAVE_KEY = "pixelIsland_adventure_save_v1";
 let viewW = innerWidth, viewH = innerHeight, dpr = 1;
 const camera = { x: 0, y: 0 };
-const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, level: 1, xp: 0, coins: 0 };
-const bag = { wood: 0, stone: 0, iron: 0 };
+const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, maxHealth: 5, level: 1, xp: 0, skillPoints: 0, attackPower: 1, coins: 0 };
+const bag = { wood: 0, stone: 0, iron: 0, crystal: 0 };
 let harvested = new Set(), caveHarvested = new Set();
 let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
 let caveResources = [], caveChests = [];
@@ -62,8 +62,8 @@ function load() {
 function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
-      player: { x: player.x, y: player.y, health: player.health, level: player.level, xp: player.xp, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested:[...caveHarvested], caveMode, caveReturn, openedChests, openedChests
+      player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -74,14 +74,29 @@ function showToast(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => $("toast").classList.remove("show"), 1700);
 }
+function xpNeeded() { return player.level * 50; }
+function addXP(amount) {
+  player.xp += amount;
+  let leveled = false;
+  while (player.xp >= xpNeeded()) {
+    player.xp -= xpNeeded();
+    player.level++;
+    player.skillPoints++;
+    leveled = true;
+  }
+  return leveled;
+}
 function updateUI() {
-  $("health").textContent = player.health;
+  $("health").textContent = player.health + "/" + player.maxHealth;
   $("level").textContent = player.level;
   $("coins").textContent = player.coins;
   $("wood").textContent = bag.wood;
   $("stone").textContent = bag.stone;
   $("iron").textContent = bag.iron;
   $("crystal").textContent = bag.crystal || 0;
+  $("xpText").textContent = player.xp + " / " + xpNeeded() + " XP";
+  $("xpFill").style.width = Math.min(100, player.xp / xpNeeded() * 100) + "%";
+  updateUpgradeUI();
 }
 load();
 makeWorld();
@@ -106,7 +121,7 @@ function toggleCave(){
 }
 
 function harvest() {
-  if(caveMode){const chest=caveChests.find(c=>!c.opened&&Math.hypot(player.x-c.x,player.y-c.y)<76);if(chest){chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;player.xp+=25;bag.crystal=(bag.crystal||0)+1;if(player.xp>=player.level*50){player.xp-=player.level*50;player.level++;}updateUI();saveQuietly();showToast("صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
+  if(caveMode){const chest=caveChests.find(c=>!c.opened&&Math.hypot(player.x-c.x,player.y-c.y)<76);if(chest){chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;const leveled=addXP(25);bag.crystal=(bag.crystal||0)+1;updateUI();saveQuietly();showToast(leveled?"سطح جدید! یک امتیاز مهارت گرفتی ⭐":"صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
   let nearest = null, best = 76;
   for (const r of activeNodes()) {
     const d = Math.hypot(player.x - r.x, player.y - r.y);
@@ -120,14 +135,9 @@ function harvest() {
     if (nearest.type === "stone") bag.stone += 2;
     if (nearest.type === "iron") bag.iron += 1;
     if (nearest.type === "crystal") bag.crystal = (bag.crystal||0)+1;
-    player.xp += 10;
-    if (player.xp >= player.level * 50) {
-      player.xp -= player.level * 50;
-      player.level++;
-      showToast("سطح جدید! ⭐ سطح " + player.level);
-    } else {
-      showToast(nearest.type === "tree" ? "۳ چوب جمع کردی 🪵" : nearest.type === "stone" ? "۲ سنگ جمع کردی 🪨" : nearest.type === "iron" ? "۱ آهن جمع کردی ⛏️" : "۱ کریستال جمع کردی 💎");
-    }
+    const leveled = addXP(10);
+    if (leveled) showToast("سطح جدید! یک امتیاز مهارت گرفتی ⭐");
+    else showToast(nearest.type === "tree" ? "۳ چوب جمع کردی 🪵" : nearest.type === "stone" ? "۲ سنگ جمع کردی 🪨" : nearest.type === "iron" ? "۱ آهن جمع کردی ⛏️" : "۱ کریستال جمع کردی 💎");
     updateUI();
     saveQuietly();
   } else {
@@ -140,19 +150,18 @@ function attack() {
   let target = null, best = 104;
   for (const e of enemies) { if (!e.alive) continue; const d=Math.hypot(player.x-e.x,player.y-e.y); if(d<best){best=d;target=e;} }
   if (!target) { showToast("برای حمله به موجود نزدیک‌تر شو"); return; }
-  target.hp--;
+  target.hp -= player.attackPower;
   if (target.hp <= 0) {
-    target.alive=false; player.coins+=5; player.xp+=15;
-    if(player.xp>=player.level*50){player.xp-=player.level*50;player.level++;}
-    updateUI(); saveQuietly(); showToast("موجود جنگلی شکست خورد! +۵ سکه و ۱۵ تجربه ⭐");
+    target.alive=false; player.coins+=5; const leveled=addXP(15);
+    updateUI(); saveQuietly(); showToast(leveled?"موجود شکست خورد! سطح جدید و یک امتیاز مهارت ⭐":"موجود جنگلی شکست خورد! +۵ سکه و ۱۵ تجربه ⭐");
   } else showToast("ضربه زدی! ❤️ جان دشمن: "+target.hp);
 }
 
 function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
-      player: { x: player.x, y: player.y, health: player.health, level: player.level, xp: player.xp, coins: player.coins },
-      bag, harvested: [...harvested]
+      player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests
     }));
   } catch (e) {}
 }
@@ -193,6 +202,32 @@ $("saveBtn").addEventListener("click", save);
 $("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); });
 $("closeBag").addEventListener("click", () => $("inventory").hidden = true);
 $("caveBtn").addEventListener("click",toggleCave);
+$("upgradeBtn").addEventListener("click", () => { $("upgradePanel").hidden = false; updateUpgradeUI(); });
+$("closeUpgrades").addEventListener("click", () => { $("upgradePanel").hidden = true; });
+$("upgradeHealth").addEventListener("click", () => buyUpgrade("health"));
+$("upgradeSpeed").addEventListener("click", () => buyUpgrade("speed"));
+$("upgradeAttack").addEventListener("click", () => buyUpgrade("attack"));
+
+function updateUpgradeUI() {
+  const points = player.skillPoints || 0;
+  $("skillPoints").textContent = points;
+  $("upgradeHealth").disabled = points < 1 || player.maxHealth >= 10;
+  $("upgradeSpeed").disabled = points < 1 || player.speed >= 280;
+  $("upgradeAttack").disabled = points < 1 || player.attackPower >= 3;
+  $("upgradeHealth").textContent = player.maxHealth >= 10 ? "❤️ جان (حداکثر)" : "❤️ افزایش جان " + player.maxHealth + " ← " + (player.maxHealth + 1);
+  $("upgradeSpeed").textContent = player.speed >= 280 ? "👟 سرعت (حداکثر)" : "👟 افزایش سرعت " + player.speed + " ← " + Math.min(280, player.speed + 15);
+  $("upgradeAttack").textContent = player.attackPower >= 3 ? "⚔️ قدرت حمله (حداکثر)" : "⚔️ افزایش قدرت حمله " + player.attackPower + " ← " + (player.attackPower + 1);
+}
+function buyUpgrade(type) {
+  if (player.skillPoints < 1) { showToast("برای ارتقا امتیاز مهارت نداری"); return; }
+  if (type === "health" && player.maxHealth < 10) { player.maxHealth++; player.health = Math.min(player.maxHealth, player.health + 1); }
+  else if (type === "speed" && player.speed < 280) player.speed = Math.min(280, player.speed + 15);
+  else if (type === "attack" && player.attackPower < 3) player.attackPower++;
+  else { showToast("این قابلیت به حداکثر رسیده"); return; }
+  player.skillPoints--;
+  updateUI(); saveQuietly();
+  showToast("ارتقا با موفقیت انجام شد! 💪");
+}
 
 function update(dt) {
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt);
