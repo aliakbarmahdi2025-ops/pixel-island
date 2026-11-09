@@ -19,6 +19,7 @@
       <button id="bagBtn">🎒 کوله‌پشتی</button>
       <button id="upgradeBtn">⭐ مهارت‌ها</button>
       <button id="craftBtn">🛠️ ساخت</button>
+      <button id="questBtn">📜 مأموریت</button>
       <button id="saveBtn">💾 ذخیره</button>
     </div>
   </header>
@@ -47,6 +48,16 @@
       <button id="upgradeAttack">⚔️ افزایش قدرت حمله</button>
     </div>
     <button id="closeUpgrades">بستن</button>
+  </section>
+  <section id="questPanel" class="panel" hidden>
+    <h2>📜 مأموریت‌های جنگل</h2>
+    <p>با انجام مأموریت‌ها سکه و تجربه بگیر.</p>
+    <div class="quest-list">
+      <article class="quest-card"><b>🪵 جمع‌آوری چوب</b><span id="questWoodText">۰ / ۱۰ چوب</span><button id="claimWood">دریافت جایزه</button></article>
+      <article class="quest-card"><b>🟢 شکست اسلایم‌ها</b><span id="questSlimeText">۰ / ۳ موجود</span><button id="claimSlime">دریافت جایزه</button></article>
+      <article class="quest-card"><b>⛏️ استخراج آهن</b><span id="questIronText">۰ / ۵ آهن</span><button id="claimIron">دریافت جایزه</button></article>
+    </div>
+    <button id="closeQuests">بستن</button>
   </section>
   <section id="craftPanel" class="panel" hidden>
     <h2>🛠️ ساخت ابزار و تجهیزات</h2>
