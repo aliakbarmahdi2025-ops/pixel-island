@@ -245,6 +245,7 @@ joy.addEventListener("pointercancel", releaseJoy);
 $("actionBtn").addEventListener("pointerdown", e => { e.preventDefault(); harvest(); });
 $("attackBtn").addEventListener("pointerdown", e => { e.preventDefault(); attack(); });
 $("npcBtn").addEventListener("click", openNpcDialogue);
+$("townBtn").addEventListener("click",()=>transitionTown(true));$("townExitBtn").addEventListener("click",()=>transitionTown(false));$("townNpcBtn").addEventListener("click",openTownNpc);$("townNpcTalk").addEventListener("click",nextTownDialogue);$("townNpcShop").addEventListener("click",openTownShop);$("townNpcClose").addEventListener("click",()=>{$("townNpcPanel").hidden=true;syncXpPanel();});$("townShopClose").addEventListener("click",()=>{$("townShopPanel").hidden=true;syncXpPanel();});$("buyBread").addEventListener("click",()=>buyTownItem("bread"));$("buySeeds").addEventListener("click",()=>buyTownItem("seeds"));$("buyApple").addEventListener("click",()=>buyTownItem("apple"));
 $("npcNext").addEventListener("click", advanceNpcDialogue);
 $("npcQuestAccept").addEventListener("click", acceptNpcQuest);
 $("npcQuestClaim").addEventListener("click", claimNpcQuest);
@@ -475,6 +476,42 @@ function update(dt) {
   $("homeBtn").hidden = caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
   $("homeBtn").textContent = homeInterior ? "🚪 خروج از خانه" : "🏡 خانه";
 }
+
+function transitionTown(enter){
+ $("townFade").classList.add("active");
+ setTimeout(()=>{if(enter){townReturn={x:player.x,y:player.y};townMode=true;caveMode=false;homeInterior=false;player.x=800;player.y=930;showToast("به شهر سبز خوش اومدی! 🏘️");}else{townMode=false;player.x=townReturn.x;player.y=townReturn.y;showToast("به جنگل برگشتی 🌲");}$("townFade").classList.remove("active");saveQuietly();},240);
+}
+function townSchedule(){
+ const night=worldClock>=21*60||worldClock<7*60;
+ townPeople.forEach(p=>{if(p.id==="saeed"){p.x=night?180:240;p.y=night?590:570;}if(p.id==="mina"){p.x=night?500:470;p.y=night?620:560;}if(p.id==="hana"){p.x=night?570:560;p.y=night?640:590;}if(p.id==="nahid"){p.x=night?430:420;p.y=night?680:650;}if(p.id==="rezaei"){p.x=1120;p.y=night?610:530;}});
+}
+function openTownNpc(){
+ const p=townPeople.find(q=>Math.hypot(player.x-q.x,player.y-q.y)<115);if(!p)return;
+ townNpcIndex=townPeople.indexOf(p);
+ const lines={mina:["سلام! چه خوب که اومدی شهر سبز. 🌸","امروز هوا برای قدم زدن توی میدان عالیه!"],hana:["سلام، چه خبر؟","من دوست دارم کوچه‌های قدیمی شهر رو بگردم."],nahid:["خوش اومدی عزیزم، مواظب خودت باش. ❤️","این شهر کوچیکه، اما مردمش دل بزرگی دارن."],saeed:["سلام! به شهر سبز خوش اومدی.","من مراقب ورودی و آرامش شهرم."],rezaei:["سلام عزیزم! به خواربارفروشی من خوش اومدی.","نان تازه و خوراکی محلی دارم؛ هرچی لازم داری بگو. 🌼"]};
+ const n=townFriendship[p.id]||0;$("townNpcTitle").textContent=p.name+" • "+p.role;$("townNpcDialogue").textContent=lines[p.id][n%lines[p.id].length];$("townNpcHeart").textContent="💚 میزان آشنایی: "+n;$("townNpcShop").hidden=p.id!=="rezaei";$("townNpcPanel").hidden=false;townFriendship[p.id]=Math.min(20,n+1);saveQuietly();syncXpPanel();
+}
+function nextTownDialogue(){
+ const p=townPeople[townNpcIndex];if(!p)return;
+ const lines={mina:["از دیدنت خوشحال شدم. 💗","یه روز بیا با هم توی میدان قدم بزنیم!"],hana:["شهر رو بگرد، کلی جای قشنگ داره!","بعداً باز هم با هم حرف می‌زنیم."],nahid:["هر وقت خسته شدی، کمی استراحت کن.","خوشحالم که شهرمون رو دوست داری."],saeed:["مسیر جنگل از همون دروازه‌ایه که وارد شدی.","روز خوبی داشته باشی!"],rezaei:["اگه خرید داشتی، مغازه بازه؛ بفرما.","برای آشنایان قدیمی همیشه پیشنهاد خوب دارم."]};
+ $("townNpcDialogue").textContent=lines[p.id][(townFriendship[p.id]||0)%lines[p.id].length];townFriendship[p.id]=Math.min(20,(townFriendship[p.id]||0)+1);$("townNpcHeart").textContent="💚 میزان آشنایی: "+townFriendship[p.id];saveQuietly();
+}
+function openTownShop(){$("townNpcPanel").hidden=true;$("townShopPanel").hidden=false;updateTownShop();syncXpPanel();}
+function updateTownShop(){$("townShopStock").textContent="موجودی: نان "+townStock.bread+" • بذر "+townStock.seeds+" • سیب "+townStock.apple+" | سکه: "+player.coins;$("buyBread").disabled=player.coins<8;$("buySeeds").disabled=player.coins<5;$("buyApple").disabled=player.coins<6;}
+function buyTownItem(type){const item={bread:{price:8,label:"نان"},seeds:{price:5,label:"بذر"},apple:{price:6,label:"سیب"}}[type];if(player.coins<item.price){showToast("سکه کافی نداری! 🪙");return;}player.coins-=item.price;townStock[type]++;updateUI();updateTownShop();saveQuietly();showToast(item.label+" خریدی! 🛍️");}
+function drawTown(){
+ ctx.fillStyle="#c9ae79";ctx.fillRect(0,0,viewW,viewH);const t=48,sx=Math.floor(camera.x/t),sy=Math.floor(camera.y/t),ex=Math.ceil((camera.x+viewW)/t),ey=Math.ceil((camera.y+viewH)/t);
+ for(let y=sy;y<=ey;y++)for(let x=sx;x<=ex;x++){ctx.fillStyle=((x+y)%2===0)?"#d5c08f":"#cbb581";ctx.fillRect(x*t-camera.x,y*t-camera.y,t+1,t+1);}
+ ctx.fillStyle="#b49a70";ctx.fillRect(-camera.x,520-camera.y,TOWN.w,170);ctx.fillStyle="#d8c69a";ctx.fillRect(560-camera.x,430-camera.y,470,390);ctx.fillStyle="#b5a17b";ctx.fillRect(580-camera.x,450-camera.y,430,350);
+ const fx=795-camera.x,fy=610-camera.y;ctx.fillStyle="#8c7659";ctx.beginPath();ctx.ellipse(fx,fy,80,48,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#62b8d0";ctx.beginPath();ctx.ellipse(fx,fy-5,67,37,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#e6dfc5";ctx.fillRect(fx-10,fy-42,20,32);ctx.fillStyle="#78d8e7";ctx.fillRect(fx-5,fy-62,10,25);
+ drawTownBuilding(350,360,"خانه مینا و حنا","#a85c58");drawTownBuilding(500,360,"خانه ناهید","#bd8653");drawTownBuilding(1120,350,"خواربارفروشی","#b65c45");drawTownBuilding(1400,380,"نانوایی","#b97843");drawTownBuilding(180,380,"نگهبانی","#647d79");
+ [[80,180],[260,850],[480,900],[1060,850],[1320,850],[1500,760],[900,260],[650,260]].forEach(a=>{const x=a[0]-camera.x,y=a[1]-camera.y;ctx.fillStyle="#765035";ctx.fillRect(x-7,y+4,14,28);ctx.fillStyle="#2c703d";ctx.fillRect(x-26,y-26,52,36);ctx.fillStyle="#45964b";ctx.fillRect(x-19,y-42,38,24);});
+ [[650,840],[940,840],[300,700],[1260,700]].forEach(a=>{const x=a[0]-camera.x,y=a[1]-camera.y;ctx.fillStyle="#57412d";ctx.fillRect(x-22,y,44,7);ctx.fillRect(x-17,y+7,5,10);ctx.fillRect(x+12,y+7,5,10);});
+ ctx.fillStyle="#fff0c2";ctx.font="bold 18px Tahoma";ctx.textAlign="center";ctx.fillText("شهر سبز",800-camera.x,120-camera.y);ctx.textAlign="start";
+}
+function drawTownBuilding(x,y,label,roof){const sx=x-camera.x,sy=y-camera.y;ctx.fillStyle="#6d5038";ctx.fillRect(sx-68,sy-4,136,92);ctx.fillStyle="#d9bd8a";ctx.fillRect(sx-62,sy,124,78);ctx.fillStyle=roof;ctx.beginPath();ctx.moveTo(sx-82,sy);ctx.lineTo(sx,sy-52);ctx.lineTo(sx+82,sy);ctx.closePath();ctx.fill();ctx.fillStyle="#70452e";ctx.fillRect(sx-15,sy+35,30,43);ctx.fillStyle="#8bc4ca";ctx.fillRect(sx-48,sy+22,22,22);ctx.fillRect(sx+27,sy+22,22,22);ctx.strokeStyle="#f0d8a5";ctx.lineWidth=3;ctx.strokeRect(sx-48,sy+22,22,22);ctx.strokeRect(sx+27,sy+22,22,22);ctx.fillStyle="#fff2d0";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText(label,sx,sy-61);ctx.textAlign="start";}
+function drawTownPeople(){townPeople.forEach(p=>{const x=p.x-camera.x,y=p.y-camera.y;if(x< -40||x>viewW+40||y< -50||y>viewH+50)return;const b=Math.sin(animTime*2.5+p.x*.01)*1.2;ctx.fillStyle="#5c4938";ctx.fillRect(x-9,y+8,7,10);ctx.fillRect(x+2,y+8,7,10);ctx.fillStyle=p.color;ctx.fillRect(x-12,y-8+b,24,20);ctx.fillStyle="#e9bd98";ctx.fillRect(x-9,y-25+b,18,17);ctx.fillStyle=p.hair;ctx.fillRect(x-10,y-29+b,20,8);ctx.fillRect(x-12,y-24+b,5,12);ctx.fillStyle="#28232a";ctx.fillRect(x-5,y-18+b,3,3);ctx.fillRect(x+3,y-18+b,3,3);if(p.id==="saeed"){ctx.fillStyle="#49352d";ctx.fillRect(x-5,y-10+b,10,4);}ctx.fillStyle="#fff5d9";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText(p.name,x,y-36+b);ctx.textAlign="start";if(Math.hypot(player.x-p.x,player.y-p.y)<115){ctx.fillStyle="#ffe58a";ctx.font="bold 16px Tahoma";ctx.textAlign="center";ctx.fillText("…",x,y-48+b);ctx.textAlign="start";}});}
+
 function updateHomeUI() {
   const title = homeLevel === 0 ? "زمین خالی" : homeLevel === 1 ? "کلبه چوبی" : homeLevel === 2 ? "خانه بزرگ" : "خانه لوکس";
   $("homeStatus").textContent = title + " • سطح " + homeLevel + " | چوب: " + bag.wood + " • سنگ: " + bag.stone + " • سکه: " + player.coins;
