@@ -17,7 +17,9 @@ button:active{transform:translateY(2px)}
 #joystick{position:absolute;left:22px;bottom:12px;width:116px;height:116px;border-radius:50%;background:#17251d88;border:3px solid #c5dba477;pointer-events:auto;touch-action:none}
 #stick{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px;border-radius:50%;background:#d4e9a9;border:3px solid #526d43;box-shadow:0 3px 8px #0007}
 #actionBtn{position:absolute;right:24px;bottom:24px;width:78px;height:78px;border-radius:50%;background:#9a682b;border:3px solid #f2d18c;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:25px;pointer-events:auto;touch-action:manipulation}
-#actionBtn small{font-size:11px}
+#actionBtn small,#attackBtn small{font-size:11px}
+#attackBtn{position:absolute;right:112px;bottom:30px;width:66px;height:66px;border-radius:50%;background:#7b3f35;border:3px solid #e8a18a;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:22px;pointer-events:auto;touch-action:manipulation}
+#attackBtn:active{filter:brightness(1.2)}
 #help{position:fixed;z-index:2;bottom:158px;left:50%;transform:translateX(-50%);background:#17251dcc;padding:7px 11px;border-radius:12px;font-size:11px;white-space:nowrap;pointer-events:none}
 [hidden]{display:none!important}
-@media(min-width:800px){#joystick{left:34px;bottom:24px}#actionBtn{right:34px;bottom:35px}#help{bottom:22px}}
+@media(min-width:800px){#joystick{left:34px;bottom:24px}#actionBtn{right:34px;bottom:35px}#attackBtn{right:130px;bottom:42px}#help{bottom:22px}}
