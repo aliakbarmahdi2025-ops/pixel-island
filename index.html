@@ -6,8 +6,8 @@
     <title>Pixel Island</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
-        html, body { width: 100vw; height: 100vh; overflow: hidden; background: #1a1c23; font-family: monospace; position: fixed; }
-        #gameCanvas { display: block; width: 100vw; height: 100vh; background: #2d5a27; image-rendering: pixelated; position: absolute; top: 0; left: 0; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #1a1c23; font-family: monospace; }
+        #gameCanvas { display: block; width: 100%; height: 100%; background: #2d5a27; image-rendering: pixelated; position: fixed; top: 0; left: 0; }
         #ui { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: center; color: white; font-size: 13px; pointer-events: none; z-index: 5; }
         .ui-box { background: rgba(0, 0, 0, 0.7); padding: 8px 12px; border-radius: 8px; border: 2px solid #555; }
         .btn-ui { pointer-events: auto; background: #f39c12; color: #fff; border: 2px solid #d35400; padding: 6px 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: monospace; font-size: 12px; }
@@ -70,14 +70,13 @@
             canvas.height = window.innerHeight;
         }
         window.addEventListener('resize', resizeCanvas);
-        window.addEventListener('orientationchange', resizeCanvas);
         resizeCanvas();
 
         let currentIsland = 'forest';
 
         const player = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 2,
             size: 28,
             speed: 4,
             speedLvl: 1,
@@ -151,16 +150,16 @@
         loadGame();
 
         const forestResources = [
-            { x: 80, y: 120, type: 'tree', hp: 5, maxHp: 5, coins: 10, xp: 15, size: 36 },
-            { x: 250, y: 220, type: 'tree', hp: 5, maxHp: 5, coins: 10, xp: 15, size: 36 },
-            { x: 150, y: 380, type: 'rock', hp: 12, maxHp: 12, coins: 30, xp: 35, size: 32 },
+            { x: 100, y: 150, type: 'tree', hp: 5, maxHp: 5, coins: 10, xp: 15, size: 36 },
+            { x: 250, y: 250, type: 'tree', hp: 5, maxHp: 5, coins: 10, xp: 15, size: 36 },
+            { x: 180, y: 380, type: 'rock', hp: 12, maxHp: 12, coins: 30, xp: 35, size: 32 },
             { x: 300, y: 450, type: 'gold', hp: 25, maxHp: 25, coins: 100, xp: 80, size: 28 }
         ];
 
         const volcanoResources = [
-            { x: 100, y: 150, type: 'crystal', hp: 20, maxHp: 20, coins: 80, xp: 60, size: 34 },
-            { x: 280, y: 250, type: 'crystal', hp: 20, maxHp: 20, coins: 80, xp: 60, size: 34 },
-            { x: 180, y: 400, type: 'lava_rock', hp: 45, maxHp: 45, coins: 200, xp: 120, size: 36 }
+            { x: 120, y: 180, type: 'crystal', hp: 20, maxHp: 20, coins: 80, xp: 60, size: 34 },
+            { x: 280, y: 280, type: 'crystal', hp: 20, maxHp: 20, coins: 80, xp: 60, size: 34 },
+            { x: 200, y: 420, type: 'lava_rock', hp: 45, maxHp: 45, coins: 200, xp: 120, size: 36 }
         ];
 
         let activeResources = forestResources;
@@ -342,8 +341,8 @@
 
                     updateUI();
 
-                    res.x = Math.random() * (canvas.width - 60) + 30;
-                    res.y = Math.random() * (canvas.height - 100) + 50;
+                    res.x = Math.random() * (canvas.width - 80) + 40;
+                    res.y = Math.random() * (canvas.height - 120) + 60;
                     res.hp = res.maxHp;
                 }
             });
