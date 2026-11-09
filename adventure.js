@@ -63,7 +63,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, level: player.level, xp: player.xp, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested:[...caveHarvested], caveMode, caveReturn, openedChests
+      bag, harvested: [...harvested], caveHarvested:[...caveHarvested], caveMode, caveReturn, openedChests, openedChests
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
