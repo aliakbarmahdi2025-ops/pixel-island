@@ -238,8 +238,13 @@ $("upgradeAttack").addEventListener("click", () => buyUpgrade("attack"));
 
 function syncXpPanel() {
   const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel"];
-  $("xpPanel").hidden = panelIds.some(id => !$(id).hidden);
+  const hud = $("hud");
+  const xp = $("xpPanel");
+  xp.hidden = panelIds.some(id => !$(id).hidden);
+  // Place the XP bar below the complete, possibly wrapped mobile HUD.
+  xp.style.top = Math.ceil(hud.getBoundingClientRect().bottom + 8) + "px";
 }
+addEventListener("resize", syncXpPanel);
 function updateQuestUI() {
   const rows = [
     { key: "wood", text: "questWoodText", button: "claimWood", goal: 10, unit: "چوب" },
@@ -436,6 +441,7 @@ function loop(time) {
   requestAnimationFrame(loop);
 }
 updateUI();
+syncXpPanel();
 showToast("به جنگل خوش آمدی! 🌲");
 requestAnimationFrame(loop);
 addEventListener("pagehide", saveQuietly);
