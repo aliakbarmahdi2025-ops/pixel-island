@@ -14,6 +14,8 @@ let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
 let caveResources = [], caveChests = [];
 let resources = [];
 let quests = { wood: 0, slime: 0, iron: 0, claimed: { wood: false, slime: false, iron: false } };
+let npcMet = false, npcTalkIndex = 0;
+const forestNpc = { x: 1320, y: 1010, name: "سامان", role: "جنگلبان" };
 let enemies = [], caveEnemies = [];
 let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
 let move = { x: 0, y: 0 };
@@ -62,13 +64,14 @@ function load() {
     if (Array.isArray(data.caveHarvested)) caveHarvested = new Set(data.caveHarvested);
     caveMode = !!data.caveMode; if(data.caveReturn)caveReturn=data.caveReturn; if(Array.isArray(data.openedChests))openedChests=data.openedChests;
     if(data.quests)quests={...quests,...data.quests,claimed:{...quests.claimed,...(data.quests.claimed||{})}};
+    npcMet = !!data.npcMet; npcTalkIndex = Number.isInteger(data.npcTalkIndex) ? data.npcTalkIndex : 0;
   } catch (e) { console.warn("Save could not be loaded", e); }
 }
 function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -178,7 +181,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex
     }));
   } catch (e) {}
 }
@@ -215,6 +218,9 @@ joy.addEventListener("pointerup", releaseJoy);
 joy.addEventListener("pointercancel", releaseJoy);
 $("actionBtn").addEventListener("pointerdown", e => { e.preventDefault(); harvest(); });
 $("attackBtn").addEventListener("pointerdown", e => { e.preventDefault(); attack(); });
+$("npcBtn").addEventListener("click", openNpcDialogue);
+$("npcNext").addEventListener("click", advanceNpcDialogue);
+$("npcClose").addEventListener("click", () => { $("npcPanel").hidden = true; syncXpPanel(); });
 $("saveBtn").addEventListener("click", save);
 $("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); syncXpPanel(); });
 $("closeBag").addEventListener("click", () => { $("inventory").hidden = true; syncXpPanel(); });
@@ -237,7 +243,7 @@ $("upgradeSpeed").addEventListener("click", () => buyUpgrade("speed"));
 $("upgradeAttack").addEventListener("click", () => buyUpgrade("attack"));
 
 function syncXpPanel() {
-  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel"];
+  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel"];
   const hud = $("hud");
   const xp = $("xpPanel");
   xp.hidden = panelIds.some(id => !$(id).hidden);
@@ -245,6 +251,30 @@ function syncXpPanel() {
   xp.style.top = Math.ceil(hud.getBoundingClientRect().bottom + 8) + "px";
 }
 addEventListener("resize", syncXpPanel);
+const npcLines = [
+  "این جنگل قدیمی‌تر از چیزیه که به نظر میاد. مراقب موجودات سبز باش!",
+  "اگر کریستال پیدا کردی، نگهش دار؛ توی غار به کارت میاد.",
+  "برای قوی‌تر شدن، منابع جمع کن و از میز ساخت تجهیزات استفاده کن.",
+  "راه غار از بخش شرقی جنگل می‌گذره. اونجا چیزهای ارزشمندی پیدا می‌کنی."
+];
+function openNpcDialogue() {
+  if (!npcMet) {
+    npcMet = true;
+    player.coins += 10;
+    const leveled = addXP(15);
+    showToast(leveled ? "با سامان آشنا شدی؛ جایزه خوش‌آمدگویی و ارتقای سطح! ⭐" : "با سامان آشنا شدی؛ ۱۰ سکه جایزه گرفتی! 🎁");
+  }
+  $("npcPanel").hidden = false;
+  advanceNpcDialogue();
+  updateUI();
+  saveQuietly();
+  syncXpPanel();
+}
+function advanceNpcDialogue() {
+  $("npcDialogue").textContent = npcLines[npcTalkIndex % npcLines.length];
+  npcTalkIndex++;
+  saveQuietly();
+}
 function updateQuestUI() {
   const rows = [
     { key: "wood", text: "questWoodText", button: "claimWood", goal: 10, unit: "چوب" },
@@ -347,6 +377,7 @@ function update(dt) {
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
   $("caveBtn").hidden=caveMode?false:Math.hypot(player.x-2080,player.y-1450)>115;
   $("caveBtn").textContent=caveMode?"🚪 خروج از غار":"🕳️ ورود به غار";
+  $("npcBtn").hidden = caveMode || Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y) > 105;
 }
 function drawCaveGround(){
  const t=WORLD.tile,sx=Math.floor(camera.x/t),sy=Math.floor(camera.y/t),ex=Math.ceil((camera.x+viewW)/t),ey=Math.ceil((camera.y+viewH)/t);
@@ -407,6 +438,16 @@ function drawCrystalGuardian(e) {
   ctx.fillStyle="#17232e";ctx.fillRect(x-24,y-49,48,5);
   ctx.fillStyle="#55d9e8";ctx.fillRect(x-24,y-49,48*(e.hp/e.max),5);
 }
+function drawForestNpc() {
+  const x=forestNpc.x-camera.x,y=forestNpc.y-camera.y;
+  if(x < -60 || x > viewW+60 || y < -70 || y > viewH+60) return;
+  ctx.fillStyle="#263b2b";ctx.fillRect(x-13,y+9,26,8);
+  ctx.fillStyle="#4f7651";ctx.fillRect(x-12,y-7,24,20);
+  ctx.fillStyle="#e7bd91";ctx.fillRect(x-9,y-23,18,16);
+  ctx.fillStyle="#6b4a2e";ctx.fillRect(x-11,y-27,22,7);ctx.fillRect(x-15,y-22,30,4);
+  ctx.fillStyle="#243021";ctx.fillRect(x-5,y-17,3,3);ctx.fillRect(x+3,y-17,3,3);
+  ctx.fillStyle="#fff2c7";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText(forestNpc.name+" • "+forestNpc.role,x,y-38);ctx.textAlign="start";
+}
 function drawPlayer() {
   const x = player.x - camera.x, y = player.y - camera.y;
   ctx.fillStyle = "#243c28"; ctx.fillRect(x - 11, y + 7, 22, 9);
@@ -427,6 +468,7 @@ function draw() {
   }
   const visibleEnemies = caveMode ? caveEnemies : enemies;
   for(const e of visibleEnemies){if(!e.alive)continue;if(e.x<camera.x-60||e.x>camera.x+viewW+60||e.y<camera.y-60||e.y>camera.y+viewH+60)continue;if(caveMode)drawCrystalGuardian(e);else drawSlime(e);}
+  if(!caveMode) drawForestNpc();
   drawPlayer();
   if(attackFlash>0){const px=player.x-camera.x,py=player.y-camera.y;ctx.strokeStyle="#fff0a8";ctx.lineWidth=4;ctx.beginPath();ctx.arc(px,py,43,-0.8,0.8);ctx.stroke();}
   ctx.strokeStyle = "#d6f0a8"; ctx.lineWidth = 3;
