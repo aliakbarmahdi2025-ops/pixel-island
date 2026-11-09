@@ -10,9 +10,10 @@
         #gameCanvas { display: block; background: #2d5a27; image-rendering: pixelated; }
         #ui { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: center; color: white; font-size: 13px; pointer-events: none; z-index: 5; }
         .ui-box { background: rgba(0, 0, 0, 0.7); padding: 8px 12px; border-radius: 8px; border: 2px solid #555; }
-        .btn-ui { pointer-events: auto; background: #f39c12; color: #fff; border: 2px solid #d35400; padding: 8px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: monospace; }
+        .btn-ui { pointer-events: auto; background: #f39c12; color: #fff; border: 2px solid #d35400; padding: 6px 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: monospace; font-size: 12px; }
         .btn-ui:active { transform: scale(0.95); }
         #travelBtn { background: #e74c3c; border-color: #c0392b; display: none; }
+        #saveBtn { background: #2ecc71; border-color: #27ae60; }
         
         #shopMenu { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 340px; background: rgba(20, 20, 30, 0.95); border: 3px solid #f1c40f; border-radius: 12px; padding: 15px; color: white; z-index: 10; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
         #shopMenu h2 { text-align: center; color: #f1c40f; margin-bottom: 12px; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 5px; }
@@ -25,9 +26,10 @@
 <body>
     <div id="ui">
         <div class="ui-box">💰 <span id="coins">0</span> | Lvl <span id="level">1</span></div>
-        <div>
-            <button id="travelBtn" class="btn-ui" onclick="switchIsland()">🌋 جزیره آتشفشان</button>
-            <button id="shopBtn" class="btn-ui">🛒 فروشگاه</button>
+        <div style="display: flex; gap: 5px;">
+            <button id="saveBtn" class="btn-ui" onclick="manualSave()">💾 ذخیره</button>
+            <button id="travelBtn" class="btn-ui" onclick="switchIsland()">🌋 آتشفشان</button>
+            <button id="shopBtn" class="btn-ui" onclick="toggleShop()">🛒 فروشگاه</button>
         </div>
     </div>
 
@@ -89,11 +91,10 @@
         let workers = [];
         let workerCost = 150;
 
-        // بارگذاری ذخیره قبلی (اگر وجود داشته باشد)
         function loadGame() {
-            const savedData = localStorage.getItem('pixelIslandSave');
-            if (savedData) {
-                try {
+            try {
+                const savedData = localStorage.getItem('pixelIslandSave_v2');
+                if (savedData) {
                     const data = JSON.parse(savedData);
                     player.coins = data.coins || 0;
                     player.level = data.level || 1;
@@ -115,26 +116,35 @@
                             });
                         }
                     }
-                } catch(e) {
-                    console.log('Error loading save');
                 }
+            } catch(e) {
+                console.log('Save load failed');
             }
         }
 
         function saveGame() {
-            const data = {
-                coins: player.coins,
-                level: player.level,
-                xp: player.xp,
-                xpToNextLevel: player.xpToNextLevel,
-                speed: player.speed,
-                speedLvl: player.speedLvl,
-                power: player.power,
-                powerLvl: player.powerLvl,
-                workerCount: workers.length,
-                workerCost: workerCost
-            };
-            localStorage.setItem('pixelIslandSave', JSON.stringify(data));
+            try {
+                const data = {
+                    coins: player.coins,
+                    level: player.level,
+                    xp: player.xp,
+                    xpToNextLevel: player.xpToNextLevel,
+                    speed: player.speed,
+                    speedLvl: player.speedLvl,
+                    power: player.power,
+                    powerLvl: player.powerLvl,
+                    workerCount: workers.length,
+                    workerCost: workerCost
+                };
+                localStorage.setItem('pixelIslandSave_v2', JSON.stringify(data));
+            } catch(e) {
+                console.log('Save failed');
+            }
+        }
+
+        function manualSave() {
+            saveGame();
+            addFloatingText('بازی ذخیره شد! 💾', player.x, player.y - 30, '#2ecc71');
         }
 
         loadGame();
@@ -181,13 +191,13 @@
                 currentIsland = 'volcano';
                 activeResources = volcanoResources;
                 canvas.style.background = '#3a1e1e';
-                document.getElementById('travelBtn').innerText = '🌲 جزیره سرسبز';
-                addFloatingText('خوش آمدید به جزیره آتشفشان! 🌋', player.x, player.y - 30, '#e74c3c');
+                document.getElementById('travelBtn').innerText = '🌲 جنگل';
+                addFloatingText('جزیره آتشفشان! 🌋', player.x, player.y - 30, '#e74c3c');
             } else {
                 currentIsland = 'forest';
                 activeResources = forestResources;
                 canvas.style.background = '#2d5a27';
-                document.getElementById('travelBtn').innerText = '🌋 جزیره آتشفشان';
+                document.getElementById('travelBtn').innerText = '🌋 آتشفشان';
                 addFloatingText('بازگشت به جنگل! 🌲', player.x, player.y - 30, '#2ecc71');
             }
         }
@@ -197,8 +207,6 @@
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
             updateUI();
         }
-
-        document.getElementById('shopBtn').addEventListener('click', toggleShop);
 
         function buyUpgrade(type) {
             if (type === 'speed') {
@@ -339,7 +347,6 @@
                 }
             });
 
-            // ذخیره خودکار هر ۵ ثانیه
             saveTimer++;
             if (saveTimer > 300) {
                 saveGame();
@@ -418,42 +425,5 @@
         }
 
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            activeResources.forEach(res => {
-                if (res.type === 'tree') drawTree(res.x, res.y);
-                else if (res.type === 'rock') drawRock(res.x, res.y);
-                else if (res.type === 'gold') drawGold(res.x, res.y);
-                else if (res.type === 'crystal') drawCrystal(res.x, res.y);
-                else if (res.type === 'lava_rock') drawLavaRock(res.x, res.y);
-
-                const hpPercent = Math.max(0, res.hp / res.maxHp);
-                ctx.fillStyle = 'rgba(0,0,0,0.6)';
-                ctx.fillRect(res.x - 15, res.y - res.size / 2 - 12, 30, 4);
-                ctx.fillStyle = '#2ecc71';
-                ctx.fillRect(res.x - 15, res.y - res.size / 2 - 12, 30 * hpPercent, 4);
-            });
-
-            workers.forEach(w => drawWorker(w.x, w.y));
-            drawPlayer(player.x, player.y);
-
-            floatingTexts.forEach(ft => {
-                ctx.fillStyle = ft.color;
-                ctx.globalAlpha = ft.alpha;
-                ctx.font = 'bold 13px monospace';
-                ctx.fillText(ft.text, ft.x - 15, ft.y);
-                ctx.globalAlpha = 1;
-            });
-        }
-
-        function loop() {
-            update();
-            draw();
-            requestAnimationFrame(loop);
-        }
-
-        updateUI();
-        loop();
-    </script>
-</body>
-</html>
+            ctx.clearRect(0, 0, canvas.width, canvas.
+        
