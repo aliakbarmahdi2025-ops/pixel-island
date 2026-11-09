@@ -474,7 +474,7 @@ function update(dt) {
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
   $("caveBtn").hidden = townMode || homeInterior || (caveMode ? false : Math.hypot(player.x-2080,player.y-1450)>115);
   $("townBtn").hidden=townMode||caveMode||homeInterior||Math.hypot(player.x-2310,player.y-900)>115;
-  $("townExitBtn").hidden=!townMode;
+  $("townExitBtn").hidden=!townMode || Math.hypot(player.x-800,player.y-1110)>105;
   const nearTownPerson=townMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
   $("townNpcBtn").hidden=!nearTownPerson;
   $("townNpcBtn").textContent=nearTownPerson?"💬 صحبت با "+nearTownPerson.name:"💬 صحبت با اهالی";
@@ -486,7 +486,7 @@ function update(dt) {
 
 function transitionTown(enter){
  $("townFade").classList.add("active");
- setTimeout(()=>{if(enter){townReturn={x:player.x,y:player.y};townMode=true;caveMode=false;homeInterior=false;player.x=800;player.y=930;showToast("به شهر سبز خوش اومدی! 🏘️");}else{townMode=false;player.x=townReturn.x;player.y=townReturn.y;showToast("به جنگل برگشتی 🌲");}$("townFade").classList.remove("active");saveQuietly();},240);
+ setTimeout(()=>{if(enter){townReturn={x:player.x,y:player.y};townMode=true;caveMode=false;homeInterior=false;player.x=800;player.y=1015;showToast("به شهر سبز خوش اومدی! 🏘️");}else{townMode=false;player.x=townReturn.x;player.y=townReturn.y;showToast("به جنگل برگشتی 🌲");}$("townFade").classList.remove("active");saveQuietly();},240);
 }
 function townSchedule(){
  const night=worldClock>=21*60||worldClock<7*60;
@@ -508,18 +508,156 @@ function updateTownShop(){$("townShopStock").textContent="موجودی: نان "
 function consumeTownFood(type){if(!townStock[type]){showToast("از این خوراکی نداری!");return;}if(player.health>=player.maxHealth){showToast("جان تو کامله!");return;}townStock[type]--;player.health=Math.min(player.maxHealth,player.health+(type==="bread"?2:1));updateUI();updateTownShop();saveQuietly();showToast("خوراکی خوردی و جانت بیشتر شد ❤️");}
 function buyTownItem(type){const item={bread:{price:8,label:"نان"},seeds:{price:5,label:"بذر"},apple:{price:6,label:"سیب"}}[type];if(player.coins<item.price){showToast("سکه کافی نداری! 🪙");return;}player.coins-=item.price;townStock[type]++;updateUI();updateTownShop();saveQuietly();showToast(item.label+" خریدی! 🛍️");}
 function drawTown(){
- ctx.fillStyle="#c9ae79";ctx.fillRect(0,0,viewW,viewH);const t=48,sx=Math.floor(camera.x/t),sy=Math.floor(camera.y/t),ex=Math.ceil((camera.x+viewW)/t),ey=Math.ceil((camera.y+viewH)/t);
- for(let y=sy;y<=ey;y++)for(let x=sx;x<=ex;x++){ctx.fillStyle=((x+y)%2===0)?"#d5c08f":"#cbb581";ctx.fillRect(x*t-camera.x,y*t-camera.y,t+1,t+1);}
- ctx.fillStyle="#b49a70";ctx.fillRect(-camera.x,520-camera.y,TOWN.w,170);ctx.fillStyle="#d8c69a";ctx.fillRect(560-camera.x,430-camera.y,470,390);ctx.fillStyle="#b5a17b";ctx.fillRect(580-camera.x,450-camera.y,430,350);
- const fx=795-camera.x,fy=610-camera.y;ctx.fillStyle="#8c7659";ctx.beginPath();ctx.ellipse(fx,fy,80,48,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#62b8d0";ctx.beginPath();ctx.ellipse(fx,fy-5,67,37,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#e6dfc5";ctx.fillRect(fx-10,fy-42,20,32);ctx.fillStyle="#78d8e7";ctx.fillRect(fx-5,fy-62,10,25);
- drawTownBuilding(350,360,"خانه مینا و حنا","#a85c58");drawTownBuilding(500,360,"خانه ناهید","#bd8653");drawTownBuilding(1120,350,"خواربارفروشی","#b65c45");drawTownBuilding(1400,380,"نانوایی","#b97843");drawTownBuilding(180,380,"نگهبانی","#647d79");
- [[80,180],[260,850],[480,900],[1060,850],[1320,850],[1500,760],[900,260],[650,260]].forEach(a=>{const x=a[0]-camera.x,y=a[1]-camera.y;ctx.fillStyle="#765035";ctx.fillRect(x-7,y+4,14,28);ctx.fillStyle="#2c703d";ctx.fillRect(x-26,y-26,52,36);ctx.fillStyle="#45964b";ctx.fillRect(x-19,y-42,38,24);});
- [[650,840],[940,840],[300,700],[1260,700]].forEach(a=>{const x=a[0]-camera.x,y=a[1]-camera.y;ctx.fillStyle="#57412d";ctx.fillRect(x-22,y,44,7);ctx.fillRect(x-17,y+7,5,10);ctx.fillRect(x+12,y+7,5,10);});
- ctx.fillStyle="#fff0c2";ctx.font="bold 18px Tahoma";ctx.textAlign="center";ctx.fillText("شهر سبز",800-camera.x,120-camera.y);ctx.textAlign="start";
+  const w=TOWN.w,h=TOWN.h,tile=40;
+  ctx.fillStyle="#bca77b";ctx.fillRect(0,0,viewW,viewH);
+  const sx=Math.floor(camera.x/tile),sy=Math.floor(camera.y/tile),ex=Math.ceil((camera.x+viewW)/tile),ey=Math.ceil((camera.y+viewH)/tile);
+  for(let gy=sy;gy<=ey;gy++)for(let gx=sx;gx<=ex;gx++){
+    const n=(gx*31+gy*17+gx*gy*3)%11;
+    ctx.fillStyle=n<3?"#c7b487":n<7?"#d1bd91":"#cbb78b";
+    ctx.fillRect(gx*tile-camera.x,gy*tile-camera.y,tile+1,tile+1);
+    if(n===2||n===8){ctx.fillStyle="#b39d73";ctx.fillRect(gx*tile+8-camera.x,gy*tile+13-camera.y,3,2);ctx.fillRect(gx*tile+27-camera.x,gy*tile+30-camera.y,2,3);}
+  }
+  // A winding, worn stone road connects the gate to the square.
+  ctx.fillStyle="#a58c65";ctx.beginPath();ctx.moveTo(680-camera.x,1200-camera.y);ctx.lineTo(920-camera.x,1200-camera.y);ctx.lineTo(900-camera.x,810-camera.y);ctx.lineTo(880-camera.x,700-camera.y);ctx.lineTo(720-camera.x,700-camera.y);ctx.lineTo(700-camera.x,820-camera.y);ctx.closePath();ctx.fill();
+  for(let y=730;y<1190;y+=42)for(let x=710;x<900;x+=48){const xx=x-camera.x,yy=y-camera.y;ctx.fillStyle=((x+y)%3)?"#c8b58d":"#bca77f";ctx.fillRect(xx,yy,42,31);ctx.strokeStyle="#a58e69";ctx.lineWidth=1;ctx.strokeRect(xx,yy,42,31);}
+  // Main square, cobbles and decorative border.
+  ctx.fillStyle="#a98f68";ctx.fillRect(500-camera.x,380-camera.y,620,450);
+  ctx.fillStyle="#d1bd91";ctx.fillRect(514-camera.x,394-camera.y,592,422);
+  for(let y=405;y<810;y+=34)for(let x=525;x<1090;x+=44){ctx.fillStyle=((x/44+y/34|0)%2)?"#c7b487":"#d9c69a";ctx.fillRect(x-camera.x,y-camera.y,39,28);ctx.strokeStyle="#b5a078";ctx.lineWidth=1;ctx.strokeRect(x-camera.x,y-camera.y,39,28);}
+  // Small grass gardens around the town.
+  [[70,160,260,150],[1260,150,260,180],[90,850,300,260],[1200,880,300,220],[470,90,650,150]].forEach(g=>{ctx.fillStyle="#73965a";ctx.fillRect(g[0]-camera.x,g[1]-camera.y,g[2],g[3]);ctx.fillStyle="#8daf6b";for(let i=0;i<18;i++){const px=g[0]+(i*47)%g[2],py=g[1]+(i*31)%g[3];ctx.fillRect(px-camera.x,py-camera.y,8,5);}});
+  // Fountain with stone lip, water highlights and animated ripples.
+  const fx=810-camera.x,fy=590-camera.y,pulse=Math.sin(animTime*2.5);
+  ctx.fillStyle="#76634c";ctx.beginPath();ctx.ellipse(fx,fy+8,103,68,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#e1d2ad";ctx.beginPath();ctx.ellipse(fx,fy,96,62,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#5da9b2";ctx.beginPath();ctx.ellipse(fx,fy-3,82,49,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="#a6e2d8";ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(fx,fy-4,48+Math.sin(animTime*2)*5,25+Math.cos(animTime*2)*3,0,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle="#d9cba8";ctx.fillRect(fx-12,fy-46,24,34);ctx.fillStyle="#7f9d91";ctx.fillRect(fx-17,fy-51,34,8);
+  ctx.strokeStyle="#d9f7e9";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(fx,fy-50);ctx.quadraticCurveTo(fx-8,fy-70+pulse*3,fx,fy-82);ctx.quadraticCurveTo(fx+8,fy-70-pulse*3,fx,fy-50);ctx.stroke();
+  // Iranian-inspired low-rise homes and shops.
+  drawTownBuilding(340,350,"خانه مینا و حنا","#a65343","home");
+  drawTownBuilding(535,300,"خانه ناهید","#b77c4c","home");
+  drawTownBuilding(1160,345,"خواربارفروشی","#a84e3e","shop");
+  drawTownBuilding(1430,420,"نانوایی","#b86d3c","bakery");
+  drawTownBuilding(180,430,"اتاق نگهبانی","#637e78","guard");
+  drawTownBuilding(1260,760,"خانه قدیمی","#9a6550","home");
+  // Windowside flower pots, shrubs, street lamps, benches.
+  [[270,470],[420,470],[475,420],[620,390],[1070,430],[1250,480],[1360,510],[1510,800]].forEach((p,i)=>drawFlowerPot(p[0]-camera.x,p[1]-camera.y,i));
+  [[650,850],[1020,850],[280,740],[1320,670]].forEach(p=>drawBench(p[0]-camera.x,p[1]-camera.y));
+  [[560,760],[1080,760],[760,340],[980,350],[250,650],[1450,650]].forEach(p=>drawTownLamp(p[0]-camera.x,p[1]-camera.y));
+  [[100,260],[270,900],[450,920],[1080,930],[1500,900],[1500,230],[950,210],[650,180]].forEach((p,i)=>drawTownTree(p[0]-camera.x,p[1]-camera.y,i));
+  // Town entrance gate and readable exit marker at the southern edge.
+  const gx=800-camera.x,gy=1110-camera.y;
+  ctx.fillStyle="#5e4029";ctx.fillRect(gx-66,gy-92,12,108);ctx.fillRect(gx+54,gy-92,12,108);ctx.fillRect(gx-66,gy-92,132,12);
+  ctx.fillStyle="#9b673d";ctx.fillRect(gx-48,gy-78,96,55);ctx.strokeStyle="#e7c98d";ctx.lineWidth=3;ctx.strokeRect(gx-48,gy-78,96,55);
+  ctx.fillStyle="#fff0cb";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("جنگل",gx,gy-45);
+  ctx.fillStyle="#f5e7c6";ctx.font="bold 17px Tahoma";ctx.fillText("شهر سبز",800-camera.x,115-camera.y);
+  ctx.textAlign="start";
 }
-function drawTownBuilding(x,y,label,roof){const sx=x-camera.x,sy=y-camera.y;ctx.fillStyle="#6d5038";ctx.fillRect(sx-68,sy-4,136,92);ctx.fillStyle="#d9bd8a";ctx.fillRect(sx-62,sy,124,78);ctx.fillStyle=roof;ctx.beginPath();ctx.moveTo(sx-82,sy);ctx.lineTo(sx,sy-52);ctx.lineTo(sx+82,sy);ctx.closePath();ctx.fill();ctx.fillStyle="#70452e";ctx.fillRect(sx-15,sy+35,30,43);ctx.fillStyle="#8bc4ca";ctx.fillRect(sx-48,sy+22,22,22);ctx.fillRect(sx+27,sy+22,22,22);ctx.strokeStyle="#f0d8a5";ctx.lineWidth=3;ctx.strokeRect(sx-48,sy+22,22,22);ctx.strokeRect(sx+27,sy+22,22,22);ctx.fillStyle="#fff2d0";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText(label,sx,sy-61);ctx.textAlign="start";}
-function drawTownPeople(){townPeople.forEach(p=>{const x=p.x-camera.x,y=p.y-camera.y;if(x< -40||x>viewW+40||y< -50||y>viewH+50)return;const b=Math.sin(animTime*2.5+p.x*.01)*1.2;ctx.fillStyle="#5c4938";ctx.fillRect(x-9,y+8,7,10);ctx.fillRect(x+2,y+8,7,10);ctx.fillStyle=p.color;ctx.fillRect(x-12,y-8+b,24,20);ctx.fillStyle="#e9bd98";ctx.fillRect(x-9,y-25+b,18,17);ctx.fillStyle=p.hair;ctx.fillRect(x-10,y-29+b,20,8);ctx.fillRect(x-12,y-24+b,5,12);ctx.fillStyle="#28232a";ctx.fillRect(x-5,y-18+b,3,3);ctx.fillRect(x+3,y-18+b,3,3);if(p.id==="saeed"){ctx.fillStyle="#49352d";ctx.fillRect(x-5,y-10+b,10,4);}ctx.fillStyle="#fff5d9";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText(p.name,x,y-36+b);ctx.textAlign="start";if(Math.hypot(player.x-p.x,player.y-p.y)<115){ctx.fillStyle="#ffe58a";ctx.font="bold 16px Tahoma";ctx.textAlign="center";ctx.fillText("…",x,y-48+b);ctx.textAlign="start";}});}
-
+function drawTownTree(x,y,i){
+  ctx.fillStyle="#715039";ctx.fillRect(x-7,y-3,14,42);ctx.fillStyle="#244e34";ctx.beginPath();ctx.arc(x,y-16,34,0,Math.PI*2);ctx.fill();ctx.fillStyle=i%2?"#397747":"#46864b";ctx.beginPath();ctx.arc(x-5,y-26,27,0,Math.PI*2);ctx.fill();ctx.fillStyle="#72a95c";ctx.beginPath();ctx.arc(x-12,y-35,12,0,Math.PI*2);ctx.fill();ctx.fillStyle="#8bbd69";ctx.fillRect(x+7,y-25,6,5);
+}
+function drawFlowerPot(x,y,i){
+  ctx.fillStyle="#9c583e";ctx.fillRect(x-8,y-2,16,10);ctx.fillStyle="#c57b51";ctx.fillRect(x-10,y-5,20,4);
+  const colors=["#f0c36e","#df7890","#f5e6b4","#b9a0df"];ctx.fillStyle="#477d43";ctx.fillRect(x-2,y-14,3,12);ctx.fillRect(x+3,y-12,3,10);ctx.fillStyle=colors[i%colors.length];ctx.fillRect(x-5,y-18,7,7);ctx.fillRect(x+1,y-16,7,7);
+}
+function drawBench(x,y){
+  ctx.fillStyle="#61452f";ctx.fillRect(x-25,y-3,50,7);ctx.fillStyle="#a16b42";ctx.fillRect(x-25,y-12,50,9);ctx.fillRect(x-20,y+4,5,10);ctx.fillRect(x+15,y+4,5,10);
+}
+function drawTownLamp(x,y){
+  ctx.fillStyle="#4d493e";ctx.fillRect(x-3,y-32,6,42);ctx.fillStyle="#6d5941";ctx.fillRect(x-10,y-38,20,8);ctx.fillStyle="#ffe5a0";ctx.fillRect(x-6,y-35,12,11);ctx.fillStyle="#fff5cf";ctx.fillRect(x-3,y-32,6,5);
+  if(worldClock>=1080||worldClock<360){ctx.fillStyle="#ffe8a0";ctx.globalAlpha=.12;ctx.beginPath();ctx.arc(x,y-28,34,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
+}
+function drawTownBuilding(x,y,label,roof,kind){
+  const sx=x-camera.x,sy=y-camera.y;
+  // cast shadow and foundation
+  ctx.fillStyle="#746049";ctx.fillRect(sx-91,sy+6,182,112);
+  ctx.fillStyle="#d4c09a";ctx.fillRect(sx-86,sy-2,172,108);
+  ctx.fillStyle="#b98f68";ctx.fillRect(sx-86,sy+91,172,17);
+  // textured plaster wall
+  ctx.fillStyle=kind==="guard"?"#b5b59c":kind==="shop"?"#dfc18e":"#e5d0a8";ctx.fillRect(sx-80,sy+4,160,88);
+  ctx.fillStyle="#f0dfbd";ctx.fillRect(sx-74,sy+10,148,76);
+  for(let i=0;i<9;i++){ctx.fillStyle="#c8b38d";ctx.fillRect(sx-68+i*16,sy+16+(i%3)*17,4,2);}
+  // deep tiled roof with eaves
+  ctx.fillStyle="#704431";ctx.beginPath();ctx.moveTo(sx-98,sy+7);ctx.lineTo(sx,sy-62);ctx.lineTo(sx+98,sy+7);ctx.lineTo(sx+89,sy+16);ctx.lineTo(sx,sy-47);ctx.lineTo(sx-89,sy+16);ctx.closePath();ctx.fill();
+  ctx.fillStyle=roof;ctx.beginPath();ctx.moveTo(sx-92,sy+3);ctx.lineTo(sx,sy-57);ctx.lineTo(sx+92,sy+3);ctx.closePath();ctx.fill();
+  ctx.strokeStyle="#e3a16e";ctx.lineWidth=2;for(let row=0;row<4;row++){const yy=sy-37+row*11;ctx.beginPath();ctx.moveTo(sx-65+row*20,yy);ctx.lineTo(sx+65-row*20,yy);ctx.stroke();}
+  // wooden door with frame and handle
+  ctx.fillStyle="#75472f";ctx.fillRect(sx-17,sy+42,34,54);ctx.fillStyle="#9b6841";ctx.fillRect(sx-13,sy+46,26,48);ctx.fillStyle="#e7c98a";ctx.fillRect(sx+7,sy+68,3,4);
+  // blue glass windows, frames and crossbars
+  [-57,35].forEach(wx=>{ctx.fillStyle="#80583c";ctx.fillRect(sx+wx-15,sy+27,30,30);ctx.fillStyle="#80b8bb";ctx.fillRect(sx+wx-11,sy+31,22,22);ctx.fillStyle="#c7e2d7";ctx.fillRect(sx+wx-9,sy+33,7,7);ctx.fillStyle="#f1dfb5";ctx.fillRect(sx+wx-1,sy+31,3,22);ctx.fillRect(sx+wx-11,sy+41,22,3);});
+  // shop awning and signage
+  if(kind==="shop"||kind==="bakery"){
+    ctx.fillStyle=kind==="shop"?"#d85f4c":"#e6bd68";ctx.fillRect(sx-78,sy+4,156,17);
+    for(let i=0;i<8;i++){ctx.fillStyle=i%2?"#f3e2bd":"#fff1d0";ctx.fillRect(sx-78+i*19.5,sy+4,9,17);}
+    ctx.fillStyle="#744a32";ctx.fillRect(sx-54,sy-17,108,22);ctx.strokeStyle="#edce91";ctx.lineWidth=2;ctx.strokeRect(sx-54,sy-17,108,22);
+    ctx.fillStyle="#fff0cf";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText(label,sx,sy-2);ctx.textAlign="start";
+    if(kind==="bakery"){ctx.fillStyle="#d69a48";ctx.beginPath();ctx.arc(sx+55,sy+72,9,0,Math.PI*2);ctx.fill();ctx.fillStyle="#f4d28c";ctx.fillRect(sx+47,sy+70,17,4);}
+  }else{
+    ctx.fillStyle="#754b34";ctx.fillRect(sx-52,sy-17,104,21);ctx.strokeStyle="#e5c995";ctx.lineWidth=2;ctx.strokeRect(sx-52,sy-17,104,21);ctx.fillStyle="#fff0cf";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText(label,sx,sy-2);ctx.textAlign="start";
+  }
+  // small clay pots and step
+  ctx.fillStyle="#b96d4b";ctx.fillRect(sx-30,sy+94,12,10);ctx.fillRect(sx+20,sy+94,12,10);ctx.fillStyle="#4d884b";ctx.fillRect(sx-27,sy+87,6,9);ctx.fillRect(sx+23,sy+87,6,9);
+}
+function drawTownPeople(){
+  townPeople.forEach(p=>{
+    const x=p.x-camera.x,y=p.y-camera.y;
+    if(x< -65||x>viewW+65||y< -90||y>viewH+65)return;
+    const bob=playerMoving?Math.sin(animTime*9+p.x*.01)*1.5:Math.sin(animTime*2.2+p.x*.01)*.7;
+    const blink=(Math.floor(animTime*1.4+p.x*.03)%7===0);
+    // soft ground shadow
+    ctx.fillStyle="#54452f";ctx.globalAlpha=.24;ctx.beginPath();ctx.ellipse(x,y+2,20,6,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+    // legs, trousers and shoes
+    const leg=Math.sin(animTime*4+p.x*.02)*1.2;
+    ctx.fillStyle=p.id==="saeed"?"#303b48":"#55483e";ctx.fillRect(x-10,y+25+bob,8,15+leg);ctx.fillRect(x+2,y+25+bob,8,15-leg);
+    ctx.fillStyle="#3a3029";ctx.fillRect(x-12,y+38+bob,11,5);ctx.fillRect(x+2,y+38+bob,12,5);
+    if(p.id==="mina"){ctx.fillStyle="#30313d";ctx.fillRect(x-14,y+22+bob,28,9);}
+    if(p.id==="hana"){ctx.fillStyle="#b9b9b0";ctx.fillRect(x-13,y+23+bob,26,8);}
+    if(p.id==="nahid"||p.id==="rezaei"){ctx.fillStyle=p.id==="nahid"?"#633e45":"#4b6545";ctx.fillRect(x-14,y+20+bob,28,13);}
+    // torso and sleeves
+    const top=p.id==="mina"?"#d96c91":p.id==="hana"?"#367eae":p.id==="nahid"?"#8e4054":p.id==="saeed"?"#34485a":"#557b4b";
+    ctx.fillStyle=top;ctx.fillRect(x-14,y+1+bob,28,25);ctx.fillRect(x-19,y+5+bob,7,17);ctx.fillRect(x+12,y+5+bob,7,17);
+    ctx.fillStyle=p.id==="mina"?"#f2a2b8":p.id==="hana"?"#83c0d7":p.id==="nahid"?"#c47b89":p.id==="saeed"?"#62768a":"#91ad72";
+    ctx.fillRect(x-11,y+4+bob,22,3);
+    // collar, hands and accessories
+    ctx.fillStyle="#eac09b";ctx.fillRect(x-4,y-3+bob,8,7);ctx.fillRect(x-20,y+20+bob,6,6);ctx.fillRect(x+14,y+20+bob,6,6);
+    if(p.id==="mina"){ctx.fillStyle="#f4d68c";ctx.fillRect(x-2,y+9+bob,4,4);}
+    if(p.id==="hana"){ctx.fillStyle="#e4d7b2";ctx.fillRect(x-3,y+8+bob,6,3);}
+    if(p.id==="nahid"){ctx.fillStyle="#e6c37c";ctx.fillRect(x-3,y+9+bob,6,5);}
+    if(p.id==="saeed"){ctx.fillStyle="#d8d0b7";ctx.fillRect(x-9,y+8+bob,18,3);}
+    if(p.id==="rezaei"){ctx.fillStyle="#e6c47a";ctx.fillRect(x-7,y+12+bob,14,3);}
+    // face and ears
+    ctx.fillStyle="#d79b76";ctx.fillRect(x-11,y-29+bob,22,25);ctx.fillRect(x-14,y-21+bob,4,7);ctx.fillRect(x+10,y-21+bob,4,7);
+    ctx.fillStyle="#efc6a0";ctx.fillRect(x-8,y-27+bob,16,19);ctx.fillRect(x-7,y-9+bob,14,3);
+    // hair silhouette varies per resident
+    const hair=p.id==="mina"?"#60372f":p.id==="hana"?"#211f2b":p.id==="nahid"?"#58383a":p.id==="saeed"?"#28262a":"#594039";
+    ctx.fillStyle=hair;
+    if(p.id==="saeed"){
+      ctx.fillRect(x-13,y-34+bob,26,9);ctx.fillRect(x-14,y-30+bob,6,14);ctx.fillRect(x+8,y-30+bob,6,12);
+      ctx.fillRect(x-10,y-38+bob,7,6);ctx.fillRect(x-2,y-40+bob,9,7);ctx.fillRect(x+5,y-36+bob,7,5);
+    }else if(p.id==="nahid"||p.id==="rezaei"){
+      ctx.fillRect(x-13,y-34+bob,26,10);ctx.fillRect(x-14,y-29+bob,6,17);ctx.fillRect(x+8,y-29+bob,6,16);ctx.beginPath();ctx.arc(x+10,y-36+bob,8,0,Math.PI*2);ctx.fill();
+    }else{
+      ctx.fillRect(x-14,y-34+bob,28,10);ctx.fillRect(x-15,y-29+bob,6,23);ctx.fillRect(x+9,y-29+bob,7,23);
+      ctx.fillRect(x-13,y-38+bob,9,7);ctx.fillRect(x-4,y-40+bob,10,8);ctx.fillRect(x+5,y-37+bob,9,7);
+      if(p.id==="mina"){ctx.fillRect(x-17,y-18+bob,5,23);ctx.fillRect(x+12,y-15+bob,6,22);}
+      if(p.id==="hana"){ctx.fillRect(x-18,y-18+bob,6,29);ctx.fillRect(x+12,y-16+bob,7,30);}
+    }
+    // eyes, brows, nose and a subtle smile
+    if(!blink){ctx.fillStyle="#29252a";ctx.fillRect(x-7,y-19+bob,4,4);ctx.fillRect(x+3,y-19+bob,4,4);ctx.fillStyle="#fff4df";ctx.fillRect(x-6,y-19+bob,1,1);ctx.fillRect(x+4,y-19+bob,1,1);}
+    else{ctx.fillStyle="#65483d";ctx.fillRect(x-7,y-17+bob,4,1);ctx.fillRect(x+3,y-17+bob,4,1);}
+    ctx.fillStyle=hair;ctx.fillRect(x-8,y-23+bob,5,2);ctx.fillRect(x+3,y-23+bob,5,2);
+    ctx.fillStyle="#bd8067";ctx.fillRect(x,y-14+bob,2,3);
+    ctx.fillStyle="#9d4f55";ctx.fillRect(x-3,y-8+bob,6,2);
+    if(p.id==="saeed"){ctx.fillStyle="#49352f";ctx.fillRect(x-8,y-10+bob,16,5);ctx.fillRect(x-10,y-13+bob,4,4);ctx.fillRect(x+6,y-13+bob,4,4);}
+    if(p.id==="mina"||p.id==="hana"){ctx.fillStyle="#e5b5a1";ctx.fillRect(x-12,y-12+bob,3,3);ctx.fillRect(x+9,y-12+bob,3,3);}
+    if(p.id==="nahid"||p.id==="rezaei"){ctx.fillStyle="#d9b56f";ctx.fillRect(x-14,y-13+bob,3,4);ctx.fillRect(x+11,y-13+bob,3,4);}
+    // label and talk marker
+    ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#3d3429";ctx.strokeText(p.name,x,y-50+bob);ctx.fillStyle="#fff5d9";ctx.fillText(p.name,x,y-50+bob);
+    if(Math.hypot(player.x-p.x,player.y-p.y)<115){ctx.fillStyle="#ffe58a";ctx.font="bold 18px Tahoma";ctx.fillText("…",x,y-65+bob);}
+    ctx.textAlign="start";
+  });
+}
 function updateHomeUI() {
   const title = homeLevel === 0 ? "زمین خالی" : homeLevel === 1 ? "کلبه چوبی" : homeLevel === 2 ? "خانه بزرگ" : "خانه لوکس";
   $("homeStatus").textContent = title + " • سطح " + homeLevel + " | چوب: " + bag.wood + " • سنگ: " + bag.stone + " • سکه: " + player.coins;
