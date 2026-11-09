@@ -427,7 +427,7 @@ function buyUpgrade(type) {
 
 function update(dt) {
   worldClock = (worldClock + dt * 8) % 1440;
-  if(townMode)townSchedule();
+  if(townMode)townSchedule(dt);
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt);
   const activeEnemies = (caveMode || homeInterior || townMode) ? (caveMode ? caveEnemies : []) : enemies;
   for(const enemy of activeEnemies){
@@ -475,6 +475,8 @@ function update(dt) {
   $("caveBtn").hidden = townMode || homeInterior || (caveMode ? false : Math.hypot(player.x-2080,player.y-1450)>115);
   $("townBtn").hidden=townMode||caveMode||homeInterior||Math.hypot(player.x-2310,player.y-900)>115;
   $("townExitBtn").hidden=!townMode || Math.hypot(player.x-800,player.y-1110)>105;
+  $("townClock").hidden=!townMode;
+  if(townMode){const hh=Math.floor(worldClock/60),mm=Math.floor(worldClock%60),night=hh>=20||hh<7;$("townClock").textContent=(night?"🌙 ":"☀️ ")+String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");}
   const nearTownPerson=townMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
   $("townNpcBtn").hidden=!nearTownPerson;
   $("townNpcBtn").textContent=nearTownPerson?"💬 صحبت با "+nearTownPerson.name:"💬 صحبت با اهالی";
@@ -488,9 +490,16 @@ function transitionTown(enter){
  $("townFade").classList.add("active");
  setTimeout(()=>{if(enter){townReturn={x:player.x,y:player.y};townMode=true;caveMode=false;homeInterior=false;player.x=800;player.y=875;showToast("به شهر سبز خوش اومدی! 🏘️");}else{townMode=false;player.x=townReturn.x;player.y=townReturn.y;showToast("به جنگل برگشتی 🌲");}$("townFade").classList.remove("active");saveQuietly();},240);
 }
-function townSchedule(){
- const night=worldClock>=21*60||worldClock<7*60;
- townPeople.forEach(p=>{if(p.id==="saeed"){p.x=night?180:240;p.y=night?590:570;}if(p.id==="mina"){p.x=night?500:470;p.y=night?620:560;}if(p.id==="hana"){p.x=night?570:560;p.y=night?640:590;}if(p.id==="nahid"){p.x=night?430:420;p.y=night?680:650;}if(p.id==="rezaei"){p.x=1120;p.y=night?610:530;}});
+function townSchedule(dt=0){
+ const hour=worldClock/60,night=hour>=21||hour<7;
+ const plans={
+  mina: night?[470,500]:hour<12?[470,560]:hour<17?[690,540]:[950,670],
+  hana: night?[570,520]:hour<11?[620,480]:hour<16?[920,590]:[720,740],
+  nahid: night?[420,650]:hour<9?[420,650]:hour<18?[535,420]:[420,650],
+  saeed: night?[180,590]:hour<12?[240,570]:hour<17?[800,1060]:[240,570],
+  rezaei: night?[1120,610]:hour<20?[1120,530]:[1120,610]
+ };
+ townPeople.forEach(p=>{const target=plans[p.id];if(!target)return;const dx=target[0]-p.x,dy=target[1]-p.y,d=Math.hypot(dx,dy);if(d>2&&dt>0){const step=Math.min(d,48*dt);p.x+=dx/d*step;p.y+=dy/d*step;p.walking=true;}else p.walking=false;});
 }
 function openTownNpc(){
  const p=townPeople.find(q=>Math.hypot(player.x-q.x,player.y-q.y)<115);if(!p)return;
@@ -503,8 +512,8 @@ function nextTownDialogue(){
  const lines={mina:["از دیدنت خوشحال شدم. 💗","یه روز بیا با هم توی میدان قدم بزنیم!"],hana:["شهر رو بگرد، کلی جای قشنگ داره!","بعداً باز هم با هم حرف می‌زنیم."],nahid:["هر وقت خسته شدی، کمی استراحت کن.","خوشحالم که شهرمون رو دوست داری."],saeed:["مسیر جنگل از همون دروازه‌ایه که وارد شدی.","روز خوبی داشته باشی!"],rezaei:["اگه خرید داشتی، مغازه بازه؛ بفرما.","برای آشنایان قدیمی همیشه پیشنهاد خوب دارم."]};
  $("townNpcDialogue").textContent=lines[p.id][(townFriendship[p.id]||0)%lines[p.id].length];townFriendship[p.id]=Math.min(20,(townFriendship[p.id]||0)+1);$("townNpcHeart").textContent="💚 میزان آشنایی: "+townFriendship[p.id];saveQuietly();
 }
-function openTownShop(){if(worldClock>=21*60||worldClock<7*60){showToast("مغازه بسته است؛ صبح برگرد! 🌙");return;} $("townNpcPanel").hidden=true;$("townShopPanel").hidden=false;updateTownShop();syncXpPanel();}
-function updateTownShop(){$("townShopStock").textContent="موجودی: نان "+townStock.bread+" • بذر "+townStock.seeds+" • سیب "+townStock.apple+" | سکه: "+player.coins;$("buyBread").disabled=player.coins<8;$("buySeeds").disabled=player.coins<5;$("buyApple").disabled=player.coins<6;}
+function openTownShop(){const hour=worldClock/60;const open=hour>=8&&hour<20;if(!open){const h=Math.floor(hour),m=Math.floor((hour-h)*60);showToast("خواربارفروشی از ۸ صبح تا ۸ شب بازه؛ ساعت بازی "+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+" است. 🌙");return;} $("townNpcPanel").hidden=true;$("townShopPanel").hidden=false;$("townShopHours").textContent="ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰ • ساعت بازی: "+String(Math.floor(hour)).padStart(2,"0")+":"+String(Math.floor((hour%1)*60)).padStart(2,"0");updateTownShop();syncXpPanel();}
+function updateTownShop(){$("townShopHours").textContent="ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰ • ساعت بازی: "+String(Math.floor(worldClock/60)).padStart(2,"0")+":"+String(Math.floor(worldClock%60)).padStart(2,"0");$("townShopStock").textContent="موجودی: نان "+townStock.bread+" • بذر "+townStock.seeds+" • سیب "+townStock.apple+" | سکه: "+player.coins;$("buyBread").disabled=player.coins<8;$("buySeeds").disabled=player.coins<5;$("buyApple").disabled=player.coins<6;}
 function consumeTownFood(type){if(!townStock[type]){showToast("از این خوراکی نداری!");return;}if(player.health>=player.maxHealth){showToast("جان تو کامله!");return;}townStock[type]--;player.health=Math.min(player.maxHealth,player.health+(type==="bread"?2:1));updateUI();updateTownShop();saveQuietly();showToast("خوراکی خوردی و جانت بیشتر شد ❤️");}
 function buyTownItem(type){const item={bread:{price:8,label:"نان"},seeds:{price:5,label:"بذر"},apple:{price:6,label:"سیب"}}[type];if(player.coins<item.price){showToast("سکه کافی نداری! 🪙");return;}player.coins-=item.price;townStock[type]++;updateUI();updateTownShop();saveQuietly();showToast(item.label+" خریدی! 🛍️");}
 function drawTown(){
@@ -552,6 +561,10 @@ function drawTown(){
   ctx.fillStyle="#9b673d";ctx.fillRect(gx-48,gy-78,96,55);ctx.strokeStyle="#e7c98d";ctx.lineWidth=3;ctx.strokeRect(gx-48,gy-78,96,55);
   ctx.fillStyle="#fff0cb";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("جنگل",gx,gy-45);
   ctx.fillStyle="#f5e7c6";ctx.font="bold 17px Tahoma";ctx.fillText("شهر سبز",800-camera.x,115-camera.y);
+  const hour=worldClock/60;
+  if(hour>=20||hour<6){ctx.fillStyle="rgba(22,35,70,.34)";ctx.fillRect(0,0,viewW,viewH);}
+  else if(hour>=18){ctx.fillStyle="rgba(227,126,65,.14)";ctx.fillRect(0,0,viewW,viewH);}
+  else if(hour<8){ctx.fillStyle="rgba(255,203,133,.10)";ctx.fillRect(0,0,viewW,viewH);}
   ctx.textAlign="start";
 }
 function drawTownTree(x,y,i){
@@ -600,63 +613,57 @@ function drawTownBuilding(x,y,label,roof,kind){
   ctx.fillStyle="#b96d4b";ctx.fillRect(sx-30,sy+94,12,10);ctx.fillRect(sx+20,sy+94,12,10);ctx.fillStyle="#4d884b";ctx.fillRect(sx-27,sy+87,6,9);ctx.fillRect(sx+23,sy+87,6,9);
 }
 function drawTownPeople(){
-  townPeople.forEach(p=>{
-    const x=p.x-camera.x,y=p.y-camera.y;
-    if(x< -65||x>viewW+65||y< -90||y>viewH+65)return;
-    const bob=playerMoving?Math.sin(animTime*9+p.x*.01)*1.5:Math.sin(animTime*2.2+p.x*.01)*.7;
-    const blink=(Math.floor(animTime*1.4+p.x*.03)%7===0);
-    // soft ground shadow
-    ctx.fillStyle="#54452f";ctx.globalAlpha=.24;ctx.beginPath();ctx.ellipse(x,y+2,20,6,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
-    // legs, trousers and shoes
-    const leg=Math.sin(animTime*4+p.x*.02)*1.2;
-    ctx.fillStyle=p.id==="saeed"?"#303b48":"#55483e";ctx.fillRect(x-10,y+25+bob,8,15+leg);ctx.fillRect(x+2,y+25+bob,8,15-leg);
-    ctx.fillStyle="#3a3029";ctx.fillRect(x-12,y+38+bob,11,5);ctx.fillRect(x+2,y+38+bob,12,5);
-    if(p.id==="mina"){ctx.fillStyle="#30313d";ctx.fillRect(x-14,y+22+bob,28,9);}
-    if(p.id==="hana"){ctx.fillStyle="#b9b9b0";ctx.fillRect(x-13,y+23+bob,26,8);}
-    if(p.id==="nahid"||p.id==="rezaei"){ctx.fillStyle=p.id==="nahid"?"#633e45":"#4b6545";ctx.fillRect(x-14,y+20+bob,28,13);}
-    // torso and sleeves
-    const top=p.id==="mina"?"#d96c91":p.id==="hana"?"#367eae":p.id==="nahid"?"#8e4054":p.id==="saeed"?"#34485a":"#557b4b";
-    ctx.fillStyle=top;ctx.fillRect(x-14,y+1+bob,28,25);ctx.fillRect(x-19,y+5+bob,7,17);ctx.fillRect(x+12,y+5+bob,7,17);
-    ctx.fillStyle=p.id==="mina"?"#f2a2b8":p.id==="hana"?"#83c0d7":p.id==="nahid"?"#c47b89":p.id==="saeed"?"#62768a":"#91ad72";
-    ctx.fillRect(x-11,y+4+bob,22,3);
-    // collar, hands and accessories
-    ctx.fillStyle="#eac09b";ctx.fillRect(x-4,y-3+bob,8,7);ctx.fillRect(x-20,y+20+bob,6,6);ctx.fillRect(x+14,y+20+bob,6,6);
-    if(p.id==="mina"){ctx.fillStyle="#f4d68c";ctx.fillRect(x-2,y+9+bob,4,4);}
-    if(p.id==="hana"){ctx.fillStyle="#e4d7b2";ctx.fillRect(x-3,y+8+bob,6,3);}
-    if(p.id==="nahid"){ctx.fillStyle="#e6c37c";ctx.fillRect(x-3,y+9+bob,6,5);}
-    if(p.id==="saeed"){ctx.fillStyle="#d8d0b7";ctx.fillRect(x-9,y+8+bob,18,3);}
-    if(p.id==="rezaei"){ctx.fillStyle="#e6c47a";ctx.fillRect(x-7,y+12+bob,14,3);}
-    // face and ears
-    ctx.fillStyle="#d79b76";ctx.fillRect(x-11,y-29+bob,22,25);ctx.fillRect(x-14,y-21+bob,4,7);ctx.fillRect(x+10,y-21+bob,4,7);
-    ctx.fillStyle="#efc6a0";ctx.fillRect(x-8,y-27+bob,16,19);ctx.fillRect(x-7,y-9+bob,14,3);
-    // hair silhouette varies per resident
-    const hair=p.id==="mina"?"#60372f":p.id==="hana"?"#211f2b":p.id==="nahid"?"#58383a":p.id==="saeed"?"#28262a":"#594039";
-    ctx.fillStyle=hair;
-    if(p.id==="saeed"){
-      ctx.fillRect(x-13,y-34+bob,26,9);ctx.fillRect(x-14,y-30+bob,6,14);ctx.fillRect(x+8,y-30+bob,6,12);
-      ctx.fillRect(x-10,y-38+bob,7,6);ctx.fillRect(x-2,y-40+bob,9,7);ctx.fillRect(x+5,y-36+bob,7,5);
-    }else if(p.id==="nahid"||p.id==="rezaei"){
-      ctx.fillRect(x-13,y-34+bob,26,10);ctx.fillRect(x-14,y-29+bob,6,17);ctx.fillRect(x+8,y-29+bob,6,16);ctx.beginPath();ctx.arc(x+10,y-36+bob,8,0,Math.PI*2);ctx.fill();
-    }else{
-      ctx.fillRect(x-14,y-34+bob,28,10);ctx.fillRect(x-15,y-29+bob,6,23);ctx.fillRect(x+9,y-29+bob,7,23);
-      ctx.fillRect(x-13,y-38+bob,9,7);ctx.fillRect(x-4,y-40+bob,10,8);ctx.fillRect(x+5,y-37+bob,9,7);
-      if(p.id==="mina"){ctx.fillRect(x-17,y-18+bob,5,23);ctx.fillRect(x+12,y-15+bob,6,22);}
-      if(p.id==="hana"){ctx.fillRect(x-18,y-18+bob,6,29);ctx.fillRect(x+12,y-16+bob,7,30);}
-    }
-    // eyes, brows, nose and a subtle smile
-    if(!blink){ctx.fillStyle="#29252a";ctx.fillRect(x-7,y-19+bob,4,4);ctx.fillRect(x+3,y-19+bob,4,4);ctx.fillStyle="#fff4df";ctx.fillRect(x-6,y-19+bob,1,1);ctx.fillRect(x+4,y-19+bob,1,1);}
-    else{ctx.fillStyle="#65483d";ctx.fillRect(x-7,y-17+bob,4,1);ctx.fillRect(x+3,y-17+bob,4,1);}
-    ctx.fillStyle=hair;ctx.fillRect(x-8,y-23+bob,5,2);ctx.fillRect(x+3,y-23+bob,5,2);
-    ctx.fillStyle="#bd8067";ctx.fillRect(x,y-14+bob,2,3);
-    ctx.fillStyle="#9d4f55";ctx.fillRect(x-3,y-8+bob,6,2);
-    if(p.id==="saeed"){ctx.fillStyle="#49352f";ctx.fillRect(x-8,y-10+bob,16,5);ctx.fillRect(x-10,y-13+bob,4,4);ctx.fillRect(x+6,y-13+bob,4,4);}
-    if(p.id==="mina"||p.id==="hana"){ctx.fillStyle="#e5b5a1";ctx.fillRect(x-12,y-12+bob,3,3);ctx.fillRect(x+9,y-12+bob,3,3);}
-    if(p.id==="nahid"||p.id==="rezaei"){ctx.fillStyle="#d9b56f";ctx.fillRect(x-14,y-13+bob,3,4);ctx.fillRect(x+11,y-13+bob,3,4);}
-    // label and talk marker
-    ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#3d3429";ctx.strokeText(p.name,x,y-50+bob);ctx.fillStyle="#fff5d9";ctx.fillText(p.name,x,y-50+bob);
-    if(Math.hypot(player.x-p.x,player.y-p.y)<115){ctx.fillStyle="#ffe58a";ctx.font="bold 18px Tahoma";ctx.fillText("…",x,y-65+bob);}
-    ctx.textAlign="start";
-  });
+ townPeople.forEach(p=>{
+  const x=p.x-camera.x,y=p.y-camera.y;if(x< -80||x>viewW+80||y< -110||y>viewH+80)return;
+  const walking=!!p.walking,phase=animTime*10+(p.x*.013),step=walking?Math.sin(phase)*3:Math.sin(animTime*2+p.x*.01)*.5;
+  const blink=Math.floor(animTime*2.1+p.x*.017)%9===0;
+  const palettes={
+   mina:{hair:"#56342f",hair2:"#805044",top:"#dc7898",light:"#f3b3c6",bottom:"#394054",skin:"#e9b58f",accent:"#f2d38b"},
+   hana:{hair:"#292431",hair2:"#51404b",top:"#477fae",light:"#9cc7db",bottom:"#c6c2b7",skin:"#e7b18c",accent:"#eadbb6"},
+   nahid:{hair:"#604044",hair2:"#8c5d58",top:"#984d62",light:"#d28a94",bottom:"#57434a",skin:"#dca987",accent:"#e6c37c"},
+   saeed:{hair:"#29272a",hair2:"#514449",top:"#3b5368",light:"#8297a5",bottom:"#343b45",skin:"#d9a17e",accent:"#d8cbb0"},
+   rezaei:{hair:"#68483c",hair2:"#98705a",top:"#527d58",light:"#a9c18a",bottom:"#554a42",skin:"#dfae8d",accent:"#e7ca84"}
+  };const a=palettes[p.id]||palettes.rezaei;
+  // ground shadow and soft contact shade
+  ctx.fillStyle="#3d352a";ctx.globalAlpha=.22;ctx.beginPath();ctx.ellipse(x,y+3,19,6,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+  // shoes and legs with walking cycle
+  ctx.fillStyle="#493b34";ctx.fillRect(x-8,y+27+step,7,13);ctx.fillRect(x+2,y+27-step,7,13);
+  ctx.fillStyle="#292b32";ctx.fillRect(x-10,y+38+step,10,5);ctx.fillRect(x+1,y+38-step,11,5);
+  // clothing silhouette, coat seams and sleeves
+  ctx.fillStyle=a.bottom;ctx.fillRect(x-14,y+20,28,12);
+  ctx.fillStyle=a.top;ctx.beginPath();ctx.moveTo(x-12,y-2);ctx.lineTo(x+12,y-2);ctx.lineTo(x+16,y+23);ctx.lineTo(x+11,y+28);ctx.lineTo(x-11,y+28);ctx.lineTo(x-16,y+23);ctx.closePath();ctx.fill();
+  ctx.fillStyle=a.light;ctx.fillRect(x-11,y+2,22,3);ctx.fillRect(x-17,y+3,5,15);ctx.fillRect(x+12,y+3,5,15);
+  ctx.fillStyle="#f0c39e";ctx.fillRect(x-19,y+17,6,7);ctx.fillRect(x+13,y+17,6,7);
+  ctx.fillStyle=a.accent;ctx.fillRect(x-2,y+5,4,8);ctx.fillRect(x-1,y+14,2,5);
+  // neck and face with cheek shading
+  ctx.fillStyle=a.skin;ctx.fillRect(x-5,y-9,10,10);
+  ctx.fillStyle=a.skin;ctx.beginPath();ctx.roundRect(x-12,y-36,24,28,7);ctx.fill();
+  ctx.fillStyle="#d38f78";ctx.fillRect(x-12,y-22,3,6);ctx.fillRect(x+9,y-22,3,6);
+  ctx.fillStyle="#efc4a5";ctx.fillRect(x-8,y-31,16,14);
+  // hair cap, side locks and signature hairstyle
+  ctx.fillStyle=a.hair;ctx.beginPath();ctx.moveTo(x-13,y-24);ctx.quadraticCurveTo(x-17,y-43,x,y-43);ctx.quadraticCurveTo(x+17,y-43,x+13,y-23);ctx.lineTo(x+10,y-29);ctx.lineTo(x-10,y-29);ctx.closePath();ctx.fill();
+  ctx.fillStyle=a.hair2;ctx.fillRect(x-10,y-38,7,3);ctx.fillRect(x+2,y-40,7,3);
+  if(p.id==="mina"){ctx.fillStyle=a.hair;ctx.beginPath();ctx.moveTo(x-12,y-29);ctx.quadraticCurveTo(x-21,y-5,x-14,y+7);ctx.lineTo(x-9,y-8);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(x+10,y-29);ctx.quadraticCurveTo(x+21,y-4,x+15,y+8);ctx.lineTo(x+8,y-8);ctx.closePath();ctx.fill();}
+  if(p.id==="hana"){ctx.fillStyle=a.hair;ctx.beginPath();ctx.moveTo(x-12,y-28);ctx.quadraticCurveTo(x-20,y-4,x-16,y+15);ctx.lineTo(x-9,y+4);ctx.lineTo(x-8,y-12);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(x+12,y-28);ctx.quadraticCurveTo(x+20,y-4,x+16,y+15);ctx.lineTo(x+9,y+4);ctx.closePath();ctx.fill();}
+  if(p.id==="nahid"||p.id==="rezaei"){ctx.fillStyle=a.hair;ctx.beginPath();ctx.arc(x+9,y-38,8,0,Math.PI*2);ctx.fill();ctx.fillRect(x-13,y-31,5,16);ctx.fillRect(x+8,y-30,5,16);}
+  if(p.id==="saeed"){ctx.fillStyle=a.hair;ctx.fillRect(x-11,y-41,8,5);ctx.fillRect(x-2,y-43,9,6);ctx.fillRect(x+6,y-39,7,5);}
+  // eyes, brows, nose, smile and blush
+  if(!blink){ctx.fillStyle="#302a2b";ctx.fillRect(x-7,y-23,3,3);ctx.fillRect(x+4,y-23,3,3);ctx.fillStyle="#fff1dc";ctx.fillRect(x-6,y-23,1,1);ctx.fillRect(x+5,y-23,1,1);}else{ctx.fillStyle="#6b4c43";ctx.fillRect(x-7,y-22,3,1);ctx.fillRect(x+4,y-22,3,1);}
+  ctx.fillStyle=a.hair;ctx.fillRect(x-8,y-27,5,2);ctx.fillRect(x+3,y-27,5,2);
+  ctx.fillStyle="#c58a70";ctx.fillRect(x,y-20,2,3);
+  ctx.fillStyle="#a85e65";ctx.fillRect(x-3,y-13,6,2);
+  if(p.id==="saeed"){ctx.fillStyle="#684c40";ctx.fillRect(x-8,y-13,16,5);ctx.fillRect(x-10,y-16,4,4);ctx.fillRect(x+6,y-16,4,4);}
+  if(p.id==="mina"||p.id==="hana"){ctx.fillStyle="#eaa6a1";ctx.globalAlpha=.55;ctx.fillRect(x-10,y-17,4,3);ctx.fillRect(x+7,y-17,4,3);ctx.globalAlpha=1;}
+  if(p.id==="nahid"||p.id==="rezaei"){ctx.fillStyle=a.accent;ctx.fillRect(x-14,y-17,3,5);ctx.fillRect(x+11,y-17,3,5);}
+  // character-specific accessory
+  if(p.id==="mina"){ctx.fillStyle="#f5d28a";ctx.fillRect(x+9,y+4,4,4);}
+  if(p.id==="hana"){ctx.fillStyle="#d9e7ef";ctx.fillRect(x-2,y+5,4,3);}
+  if(p.id==="saeed"){ctx.fillStyle="#d8d2c2";ctx.fillRect(x-9,y+4,18,3);}
+  // grounded shadow-free nameplate
+  ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#43392f";ctx.strokeText(p.name,x,y-51);ctx.fillStyle="#fff7df";ctx.fillText(p.name,x,y-51);
+  if(Math.hypot(player.x-p.x,player.y-p.y)<115){ctx.fillStyle="#ffe9a0";ctx.font="bold 17px Tahoma";ctx.fillText("✦",x,y-65);}
+  ctx.textAlign="start";
+ });
 }
 function updateHomeUI() {
   const title = homeLevel === 0 ? "زمین خالی" : homeLevel === 1 ? "کلبه چوبی" : homeLevel === 2 ? "خانه بزرگ" : "خانه لوکس";
@@ -843,19 +850,23 @@ function drawForestNpc() {
   if (!npcQuest.claimed) { ctx.fillStyle="#ffe58a";ctx.font="bold 17px Tahoma";ctx.textAlign="center";ctx.fillText("!",x,y-53+bob); }
   ctx.fillStyle="#fff2c7";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText(forestNpc.name+" • "+forestNpc.role,x,y-38+bob);ctx.textAlign="start";
 }
-function drawPlayer() {
-  const x = player.x - camera.x, y = player.y - camera.y;
-  const step = playerMoving ? Math.sin(animTime * 13) * 3 : Math.sin(animTime * 2.2) * 0.8;
-  const legA = playerMoving ? step : 0, legB = -legA;
-  ctx.fillStyle = "#243c28";
-  ctx.fillRect(x - 9, y + 7 + legA, 7, 10);
-  ctx.fillRect(x + 2, y + 7 + legB, 7, 10);
-  ctx.fillStyle = "#3d75ad"; ctx.fillRect(x - 10, y - 5 + (playerMoving ? Math.abs(step)*0.25 : 0), 20, 19);
-  ctx.fillStyle = "#edbd8c"; ctx.fillRect(x - 8, y - 18, 16, 15);
-  ctx.fillStyle = "#553c2d"; ctx.fillRect(x - 9, y - 20, 18, 6);
-  ctx.fillStyle = "#17251d";
-  if(playerFacing === "left"){ctx.fillRect(x-6,y-12,3,3);} else if(playerFacing === "right"){ctx.fillRect(x+3,y-12,3,3);} else {ctx.fillRect(x-4,y-12,3,3);ctx.fillRect(x+3,y-12,3,3);}
-  if (attackFlash > 0) { ctx.strokeStyle = "#fff0a8"; ctx.lineWidth = 3; ctx.beginPath(); const a = playerFacing === "left" ? Math.PI : playerFacing === "up" ? -Math.PI/2 : playerFacing === "down" ? Math.PI/2 : 0; ctx.arc(x,y,34,a-0.75,a+0.75); ctx.stroke(); }
+function drawPlayer(){
+ const x=player.x-camera.x,y=player.y-camera.y;
+ const moving=playerMoving,phase=animTime*13,leg=moving?Math.sin(phase)*4:0,bob=moving?Math.abs(Math.sin(phase))*1.5:Math.sin(animTime*2.4)*.6;
+ // larger, detailed adventurer sprite with layered clothes and directional face
+ ctx.fillStyle="#263326";ctx.globalAlpha=.22;ctx.beginPath();ctx.ellipse(x,y+5,17,6,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+ ctx.fillStyle="#342d2a";ctx.fillRect(x-8,y+24+leg,7,13);ctx.fillRect(x+2,y+24-leg,7,13);
+ ctx.fillStyle="#242b35";ctx.fillRect(x-10,y+35+leg,10,5);ctx.fillRect(x+1,y+35-leg,11,5);
+ ctx.fillStyle="#263f65";ctx.beginPath();ctx.moveTo(x-12,y-4+bob);ctx.lineTo(x+12,y-4+bob);ctx.lineTo(x+15,y+23+bob);ctx.lineTo(x+9,y+28+bob);ctx.lineTo(x-10,y+28+bob);ctx.lineTo(x-15,y+22+bob);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#4f83bb";ctx.fillRect(x-10,y+1+bob,20,4);ctx.fillRect(x-16,y+2+bob,5,16);ctx.fillRect(x+11,y+2+bob,5,16);
+ ctx.fillStyle="#d9a078";ctx.fillRect(x-18,y+17+bob,6,7);ctx.fillRect(x+12,y+17+bob,6,7);
+ ctx.fillStyle="#e5b28d";ctx.fillRect(x-5,y-11+bob,10,10);ctx.beginPath();ctx.roundRect(x-11,y-38+bob,22,28,7);ctx.fill();
+ ctx.fillStyle="#634332";ctx.beginPath();ctx.moveTo(x-12,y-26+bob);ctx.quadraticCurveTo(x-15,y-45+bob,x,y-45+bob);ctx.quadraticCurveTo(x+15,y-44+bob,x+12,y-24+bob);ctx.lineTo(x+8,y-31+bob);ctx.lineTo(x-9,y-31+bob);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#7a563b";ctx.fillRect(x-8,y-40+bob,7,3);ctx.fillRect(x+2,y-41+bob,7,3);
+ ctx.fillStyle="#2a2524";if(playerFacing==="left")ctx.fillRect(x-7,y-25+bob,3,3);else if(playerFacing==="right")ctx.fillRect(x+4,y-25+bob,3,3);else{ctx.fillRect(x-7,y-25+bob,3,3);ctx.fillRect(x+4,y-25+bob,3,3);}
+ ctx.fillStyle="#a86c5a";ctx.fillRect(x-2,y-17+bob,4,2);
+ ctx.fillStyle="#d8c49a";ctx.fillRect(x-2,y+1+bob,4,11);ctx.fillStyle="#a9c5d0";ctx.fillRect(x-9,y+5+bob,5,3);
+ if(attackFlash>0){ctx.strokeStyle="#fff0a8";ctx.lineWidth=3;ctx.beginPath();const a=playerFacing==="left"?Math.PI:playerFacing==="up"?-Math.PI/2:playerFacing==="down"?Math.PI/2:0;ctx.arc(x,y,39,a-.75,a+.75);ctx.stroke();}
 }
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);

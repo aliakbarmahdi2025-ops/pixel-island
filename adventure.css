@@ -89,3 +89,10 @@ button:active{transform:translateY(2px)}
 #townExitBtn{bottom:118px;z-index:4;background:linear-gradient(180deg,#547c52,#315b3d);border:2px solid #c7d99c;color:#fff8dc;box-shadow:0 4px 0 #203d2c,0 5px 12px #17251d88;font-weight:800;letter-spacing:.1px}
 #townExitBtn:active{transform:translateX(-50%) translateY(3px);box-shadow:0 1px 0 #203d2c}
 #townNpcBtn{z-index:4}
+
+/* Stage 14 — clearer shop hours and polished dialogue/shop panels */
+#townShopHours{padding:9px 12px;border-radius:10px;background:#e9dfc4;color:#59452e;font-weight:800;text-align:center}
+#townShopPanel .upgrade-list button{min-height:46px;border-radius:12px}
+#townNpcPanel,#townShopPanel{border:2px solid #c9a879;box-shadow:0 12px 34px #17120d66}
+
+#townClock{position:fixed;top:calc(env(safe-area-inset-top,0px) + 72px);right:12px;z-index:5;padding:7px 12px;border:1px solid #e7d2a0;border-radius:12px;background:#263c30dd;color:#fff1c8;font:800 14px Tahoma;box-shadow:0 3px 10px #0005;pointer-events:none}
