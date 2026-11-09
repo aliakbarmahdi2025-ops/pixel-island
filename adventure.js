@@ -106,6 +106,7 @@ function toggleCave(){
 }
 
 function harvest() {
+  if(caveMode){const chest=caveChests.find(c=>!c.opened&&Math.hypot(player.x-c.x,player.y-c.y)<76);if(chest){chest.opened=true;player.coins+=15;player.xp+=25;bag.crystal=(bag.crystal||0)+1;if(player.xp>=player.level*50){player.xp-=player.level*50;player.level++;}updateUI();saveQuietly();showToast("صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
   let nearest = null, best = 76;
   for (const r of activeNodes()) {
     const d = Math.hypot(player.x - r.x, player.y - r.y);
