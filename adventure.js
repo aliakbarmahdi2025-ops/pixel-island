@@ -8,7 +8,7 @@ const SAVE_KEY = "pixelIsland_adventure_save_v1";
 let viewW = innerWidth, viewH = innerHeight, dpr = 1;
 const camera = { x: 0, y: 0 };
 const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, maxHealth: 5, level: 1, xp: 0, skillPoints: 0, attackPower: 1, coins: 0 };
-const bag = { wood: 0, stone: 0, iron: 0, crystal: 0 };
+const bag = { wood: 0, stone: 0, iron: 0, crystal: 0, potion: 0 };
 let harvested = new Set(), caveHarvested = new Set();
 let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
 let caveResources = [], caveChests = [];
@@ -97,16 +97,18 @@ function updateUI() {
   $("stone").textContent = bag.stone;
   $("iron").textContent = bag.iron;
   $("crystal").textContent = bag.crystal || 0;
+  $("potion").textContent = bag.potion || 0;
   $("xpText").textContent = player.xp + " / " + xpNeeded() + " XP";
   $("xpFill").style.width = Math.min(100, player.xp / xpNeeded() * 100) + "%";
   updateUpgradeUI();
+  if ($("craftPanel")) updateCraftUI();
 }
 load();
 makeWorld();
 makeCave();
 function makeEnemies() {
   const spots = [[1450,900],[900,650],[1580,1120],[760,1120],[1740,760],[1120,1320],[620,820]];
-  enemies = spots.map((p,i)=>({id:"slime-"+i,x:p[0],y:p[1],hp:3,max:3,alive:true}));
+  enemies = spots.map((p,i)=>({id:"slime-"+i,x:p[0],y:p[1],spawnX:p[0],spawnY:p[1],hp:3,max:3,alive:true,respawnTimer:0}));
 }
 makeEnemies();
 function makeCave(){
@@ -155,7 +157,7 @@ function attack() {
   if (!target) { showToast("برای حمله به موجود نزدیک‌تر شو"); return; }
   target.hp -= player.attackPower;
   if (target.hp <= 0) {
-    target.alive=false; player.coins+=5; const leveled=addXP(15);
+    target.alive=false; target.respawnTimer=12; player.coins+=5; const leveled=addXP(15);
     updateUI(); saveQuietly(); showToast(leveled?"موجود شکست خورد! سطح جدید و یک امتیاز مهارت ⭐":"موجود جنگلی شکست خورد! +۵ سکه و ۱۵ تجربه ⭐");
   } else showToast("ضربه زدی! ❤️ جان دشمن: "+target.hp);
 }
@@ -205,12 +207,43 @@ $("saveBtn").addEventListener("click", save);
 $("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); });
 $("closeBag").addEventListener("click", () => $("inventory").hidden = true);
 $("caveBtn").addEventListener("click",toggleCave);
+$("craftBtn").addEventListener("click", () => { $("craftPanel").hidden = false; updateCraftUI(); });
+$("closeCraft").addEventListener("click", () => { $("craftPanel").hidden = true; });
+$("craftSword").addEventListener("click", () => craft("sword"));
+$("craftBoots").addEventListener("click", () => craft("boots"));
+$("craftPotion").addEventListener("click", () => craft("potion"));
+$("usePotion").addEventListener("click", usePotion);
 $("upgradeBtn").addEventListener("click", () => { $("upgradePanel").hidden = false; updateUpgradeUI(); });
 $("closeUpgrades").addEventListener("click", () => { $("upgradePanel").hidden = true; });
 $("upgradeHealth").addEventListener("click", () => buyUpgrade("health"));
 $("upgradeSpeed").addEventListener("click", () => buyUpgrade("speed"));
 $("upgradeAttack").addEventListener("click", () => buyUpgrade("attack"));
 
+function updateCraftUI() {
+  $("craftSword").disabled = player.attackPower >= 5 || bag.iron < 5 || bag.wood < 3;
+  $("craftBoots").disabled = player.speed >= 320 || bag.iron < 4 || bag.wood < 6;
+  $("craftPotion").disabled = bag.crystal < 2 || bag.iron < 1;
+  $("craftSword").textContent = player.attackPower >= 5 ? "⚔️ شمشیر فولادی (حداکثر)" : "⚔️ شمشیر فولادی — ۵ آهن + ۳ چوب";
+  $("craftBoots").textContent = player.speed >= 320 ? "👟 چکمه تندرو (حداکثر)" : "👟 چکمه تندرو — ۴ آهن + ۶ چوب";
+  $("craftPotion").textContent = "🧪 معجون سلامتی — ۲ کریستال + ۱ آهن";
+  $("usePotion").disabled = (bag.potion || 0) < 1 || player.health >= player.maxHealth;
+  $("usePotion").textContent = "نوشیدن معجون (" + (bag.potion || 0) + ")";
+}
+function craft(type) {
+  if (type === "sword" && player.attackPower < 5 && bag.iron >= 5 && bag.wood >= 3) {
+    bag.iron -= 5; bag.wood -= 3; player.attackPower++;
+  } else if (type === "boots" && player.speed < 320 && bag.iron >= 4 && bag.wood >= 6) {
+    bag.iron -= 4; bag.wood -= 6; player.speed = Math.min(320, player.speed + 20);
+  } else if (type === "potion" && bag.crystal >= 2 && bag.iron >= 1) {
+    bag.crystal -= 2; bag.iron -= 1; bag.potion = (bag.potion || 0) + 1;
+  } else { showToast("مواد کافی نداری یا این وسیله به حداکثر رسیده"); return; }
+  updateUI(); updateCraftUI(); saveQuietly(); showToast("ساخت وسیله با موفقیت انجام شد! 🛠️");
+}
+function usePotion() {
+  if (!(bag.potion > 0) || player.health >= player.maxHealth) { showToast("معجون نداری یا جانت پر است"); return; }
+  bag.potion--; player.health = Math.min(player.maxHealth, player.health + 3);
+  updateUI(); updateCraftUI(); saveQuietly(); showToast("معجون استفاده شد؛ جانت بازیابی شد 🧪");
+}
 function updateUpgradeUI() {
   const points = player.skillPoints || 0;
   $("skillPoints").textContent = points;
@@ -235,7 +268,14 @@ function buyUpgrade(type) {
 function update(dt) {
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt);
   if(!caveMode) for(const enemy of enemies){
-    if(!enemy.alive)continue;
+    if(!enemy.alive){
+      enemy.respawnTimer = Math.max(0, enemy.respawnTimer - dt);
+      if(enemy.respawnTimer <= 0){
+        enemy.alive = true; enemy.hp = enemy.max;
+        enemy.x = enemy.spawnX; enemy.y = enemy.spawnY;
+      }
+      continue;
+    }
     const ex=player.x-enemy.x,ey=player.y-enemy.y,distance=Math.hypot(ex,ey)||1;
     if(distance<300&&distance>30){enemy.x+=ex/distance*72*dt;enemy.y+=ey/distance*72*dt;}
     else if(distance<=30&&damageCooldown<=0){
