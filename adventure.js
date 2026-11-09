@@ -11,6 +11,8 @@ const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, level: 1, xp:
 const bag = { wood: 0, stone: 0, iron: 0 };
 let harvested = new Set();
 let resources = [];
+let enemies = [];
+let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
 let move = { x: 0, y: 0 };
 let toastTimer = 0;
 let lastTime = 0;
@@ -78,6 +80,11 @@ function updateUI() {
 }
 load();
 makeWorld();
+function makeEnemies() {
+  const spots = [[1450,900],[900,650],[1580,1120],[760,1120],[1740,760],[1120,1320],[620,820]];
+  enemies = spots.map((p,i)=>({id:"slime-"+i,x:p[0],y:p[1],hp:3,max:3,alive:true}));
+}
+makeEnemies();
 function activeNodes() { return resources.filter(r => !harvested.has(r.id)); }
 
 function harvest() {
@@ -107,6 +114,20 @@ function harvest() {
     showToast("در حال جمع‌آوری...");
   }
 }
+function attack() {
+  if (attackCooldown > 0) return;
+  attackCooldown = 0.32; attackFlash = 0.18;
+  let target = null, best = 104;
+  for (const e of enemies) { if (!e.alive) continue; const d=Math.hypot(player.x-e.x,player.y-e.y); if(d<best){best=d;target=e;} }
+  if (!target) { showToast("برای حمله به موجود نزدیک‌تر شو"); return; }
+  target.hp--;
+  if (target.hp <= 0) {
+    target.alive=false; player.coins+=5; player.xp+=15;
+    if(player.xp>=player.level*50){player.xp-=player.level*50;player.level++;}
+    updateUI(); saveQuietly(); showToast("موجود جنگلی شکست خورد! +۵ سکه و ۱۵ تجربه ⭐");
+  } else showToast("ضربه زدی! ❤️ جان دشمن: "+target.hp);
+}
+
 function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
@@ -147,11 +168,23 @@ function releaseJoy(e) {
 joy.addEventListener("pointerup", releaseJoy);
 joy.addEventListener("pointercancel", releaseJoy);
 $("actionBtn").addEventListener("pointerdown", e => { e.preventDefault(); harvest(); });
+$("attackBtn").addEventListener("pointerdown", e => { e.preventDefault(); attack(); });
 $("saveBtn").addEventListener("click", save);
 $("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); });
 $("closeBag").addEventListener("click", () => $("inventory").hidden = true);
 
 function update(dt) {
+  attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt);
+  for(const enemy of enemies){
+    if(!enemy.alive)continue;
+    const ex=player.x-enemy.x,ey=player.y-enemy.y,distance=Math.hypot(ex,ey)||1;
+    if(distance<300&&distance>30){enemy.x+=ex/distance*72*dt;enemy.y+=ey/distance*72*dt;}
+    else if(distance<=30&&damageCooldown<=0){
+      player.health=Math.max(0,player.health-1);damageCooldown=1;updateUI();saveQuietly();
+      if(player.health<=0){player.health=5;player.x=1200;player.y=900;showToast("انرژیت تمام شد؛ به جنگل برگشتی و جانت بازیابی شد");updateUI();}
+      else showToast("موجود بهت ضربه زد! ❤️");
+    }
+  }
   let dx = move.x, dy = move.y;
   if (keys.has("a") || keys.has("arrowleft")) dx -= 1;
   if (keys.has("d") || keys.has("arrowright")) dx += 1;
@@ -201,6 +234,15 @@ function drawIron(r) {
   ctx.fillStyle = "#d18a54"; ctx.fillRect(x - 5, y - 5, 8, 7);
   ctx.fillRect(x + 5, y + 3, 5, 5);
 }
+function drawSlime(e) {
+  const x=e.x-camera.x,y=e.y-camera.y;
+  ctx.fillStyle="#173d2b";ctx.fillRect(x-18,y+8,36,7);
+  ctx.fillStyle="#6dbb59";ctx.fillRect(x-17,y-8,34,17);ctx.fillRect(x-11,y-15,22,9);
+  ctx.fillStyle="#a4df72";ctx.fillRect(x-9,y-12,7,4);
+  ctx.fillStyle="#17301f";ctx.fillRect(x-8,y-3,4,5);ctx.fillRect(x+5,y-3,4,5);
+  ctx.fillStyle="#203b29";ctx.fillRect(x-18,y-25,36,5);
+  ctx.fillStyle="#e8d36b";ctx.fillRect(x-18,y-25,36*(e.hp/e.max),5);
+}
 function drawPlayer() {
   const x = player.x - camera.x, y = player.y - camera.y;
   ctx.fillStyle = "#243c28"; ctx.fillRect(x - 11, y + 7, 22, 9);
@@ -218,7 +260,9 @@ function draw() {
     else if (r.type === "stone") drawRock(r);
     else drawIron(r);
   }
+  for(const e of enemies){if(!e.alive)continue;if(e.x<camera.x-50||e.x>camera.x+viewW+50||e.y<camera.y-50||e.y>camera.y+viewH+50)continue;drawSlime(e);}
   drawPlayer();
+  if(attackFlash>0){const px=player.x-camera.x,py=player.y-camera.y;ctx.strokeStyle="#fff0a8";ctx.lineWidth=4;ctx.beginPath();ctx.arc(px,py,43,-0.8,0.8);ctx.stroke();}
   ctx.strokeStyle = "#d6f0a8"; ctx.lineWidth = 3;
   ctx.strokeRect(2 - camera.x, 2 - camera.y, WORLD.w - 4, WORLD.h - 4);
 }
