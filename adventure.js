@@ -9,7 +9,9 @@ let viewW = innerWidth, viewH = innerHeight, dpr = 1;
 const camera = { x: 0, y: 0 };
 const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, level: 1, xp: 0, coins: 0 };
 const bag = { wood: 0, stone: 0, iron: 0 };
-let harvested = new Set();
+let harvested = new Set(), caveHarvested = new Set();
+let caveMode = false, caveReturn = {x:1200,y:900};
+let caveResources = [], caveChests = [];
 let resources = [];
 let enemies = [];
 let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
@@ -53,13 +55,15 @@ function load() {
     if (data.player) Object.assign(player, data.player);
     if (data.bag) Object.assign(bag, data.bag);
     if (Array.isArray(data.harvested)) harvested = new Set(data.harvested);
+    if (Array.isArray(data.caveHarvested)) caveHarvested = new Set(data.caveHarvested);
+    caveMode = !!data.caveMode; if(data.caveReturn)caveReturn=data.caveReturn;
   } catch (e) { console.warn("Save could not be loaded", e); }
 }
 function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, level: player.level, xp: player.xp, coins: player.coins },
-      bag, harvested: [...harvested]
+      bag, harvested: [...harvested], caveHarvested:[...caveHarvested], caveMode, caveReturn
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -77,15 +81,29 @@ function updateUI() {
   $("wood").textContent = bag.wood;
   $("stone").textContent = bag.stone;
   $("iron").textContent = bag.iron;
+  $("crystal").textContent = bag.crystal || 0;
 }
 load();
 makeWorld();
+makeCave();
 function makeEnemies() {
   const spots = [[1450,900],[900,650],[1580,1120],[760,1120],[1740,760],[1120,1320],[620,820]];
   enemies = spots.map((p,i)=>({id:"slime-"+i,x:p[0],y:p[1],hp:3,max:3,alive:true}));
 }
 makeEnemies();
-function activeNodes() { return resources.filter(r => !harvested.has(r.id)); }
+function makeCave(){
+ caveResources=[
+ {id:"cs1",x:250,y:250,type:"stone",hp:4,max:4},{id:"cs2",x:900,y:250,type:"stone",hp:4,max:4},
+ {id:"ci1",x:420,y:450,type:"iron",hp:5,max:5},{id:"ci2",x:970,y:650,type:"iron",hp:5,max:5},
+ {id:"cc1",x:760,y:360,type:"crystal",hp:4,max:4},{id:"cc2",x:300,y:680,type:"crystal",hp:4,max:4}];
+ caveChests=[{x:590,y:230,opened:false},{x:1030,y:420,opened:false}];
+}
+function activeNodes(){return caveMode?caveResources.filter(r=>!caveHarvested.has(r.id)):resources.filter(r=>!harvested.has(r.id));}
+function toggleCave(){
+ if(!caveMode){caveReturn={x:player.x,y:player.y};caveMode=true;player.x=600;player.y=790;showToast("وارد غار جنگلی شدی 🕯️");}
+ else{caveMode=false;player.x=caveReturn.x;player.y=caveReturn.y;showToast("به جنگل برگشتی 🌲");}
+ saveQuietly();
+}
 
 function harvest() {
   let nearest = null, best = 76;
@@ -100,13 +118,14 @@ function harvest() {
     if (nearest.type === "tree") bag.wood += 3;
     if (nearest.type === "stone") bag.stone += 2;
     if (nearest.type === "iron") bag.iron += 1;
+    if (nearest.type === "crystal") bag.crystal = (bag.crystal||0)+1;
     player.xp += 10;
     if (player.xp >= player.level * 50) {
       player.xp -= player.level * 50;
       player.level++;
       showToast("سطح جدید! ⭐ سطح " + player.level);
     } else {
-      showToast(nearest.type === "tree" ? "۳ چوب جمع کردی 🪵" : nearest.type === "stone" ? "۲ سنگ جمع کردی 🪨" : "۱ آهن جمع کردی ⛏️");
+      showToast(nearest.type === "tree" ? "۳ چوب جمع کردی 🪵" : nearest.type === "stone" ? "۲ سنگ جمع کردی 🪨" : nearest.type === "iron" ? "۱ آهن جمع کردی ⛏️" : "۱ کریستال جمع کردی 💎");
     }
     updateUI();
     saveQuietly();
@@ -172,10 +191,11 @@ $("attackBtn").addEventListener("pointerdown", e => { e.preventDefault(); attack
 $("saveBtn").addEventListener("click", save);
 $("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); });
 $("closeBag").addEventListener("click", () => $("inventory").hidden = true);
+$("caveBtn").addEventListener("click",toggleCave);
 
 function update(dt) {
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt);
-  for(const enemy of enemies){
+  if(!caveMode) for(const enemy of enemies){
     if(!enemy.alive)continue;
     const ex=player.x-enemy.x,ey=player.y-enemy.y,distance=Math.hypot(ex,ey)||1;
     if(distance<300&&distance>30){enemy.x+=ex/distance*72*dt;enemy.y+=ey/distance*72*dt;}
@@ -195,11 +215,21 @@ function update(dt) {
     player.x += dx / len * player.speed * dt;
     player.y += dy / len * player.speed * dt;
   }
-  player.x = Math.max(24, Math.min(WORLD.w - 24, player.x));
-  player.y = Math.max(24, Math.min(WORLD.h - 24, player.y));
-  camera.x = Math.max(0, Math.min(WORLD.w - viewW, player.x - viewW / 2));
-  camera.y = Math.max(0, Math.min(WORLD.h - viewH, player.y - viewH / 2));
+  const mw=caveMode?1200:WORLD.w,mh=caveMode?900:WORLD.h;
+  player.x=Math.max(caveMode?55:24,Math.min(mw-(caveMode?55:24),player.x));
+  player.y=Math.max(caveMode?55:24,Math.min(mh-(caveMode?55:24),player.y));
+  camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
+  camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
+  $("caveBtn").hidden=caveMode?false:Math.hypot(player.x-2080,player.y-1450)>115;
+  $("caveBtn").textContent=caveMode?"🚪 خروج از غار":"🕳️ ورود به غار";
 }
+function drawCaveGround(){
+ const t=WORLD.tile,sx=Math.floor(camera.x/t),sy=Math.floor(camera.y/t),ex=Math.ceil((camera.x+viewW)/t),ey=Math.ceil((camera.y+viewH)/t);
+ for(let y=sy;y<=ey;y++)for(let x=sx;x<=ex;x++){ctx.fillStyle=((x*13+y*19)%4===0)?"#292c30":"#35383b";ctx.fillRect(x*t-camera.x,y*t-camera.y,t+1,t+1);}
+ ctx.fillStyle="#17191b";ctx.fillRect(-camera.x,-camera.y,1200,44);ctx.fillRect(-camera.x,856-camera.y,1200,44);ctx.fillRect(-camera.x,-camera.y,44,900);ctx.fillRect(1156-camera.x,-camera.y,44,900);
+ ctx.fillStyle="#e0c58a";ctx.font="bold 15px Tahoma";ctx.fillText("غار جنگلی",520-camera.x,90-camera.y);
+}
+function drawCaveObjects(){for(const c of caveChests){let x=c.x-camera.x,y=c.y-camera.y;ctx.fillStyle=c.opened?"#59452d":"#a66a32";ctx.fillRect(x-17,y-12,34,24);ctx.fillStyle=c.opened?"#76634b":"#e5b75b";ctx.fillRect(x-17,y-12,34,7);}}
 function drawGround() {
   const t = WORLD.tile;
   const sx = Math.floor(camera.x / t), sy = Math.floor(camera.y / t);
@@ -253,18 +283,20 @@ function drawPlayer() {
 }
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
-  drawGround();
+  if(caveMode){drawCaveGround();drawCaveObjects();}else drawGround();
   for (const r of activeNodes()) {
     if (r.x < camera.x - 60 || r.x > camera.x + viewW + 60 || r.y < camera.y - 60 || r.y > camera.y + viewH + 60) continue;
     if (r.type === "tree") drawTree(r);
     else if (r.type === "stone") drawRock(r);
+    else if(r.type==="crystal"){drawRock(r);let cx=r.x-camera.x,cy=r.y-camera.y;ctx.fillStyle="#73e5df";ctx.fillRect(cx-5,cy-22,10,20);ctx.fillRect(cx-10,cy-12,6,10);ctx.fillRect(cx+5,cy-10,6,8);}
     else drawIron(r);
   }
-  for(const e of enemies){if(!e.alive)continue;if(e.x<camera.x-50||e.x>camera.x+viewW+50||e.y<camera.y-50||e.y>camera.y+viewH+50)continue;drawSlime(e);}
+  if(!caveMode) for(const e of enemies){if(!e.alive)continue;if(e.x<camera.x-50||e.x>camera.x+viewW+50||e.y<camera.y-50||e.y>camera.y+viewH+50)continue;drawSlime(e);}
   drawPlayer();
   if(attackFlash>0){const px=player.x-camera.x,py=player.y-camera.y;ctx.strokeStyle="#fff0a8";ctx.lineWidth=4;ctx.beginPath();ctx.arc(px,py,43,-0.8,0.8);ctx.stroke();}
   ctx.strokeStyle = "#d6f0a8"; ctx.lineWidth = 3;
-  ctx.strokeRect(2 - camera.x, 2 - camera.y, WORLD.w - 4, WORLD.h - 4);
+  ctx.strokeRect(2-camera.x,2-camera.y,(caveMode?1200:WORLD.w)-4,(caveMode?900:WORLD.h)-4);
+  if(!caveMode){let x=2080-camera.x,y=1450-camera.y;ctx.fillStyle='#151719';ctx.beginPath();ctx.ellipse(x,y,42,27,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#a9bd8d';ctx.lineWidth=4;ctx.stroke();ctx.fillStyle='#fff';ctx.font='12px Tahoma';ctx.fillText('غار',x-12,y-36);}
 }
 function loop(time) {
   const dt = Math.min((time - lastTime) / 1000 || 0, 0.04);
