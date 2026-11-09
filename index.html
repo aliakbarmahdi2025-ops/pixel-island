@@ -60,6 +60,66 @@
     <canvas id="gameCanvas"></canvas>
 
     <script>
+        // --- Web Audio API Synth ---
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioCtx();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'hit') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.08);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'collect') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.12);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+                osc.start(now);
+                osc.stop(now + 0.12);
+            } else if (type === 'buy') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.setValueAtTime(500, now + 0.08);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            } else if (type === 'levelup') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(261.63, now);
+                osc.frequency.setValueAtTime(329.63, now + 0.1);
+                osc.frequency.setValueAtTime(392.00, now + 0.2);
+                osc.frequency.setValueAtTime(523.25, now + 0.3);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.45);
+                osc.start(now);
+                osc.stop(now + 0.45);
+            }
+        }
+
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -70,7 +130,7 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        let currentIsland = 'forest'; // 'forest' یا 'volcano'
+        let currentIsland = 'forest';
 
         const player = {
             x: canvas.width / 2,
@@ -89,7 +149,6 @@
         const workers = [];
         let workerCost = 150;
 
-        // منابع جزیره اول (جنگل)
         const forestResources = [
             { x: 80, y: 120, type: 'tree', hp: 5, maxHp: 5, coins: 10, xp: 15, size: 36 },
             { x: 250, y: 220, type: 'tree', hp: 5, maxHp: 5, coins: 10, xp: 15, size: 36 },
@@ -97,7 +156,6 @@
             { x: 300, y: 450, type: 'gold', hp: 25, maxHp: 25, coins: 100, xp: 80, size: 28 }
         ];
 
-        // منابع جزیره دوم (آتشفشانی - گران‌تر و سخت‌تر)
         const volcanoResources = [
             { x: 100, y: 150, type: 'crystal', hp: 20, maxHp: 20, coins: 80, xp: 60, size: 34 },
             { x: 280, y: 250, type: 'crystal', hp: 20, maxHp: 20, coins: 80, xp: 60, size: 34 },
@@ -110,6 +168,7 @@
         let touchY = null;
 
         canvas.addEventListener('touchstart', (e) => {
+            initAudio();
             if (e.target.tagName !== 'BUTTON') {
                 touchX = e.touches[0].clientX;
                 touchY = e.touches[0].clientY;
@@ -129,6 +188,8 @@
         });
 
         function switchIsland() {
+            initAudio();
+            playSound('buy');
             if (currentIsland === 'forest') {
                 currentIsland = 'volcano';
                 activeResources = volcanoResources;
@@ -145,6 +206,7 @@
         }
 
         function toggleShop() {
+            initAudio();
             const menu = document.getElementById('shopMenu');
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
             updateUI();
@@ -153,12 +215,14 @@
         document.getElementById('shopBtn').addEventListener('click', toggleShop);
 
         function buyUpgrade(type) {
+            initAudio();
             if (type === 'speed') {
                 const cost = Math.floor(50 * Math.pow(1.5, player.speedLvl - 1));
                 if (player.coins >= cost) {
                     player.coins -= cost;
                     player.speedLvl++;
                     player.speed += 0.8;
+                    playSound('buy');
                     addFloatingText('سرعت زیاد شد! ⚡', player.x, player.y - 30, '#f1c40f');
                 }
             } else if (type === 'power') {
@@ -167,6 +231,7 @@
                     player.coins -= cost;
                     player.powerLvl++;
                     player.power += 0.8;
+                    playSound('buy');
                     addFloatingText('تبر قوی‌تر شد! ⛏️', player.x, player.y - 30, '#e67e22');
                 }
             } else if (type === 'worker') {
@@ -179,6 +244,7 @@
                         speed: 2 + Math.random() * 0.5
                     });
                     workerCost = Math.floor(workerCost * 1.8);
+                    playSound('buy');
                     addFloatingText('کارگر جدید! 🤖', player.x, player.y - 30, '#3498db');
                 }
             }
@@ -212,6 +278,8 @@
             document.getElementById('buyWorker').innerText = `${workerCost} 💰`;
             document.getElementById('buyWorker').disabled = player.coins < workerCost;
         }
+
+        let hitTimer = 0;
 
         function update() {
             if (touchX !== null && touchY !== null) {
@@ -253,10 +321,13 @@
                 }
             });
 
+            hitTimer++;
+
             activeResources.forEach(res => {
                 const distP = Math.hypot(player.x - res.x, player.y - res.y);
                 if (distP < (player.size / 2 + res.size / 2)) {
                     res.hp -= 0.04 * player.power;
+                    if (hitTimer % 12 === 0) playSound('hit');
                 }
 
                 workers.forEach(w => {
@@ -270,6 +341,7 @@
                     player.coins += res.coins;
                     player.xp += res.xp;
 
+                    playSound('collect');
                     addFloatingText(`+${res.coins} 💰`, res.x, res.y);
 
                     if (player.xp >= player.xpToNextLevel) {
@@ -277,6 +349,7 @@
                         player.level++;
                         player.xpToNextLevel = Math.floor(player.xpToNextLevel * 1.6);
                         player.power += 0.2;
+                        playSound('levelup');
                         addFloatingText('LEVEL UP! ⭐', player.x, player.y - 20, '#2ecc71');
                     }
 
@@ -296,7 +369,6 @@
             }
         }
 
-        // رسم گرافیکی
         function drawTree(x, y) {
             ctx.fillStyle = '#5c4033';
             ctx.fillRect(x - 4, y + 2, 8, 14);
