@@ -52,7 +52,10 @@ function load() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return;
     const data = JSON.parse(raw);
-    if (data.player) Object.assign(player, data.player);
+    if (data.player) {
+      Object.assign(player, data.player);
+      if (!Object.prototype.hasOwnProperty.call(data.player, "skillPoints")) player.skillPoints = Math.max(0, player.level - 1);
+    }
     if (data.bag) Object.assign(bag, data.bag);
     if (Array.isArray(data.harvested)) harvested = new Set(data.harvested);
     if (Array.isArray(data.caveHarvested)) caveHarvested = new Set(data.caveHarvested);
@@ -237,7 +240,7 @@ function update(dt) {
     if(distance<300&&distance>30){enemy.x+=ex/distance*72*dt;enemy.y+=ey/distance*72*dt;}
     else if(distance<=30&&damageCooldown<=0){
       player.health=Math.max(0,player.health-1);damageCooldown=1;updateUI();saveQuietly();
-      if(player.health<=0){player.health=5;player.x=1200;player.y=900;showToast("انرژیت تمام شد؛ به جنگل برگشتی و جانت بازیابی شد");updateUI();}
+      if(player.health<=0){player.health=player.maxHealth;player.x=1200;player.y=900;showToast("انرژیت تمام شد؛ به جنگل برگشتی و جانت بازیابی شد");updateUI();}
       else showToast("موجود بهت ضربه زد! ❤️");
     }
   }
