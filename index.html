@@ -8,15 +8,54 @@
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
         body, html { width: 100%; height: 100%; overflow: hidden; background: #1a1c23; font-family: monospace; }
         #gameCanvas { display: block; background: #2d5a27; image-rendering: pixelated; }
-        #ui { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; color: white; font-size: 13px; pointer-events: none; }
+        #ui { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: center; color: white; font-size: 13px; pointer-events: none; z-index: 5; }
         .ui-box { background: rgba(0, 0, 0, 0.7); padding: 8px 12px; border-radius: 8px; border: 2px solid #555; }
+        #shopBtn { pointer-events: auto; background: #f39c12; color: #fff; border: 2px solid #d35400; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-family: monospace; }
+        #shopBtn:active { transform: scale(0.95); }
+        
+        /* استایل منوی فروشگاه */
+        #shopMenu { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 340px; background: rgba(20, 20, 30, 0.95); border: 3px solid #f1c40f; border-radius: 12px; padding: 15px; color: white; z-index: 10; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
+        #shopMenu h2 { text-align: center; color: #f1c40f; margin-bottom: 12px; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        .shop-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; }
+        .shop-item span { font-size: 12px; }
+        .buy-btn { background: #2ecc71; color: white; border: none; padding: 6px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-family: monospace; }
+        .buy-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
+        #closeShop { display: block; width: 100%; background: #e74c3c; color: white; border: none; padding: 8px; border-radius: 6px; margin-top: 10px; font-weight: bold; cursor: pointer; font-family: monospace; }
     </style>
 </head>
 <body>
     <div id="ui">
-        <div class="ui-box">💰 <span id="coins">0</span></div>
-        <div class="ui-box">⭐ <span id="toolTier">Tier 1</span></div>
+        <div class="ui-box">💰 <span id="coins">0</span> | Lvl <span id="level">1</span></div>
+        <button id="shopBtn">🛒 فروشگاه</button>
     </div>
+
+    <!-- پنجره فروشگاه -->
+    <div id="shopMenu">
+        <h2>🛒 فروشگاه ارتقا</h2>
+        <div class="shop-item">
+            <div>
+                <div>⚡ سرعت حرکت</div>
+                <small id="speedLvl" style="color:#aaa;">Lvl 1</small>
+            </div>
+            <button class="buy-btn" id="buySpeed" onclick="buyUpgrade('speed')">50 💰</button>
+        </div>
+        <div class="shop-item">
+            <div>
+                <div>⛏️ قدرت تبر</div>
+                <small id="powerLvl" style="color:#aaa;">Lvl 1</small>
+            </div>
+            <button class="buy-btn" id="buyPower" onclick="buyUpgrade('power')">80 💰</button>
+        </div>
+        <div class="shop-item">
+            <div>
+                <div>🤖 تعداد کارگر</div>
+                <small id="workerLvl" style="color:#aaa;">0 کارگر</small>
+            </div>
+            <button class="buy-btn" id="buyWorker" onclick="buyUpgrade('worker')">150 💰</button>
+        </div>
+        <button id="closeShop" onclick="toggleShop()">بستن ✖</button>
+    </div>
+
     <canvas id="gameCanvas"></canvas>
 
     <script>
@@ -35,22 +74,17 @@
             y: canvas.height / 2,
             size: 28,
             speed: 4,
+            speedLvl: 1,
             coins: 0,
             level: 1,
             xp: 0,
             xpToNextLevel: 50,
             power: 1,
-            toolTier: 1
+            powerLvl: 1
         };
 
-        const worker = {
-            x: canvas.width / 2 + 40,
-            y: canvas.height / 2 + 40,
-            size: 20,
-            speed: 2,
-            active: false,
-            cost: 150
-        };
+        const workers = [];
+        let workerCost = 150;
 
         const resources = [
             { x: 80, y: 120, type: 'tree', hp: 5, maxHp: 5, coins: 10, xp: 15, size: 36 },
@@ -64,13 +98,17 @@
         let touchY = null;
 
         canvas.addEventListener('touchstart', (e) => {
-            touchX = e.touches[0].clientX;
-            touchY = e.touches[0].clientY;
+            if (e.target.tagName !== 'BUTTON') {
+                touchX = e.touches[0].clientX;
+                touchY = e.touches[0].clientY;
+            }
         });
 
         canvas.addEventListener('touchmove', (e) => {
-            touchX = e.touches[0].clientX;
-            touchY = e.touches[0].clientY;
+            if (touchX !== null) {
+                touchX = e.touches[0].clientX;
+                touchY = e.touches[0].clientY;
+            }
         });
 
         canvas.addEventListener('touchend', () => {
@@ -78,17 +116,70 @@
             touchY = null;
         });
 
+        function toggleShop() {
+            const menu = document.getElementById('shopMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            updateUI();
+        }
+
+        document.getElementById('shopBtn').addEventListener('click', toggleShop);
+
+        function buyUpgrade(type) {
+            if (type === 'speed') {
+                const cost = Math.floor(50 * Math.pow(1.5, player.speedLvl - 1));
+                if (player.coins >= cost) {
+                    player.coins -= cost;
+                    player.speedLvl++;
+                    player.speed += 0.8;
+                    addFloatingText('سرعت زیاد شد! ⚡', player.x, player.y - 30, '#f1c40f');
+                }
+            } else if (type === 'power') {
+                const cost = Math.floor(80 * Math.pow(1.6, player.powerLvl - 1));
+                if (player.coins >= cost) {
+                    player.coins -= cost;
+                    player.powerLvl++;
+                    player.power += 0.8;
+                    addFloatingText('تبر قوی‌تر شد! ⛏️', player.x, player.y - 30, '#e67e22');
+                }
+            } else if (type === 'worker') {
+                if (player.coins >= workerCost) {
+                    player.coins -= workerCost;
+                    workers.push({
+                        x: player.x + (Math.random() * 40 - 20),
+                        y: player.y + (Math.random() * 40 - 20),
+                        size: 20,
+                        speed: 2 + Math.random() * 0.5
+                    });
+                    workerCost = Math.floor(workerCost * 1.8);
+                    addFloatingText('کارگر جدید! 🤖', player.x, player.y - 30, '#3498db');
+                }
+            }
+            updateUI();
+        }
+
         function addFloatingText(text, x, y, color = '#f1c40f') {
             floatingTexts.push({ text, x, y, alpha: 1, color });
         }
 
         function updateUI() {
-            const coinsElem = document.getElementById('coins');
-            const toolElem = document.getElementById('toolTier');
-            let botStatus = worker.active ? '🤖 فعال' : `🤖 (${worker.cost} 💰)`;
-            
-            if (coinsElem) coinsElem.innerText = `${Math.floor(player.coins)} 💰 | Lvl ${player.level}`;
-            if (toolElem) toolElem.innerText = `ابزار T${player.toolTier} | ${botStatus}`;
+            document.getElementById('coins').innerText = Math.floor(player.coins);
+            document.getElementById('level').innerText = player.level;
+
+            // محاسبه قیمت‌های جدید
+            const speedCost = Math.floor(50 * Math.pow(1.5, player.speedLvl - 1));
+            const powerCost = Math.floor(80 * Math.pow(1.6, player.powerLvl - 1));
+
+            document.getElementById('speedLvl').innerText = `Lvl ${player.speedLvl}`;
+            document.getElementById('buySpeed').innerText = `${speedCost} 💰`;
+            document.getElementById('buySpeed').disabled = player.coins < speedCost;
+
+            document.getElementById('powerLvl').innerText = `Lvl ${player.powerLvl}`;
+            document.getElementById('buyPower').innerText = `${powerCost} 💰`;
+            document.getElementById('buyPower').disabled = player.coins < powerCost;
+
+            document.getElementById('workerLvl').innerText = `${workers.length} کارگر`;
+            document.getElementById('buyWorker').innerText = `${workerCost} 💰`;
+            document.getElementById('buyWorker').disabled = player.coins < workerCost;
         }
 
         function update() {
@@ -109,18 +200,12 @@
             if (player.y - half < 0) player.y = half;
             if (player.y + half > canvas.height) player.y = canvas.height - half;
 
-            if (!worker.active && player.coins >= worker.cost) {
-                player.coins -= worker.cost;
-                worker.active = true;
-                addFloatingText('کارگر استخدام شد! 🤖', player.x, player.y - 30, '#3498db');
-                updateUI();
-            }
-
-            if (worker.active) {
+            // رفتار کارگرها
+            workers.forEach(w => {
                 let nearestRes = resources[0];
                 let minDist = Infinity;
                 resources.forEach(res => {
-                    const d = Math.hypot(worker.x - res.x, worker.y - res.y);
+                    const d = Math.hypot(w.x - res.x, w.y - res.y);
                     if (d < minDist) {
                         minDist = d;
                         nearestRes = res;
@@ -128,28 +213,29 @@
                 });
 
                 if (nearestRes) {
-                    const dx = nearestRes.x - worker.x;
-                    const dy = nearestRes.y - worker.y;
+                    const dx = nearestRes.x - w.x;
+                    const dy = nearestRes.y - w.y;
                     const dist = Math.hypot(dx, dy);
                     if (dist > 5) {
-                        worker.x += (dx / dist) * worker.speed;
-                        worker.y += (dy / dist) * worker.speed;
+                        w.x += (dx / dist) * w.speed;
+                        w.y += (dy / dist) * w.speed;
                     }
                 }
-            }
+            });
 
+            // تعامل با منابع
             resources.forEach(res => {
                 const distP = Math.hypot(player.x - res.x, player.y - res.y);
                 if (distP < (player.size / 2 + res.size / 2)) {
                     res.hp -= 0.04 * player.power;
                 }
 
-                if (worker.active) {
-                    const distW = Math.hypot(worker.x - res.x, worker.y - res.y);
-                    if (distW < (worker.size / 2 + res.size / 2)) {
+                workers.forEach(w => {
+                    const distW = Math.hypot(w.x - res.x, w.y - res.y);
+                    if (distW < (w.size / 2 + res.size / 2)) {
                         res.hp -= 0.03;
                     }
-                }
+                });
 
                 if (res.hp <= 0) {
                     player.coins += res.coins;
@@ -161,16 +247,8 @@
                         player.xp -= player.xpToNextLevel;
                         player.level++;
                         player.xpToNextLevel = Math.floor(player.xpToNextLevel * 1.6);
-                        player.power += 0.3;
+                        player.power += 0.2;
                         addFloatingText('LEVEL UP! ⭐', player.x, player.y - 20, '#2ecc71');
-                    }
-
-                    const upgradeCost = player.toolTier * 90;
-                    if (player.coins >= upgradeCost) {
-                        player.coins -= upgradeCost;
-                        player.toolTier++;
-                        player.power += 1.2;
-                        addFloatingText(`ارتقای ابزار! ⛏️`, player.x, player.y - 40, '#e67e22');
                     }
 
                     updateUI();
@@ -258,7 +336,7 @@
                 ctx.fillRect(res.x - 15, res.y - res.size / 2 - 12, 30 * hpPercent, 4);
             });
 
-            if (worker.active) drawWorker(worker.x, worker.y);
+            workers.forEach(w => drawWorker(w.x, w.y));
             drawPlayer(player.x, player.y);
 
             floatingTexts.forEach(ft => {
