@@ -17,6 +17,19 @@ let quests = { wood: 0, slime: 0, iron: 0, claimed: { wood: false, slime: false,
 let npcMet = false, npcTalkIndex = 0;
 let npcQuest = { accepted: false, progress: 0, claimed: false };
 let homeLevel = 0, homeInterior = false, homeReturn = { x: 760, y: 590 };
+
+let townMode = false, townReturn = {x:2240,y:900}, townNpcIndex = 0;
+const townFriendship = {mina:0,hana:0,nahid:0,saeed:0,rezaei:0};
+const townStock = {bread:0,seeds:0,apple:0};
+const TOWN = {w:1600,h:1200};
+const townPeople = [
+{id:"mina",name:"مینا",role:"همسایه مهربان",x:470,y:560,color:"#d94f91",hair:"#693b39"},
+{id:"hana",name:"حنا",role:"خواهر مینا",x:560,y:590,color:"#348fc0",hair:"#292431"},
+{id:"nahid",name:"ناهید",role:"مادر مینا و حنا",x:420,y:650,color:"#9b3e60",hair:"#673b40"},
+{id:"saeed",name:"سعید",role:"نگهبان شهر",x:180,y:590,color:"#33465b",hair:"#28252b"},
+{id:"rezaei",name:"خانم رضایی",role:"صاحب خواربارفروشی",x:1120,y:530,color:"#4b8b50",hair:"#74483a"}
+];
+
 let worldClock = 9 * 60;
 const playerHome = { x: 700, y: 520 };
 const samanHome = { x: 1900, y: 450 };
@@ -76,13 +89,14 @@ function load() {
     if (data.npcQuest) npcQuest = { ...npcQuest, ...data.npcQuest };
     homeLevel = Math.max(0, Math.min(3, Number(data.homeLevel) || 0));
     homeInterior = !!data.homeInterior; if (data.homeReturn) homeReturn = data.homeReturn;
+    townMode=!!data.townMode;if(data.townReturn)townReturn=data.townReturn;if(data.townFriendship)Object.assign(townFriendship,data.townFriendship);if(data.townStock)Object.assign(townStock,data.townStock);
   } catch (e) { console.warn("Save could not be loaded", e); }
 }
 function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -193,7 +207,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock
     }));
   } catch (e) {}
 }
@@ -262,7 +276,7 @@ $("upgradeSpeed").addEventListener("click", () => buyUpgrade("speed"));
 $("upgradeAttack").addEventListener("click", () => buyUpgrade("attack"));
 
 function syncXpPanel() {
-  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel", "homePanel"];
+  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel"];
   const hud = $("hud");
   const xp = $("xpPanel");
   xp.hidden = panelIds.some(id => !$(id).hidden);
@@ -410,8 +424,9 @@ function buyUpgrade(type) {
 
 function update(dt) {
   worldClock = (worldClock + dt * 8) % 1440;
+  if(townMode)townSchedule();
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt);
-  const activeEnemies = (caveMode || homeInterior) ? (caveMode ? caveEnemies : []) : enemies;
+  const activeEnemies = (caveMode || homeInterior || townMode) ? (caveMode ? caveEnemies : []) : enemies;
   for(const enemy of activeEnemies){
     if(!enemy.alive){
       enemy.respawnTimer = Math.max(0, enemy.respawnTimer - dt);
@@ -427,7 +442,7 @@ function update(dt) {
       else showToast(caveMode?"نگهبان کریستالی بهت ضربه زد! 💎":"موجود بهت ضربه زد! ❤️");
     }
   }
-  if (!caveMode && !homeInterior) {
+  if (!caveMode && !homeInterior && !townMode) {
     const night = worldClock >= 20 * 60 || worldClock < 6 * 60;
     const targetX = night ? samanHome.x : 1690;
     const targetY = night ? samanHome.y + 72 : 650;
@@ -448,10 +463,10 @@ function update(dt) {
     player.y += dy / len * player.speed * dt;
   }
   animTime += dt;
-  const mw = caveMode ? 1200 : homeInterior ? 900 : WORLD.w;
-  const mh = caveMode ? 900 : homeInterior ? 650 : WORLD.h;
-  player.x=Math.max((caveMode || homeInterior)?55:24,Math.min(mw-((caveMode || homeInterior)?55:24),player.x));
-  player.y=Math.max((caveMode || homeInterior)?55:24,Math.min(mh-((caveMode || homeInterior)?55:24),player.y));
+  const mw = caveMode ? 1200 : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
+  const mh = caveMode ? 900 : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h;
+  player.x=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mw-((caveMode || homeInterior || townMode)?55:24),player.x));
+  player.y=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mh-((caveMode || homeInterior || townMode)?55:24),player.y));
   camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
   $("caveBtn").hidden = homeInterior || (caveMode ? false : Math.hypot(player.x-2080,player.y-1450)>115);
@@ -662,6 +677,7 @@ function drawPlayer() {
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
+  if(townMode){drawTown();drawTownPeople();drawPlayer();return;}
   if(caveMode){drawCaveGround();drawCaveObjects();}else drawGround();
   if (!caveMode) { drawHouse(playerHome.x, playerHome.y, homeLevel, false); drawHouse(samanHome.x, samanHome.y, 1, true); }
   for (const r of activeNodes()) {
