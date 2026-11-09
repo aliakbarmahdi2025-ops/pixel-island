@@ -13,6 +13,7 @@ let harvested = new Set(), caveHarvested = new Set();
 let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
 let caveResources = [], caveChests = [];
 let resources = [];
+let quests = { wood: 0, slime: 0, iron: 0, claimed: { wood: false, slime: false, iron: false } };
 let enemies = [], caveEnemies = [];
 let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
 let move = { x: 0, y: 0 };
@@ -60,13 +61,14 @@ function load() {
     if (Array.isArray(data.harvested)) harvested = new Set(data.harvested);
     if (Array.isArray(data.caveHarvested)) caveHarvested = new Set(data.caveHarvested);
     caveMode = !!data.caveMode; if(data.caveReturn)caveReturn=data.caveReturn; if(Array.isArray(data.openedChests))openedChests=data.openedChests;
+    if(data.quests)quests={...quests,...data.quests,claimed:{...quests.claimed,...(data.quests.claimed||{})}};
   } catch (e) { console.warn("Save could not be loaded", e); }
 }
 function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -101,6 +103,7 @@ function updateUI() {
   $("xpText").textContent = player.xp + " / " + xpNeeded() + " XP";
   $("xpFill").style.width = Math.min(100, player.xp / xpNeeded() * 100) + "%";
   updateUpgradeUI();
+  updateQuestUI();
   if ($("craftPanel")) updateCraftUI();
 }
 load();
@@ -137,9 +140,9 @@ function harvest() {
   nearest.hp--;
   if (nearest.hp <= 0) {
     (caveMode ? caveHarvested : harvested).add(nearest.id);
-    if (nearest.type === "tree") bag.wood += 3;
+    if (nearest.type === "tree") { bag.wood += 3; quests.wood = Math.min(10, quests.wood + 3); }
     if (nearest.type === "stone") bag.stone += 2;
-    if (nearest.type === "iron") bag.iron += 1;
+    if (nearest.type === "iron") { bag.iron += 1; quests.iron = Math.min(5, quests.iron + 1); }
     if (nearest.type === "crystal") bag.crystal = (bag.crystal||0)+1;
     const leveled = addXP(10);
     if (leveled) showToast("سطح جدید! یک امتیاز مهارت گرفتی ⭐");
@@ -165,7 +168,7 @@ function attack() {
       const leveled=addXP(25); updateUI(); saveQuietly();
       showToast(leveled?"نگهبان کریستالی شکست خورد! +۱۰ سکه و ۲ کریستال؛ سطح جدید ⭐":"نگهبان کریستالی شکست خورد! +۱۰ سکه، ۲ کریستال و ۲۵ تجربه 💎");
     } else {
-      target.respawnTimer=12; player.coins+=5; const leveled=addXP(15);
+      target.respawnTimer=12; player.coins+=5; quests.slime=Math.min(3,quests.slime+1); const leveled=addXP(15);
       updateUI(); saveQuietly(); showToast(leveled?"موجود شکست خورد! سطح جدید و یک امتیاز مهارت ⭐":"موجود جنگلی شکست خورد! +۵ سکه و ۱۵ تجربه ⭐");
     }
   } else showToast("ضربه زدی! ❤️ جان دشمن: "+target.hp);
@@ -213,21 +216,51 @@ joy.addEventListener("pointercancel", releaseJoy);
 $("actionBtn").addEventListener("pointerdown", e => { e.preventDefault(); harvest(); });
 $("attackBtn").addEventListener("pointerdown", e => { e.preventDefault(); attack(); });
 $("saveBtn").addEventListener("click", save);
-$("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); });
-$("closeBag").addEventListener("click", () => $("inventory").hidden = true);
+$("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); syncXpPanel(); });
+$("closeBag").addEventListener("click", () => { $("inventory").hidden = true; syncXpPanel(); });
 $("caveBtn").addEventListener("click",toggleCave);
-$("craftBtn").addEventListener("click", () => { $("craftPanel").hidden = false; updateCraftUI(); });
-$("closeCraft").addEventListener("click", () => { $("craftPanel").hidden = true; });
+$("craftBtn").addEventListener("click", () => { $("craftPanel").hidden = false; updateCraftUI(); syncXpPanel(); });
+$("closeCraft").addEventListener("click", () => { $("craftPanel").hidden = true; syncXpPanel(); });
 $("craftSword").addEventListener("click", () => craft("sword"));
 $("craftBoots").addEventListener("click", () => craft("boots"));
 $("craftPotion").addEventListener("click", () => craft("potion"));
 $("usePotion").addEventListener("click", usePotion);
-$("upgradeBtn").addEventListener("click", () => { $("upgradePanel").hidden = false; updateUpgradeUI(); });
-$("closeUpgrades").addEventListener("click", () => { $("upgradePanel").hidden = true; });
+$("questBtn").addEventListener("click", () => { $("questPanel").hidden = false; updateQuestUI(); syncXpPanel(); });
+$("closeQuests").addEventListener("click", () => { $("questPanel").hidden = true; syncXpPanel(); });
+$("claimWood").addEventListener("click", () => claimQuest("wood"));
+$("claimSlime").addEventListener("click", () => claimQuest("slime"));
+$("claimIron").addEventListener("click", () => claimQuest("iron"));
+$("upgradeBtn").addEventListener("click", () => { $("upgradePanel").hidden = false; updateUpgradeUI(); syncXpPanel(); });
+$("closeUpgrades").addEventListener("click", () => { $("upgradePanel").hidden = true; syncXpPanel(); });
 $("upgradeHealth").addEventListener("click", () => buyUpgrade("health"));
 $("upgradeSpeed").addEventListener("click", () => buyUpgrade("speed"));
 $("upgradeAttack").addEventListener("click", () => buyUpgrade("attack"));
 
+function syncXpPanel() {
+  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel"];
+  $("xpPanel").hidden = panelIds.some(id => !$(id).hidden);
+}
+function updateQuestUI() {
+  const rows = [
+    { key: "wood", text: "questWoodText", button: "claimWood", goal: 10, unit: "چوب" },
+    { key: "slime", text: "questSlimeText", button: "claimSlime", goal: 3, unit: "موجود" },
+    { key: "iron", text: "questIronText", button: "claimIron", goal: 5, unit: "آهن" }
+  ];
+  for (const q of rows) {
+    $(q.text).textContent = Math.min(q.goal, quests[q.key]) + " / " + q.goal + " " + q.unit;
+    $(q.button).disabled = quests.claimed[q.key] || quests[q.key] < q.goal;
+    $(q.button).textContent = quests.claimed[q.key] ? "انجام شد ✓" : "دریافت جایزه (+۲۰ سکه، +۳۰ XP)";
+  }
+}
+function claimQuest(key) {
+  const goals = { wood: 10, slime: 3, iron: 5 };
+  if (!goals[key] || quests.claimed[key] || quests[key] < goals[key]) { showToast("این مأموریت هنوز کامل نشده"); return; }
+  quests.claimed[key] = true;
+  player.coins += 20;
+  const leveled = addXP(30);
+  updateUI(); saveQuietly();
+  showToast(leveled ? "مأموریت کامل شد! سطح جدید ⭐ +۲۰ سکه" : "مأموریت کامل شد! +۲۰ سکه و ۳۰ تجربه 🎉");
+}
 function updateCraftUI() {
   $("craftSword").disabled = player.attackPower >= 5 || bag.iron < 5 || bag.wood < 3;
   $("craftBoots").disabled = player.speed >= 320 || bag.iron < 4 || bag.wood < 6;
