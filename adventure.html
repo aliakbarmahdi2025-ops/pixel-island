@@ -18,6 +18,7 @@
     <div class="hud-actions">
       <button id="bagBtn">🎒 کوله‌پشتی</button>
       <button id="upgradeBtn">⭐ مهارت‌ها</button>
+      <button id="craftBtn">🛠️ ساخت</button>
       <button id="saveBtn">💾 ذخیره</button>
     </div>
   </header>
@@ -32,6 +33,8 @@
       <div>🪨 سنگ: <b id="stone">0</b></div>
       <div>⛏️ آهن: <b id="iron">0</b></div>
       <div>💎 کریستال: <b id="crystal">0</b></div>
+      <div>🧪 معجون: <b id="potion">0</b></div>
+      <button id="usePotion">نوشیدن معجون</button>
     </div>
     <button id="closeBag">بستن</button>
   </section>
@@ -44,6 +47,16 @@
       <button id="upgradeAttack">⚔️ افزایش قدرت حمله</button>
     </div>
     <button id="closeUpgrades">بستن</button>
+  </section>
+  <section id="craftPanel" class="panel" hidden>
+    <h2>🛠️ ساخت ابزار و تجهیزات</h2>
+    <p>با منابعی که جمع کردی، تجهیزاتت رو بهتر کن.</p>
+    <div class="upgrade-list">
+      <button id="craftSword">⚔️ شمشیر فولادی — ۵ آهن + ۳ چوب</button>
+      <button id="craftBoots">👟 چکمه تندرو — ۴ آهن + ۶ چوب</button>
+      <button id="craftPotion">🧪 معجون سلامتی — ۲ کریستال + ۱ آهن</button>
+    </div>
+    <button id="closeCraft">بستن</button>
   </section>
   <div id="toast" role="status"></div>
   <div id="controls">
