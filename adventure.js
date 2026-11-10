@@ -1055,7 +1055,7 @@ function drawForestNpc() {
  const x=forestNpc.x-camera.x,y=forestNpc.y-camera.y;
  const near=Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y)<145;
  if(x< -70||x>viewW+70||y< -90||y>viewH+70)return;
- drawPixelPerson(x,y+39,{hair:"#5b402c",hairHi:"#9a7048",skin:"#d7a17e",skinLight:"#f0c5a2",top:"#486d4b",topHi:"#8eaa70",bottom:"#4a493b",boots:"#2e302a",accent:"#c8ae77"},{step:Math.sin(animTime*2.2)*.5,bob:Math.sin(animTime*2.4)*.6});
+ drawPixelPerson(x,y+39,{hair:"#d8d4c9",hairHi:"#fff3d6",skin:"#c99475",skinLight:"#edc2a2",top:"#687653",topHi:"#aab78a",bottom:"#514a3b",boots:"#302d29",accent:"#d1b77e"},{step:Math.sin(animTime*2.2)*.5,bob:Math.sin(animTime*2.4)*.6,scale:.82,beard:true,beardColor:"#eee9dc",old:true});
  if(!npcQuest.claimed){ctx.fillStyle="#ffe58a";ctx.font="bold 17px Tahoma";ctx.textAlign="center";ctx.fillText("!",x,y-57);}
  ctx.fillStyle="#fff2c7";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#34432e";ctx.strokeText(forestNpc.name+" • "+forestNpc.role,x,y-47);ctx.fillText(forestNpc.name+" • "+forestNpc.role,x,y-47);ctx.textAlign="start";
 }
@@ -1092,7 +1092,15 @@ function drawPixelPerson(x,base,p,opts={}){
  else{ctx.fillRect(x-6,base-61+bob,2,2);ctx.fillRect(x+4,base-61+bob,2,2);}
  ctx.fillStyle="#fff0d9";ctx.fillRect(x-6,base-61+bob,1,1);ctx.fillRect(x+4,base-61+bob,1,1);
  ctx.fillStyle="#b77d65";ctx.fillRect(x-1,base-57+bob,2,2);ctx.fillStyle="#8f5552";ctx.fillRect(x-2,base-53+bob,4,1);
- if(opts.beard){ctx.fillStyle=p.hair;ctx.fillRect(x-6,base-54+bob,12,5);ctx.fillRect(x-8,base-57+bob,3,4);ctx.fillRect(x+5,base-57+bob,3,4);}
+ if(opts.beard){
+   const beard=opts.beardColor||p.hair;
+   ctx.fillStyle=beard;ctx.fillRect(x-7,base-55+bob,14,5);ctx.fillRect(x-9,base-58+bob,4,6);ctx.fillRect(x+6,base-58+bob,4,6);ctx.fillRect(x-6,base-50+bob,12,4);ctx.fillRect(x-4,base-46+bob,8,3);
+   ctx.fillStyle="rgba(255,255,245,.7)";ctx.fillRect(x-5,base-54+bob,3,2);ctx.fillRect(x+2,base-49+bob,3,2);
+ }
+ if(opts.old){
+   ctx.fillStyle="#9c715f";ctx.fillRect(x-7,base-59+bob,3,1);ctx.fillRect(x+4,base-59+bob,3,1);ctx.fillRect(x-2,base-55+bob,4,1);
+   ctx.fillStyle="#eee6d8";ctx.fillRect(x-7,base-72+bob,5,2);ctx.fillRect(x+2,base-72+bob,5,2);
+ }
  ctx.restore();
 }
 function drawPlayer(){
