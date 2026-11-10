@@ -727,7 +727,7 @@ function updateFarmUI(){const p=farmPlots[selectedFarmPlot],days={wheat:3,carrot
 function farmTill(){const p=farmPlots[selectedFarmPlot];if(p.state!=="empty")return;p.state="tilled";updateFarmUI();saveQuietly();showToast("زمین آماده کاشت شد 🪴");}
 function farmPlant(){const p=farmPlots[selectedFarmPlot];if(p.state!=="tilled"||bag.seeds<1)return;bag.seeds--;p.state="growing";p.crop=selectedCrop;p.growth=0;p.wateredDay=-1;updateUI();updateFarmUI();saveQuietly();showToast("بذر کاشته شد! هر روز آبیاریش کن 🌱");}
 function farmWater(){const p=farmPlots[selectedFarmPlot],days={wheat:3,carrot:2,strawberry:4};if(p.state!=="growing"||p.wateredDay===worldDay||p.growth>=days[p.crop])return;p.wateredDay=worldDay;updateFarmUI();saveQuietly();showToast("محصول آبیاری شد 💧 فردا رشد می‌کنه!");}
-function farmHarvest(){const p=farmPlots[selectedFarmPlot],days={wheat:3,carrot:2,strawberry:4};if(p.state!=="growing"||p.growth<days[p.crop])return;if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}bag[p.crop]=(bag[p.crop]||0)+1;Object.assign(p,{state:"empty",crop:null,growth:0,wateredDay:-1});updateUI();updateFarmUI();saveQuietly();showToast("محصول برداشت شد! ببر پیش خانم رضایی 🌾");}
+function farmHarvest(){const p=farmPlots[selectedFarmPlot],days={wheat:3,carrot:2,strawberry:4};if(p.state!=="growing"||p.growth<days[p.crop])return;if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}bag[p.crop]=(bag[p.crop]||0)+1;Object.assign(p,{state:"empty",crop:null,growth:0,wateredDay:-1});updateUI();updateFarmUI();saveQuietly();showToast("محصول برداشت شد! ببر پیش آقای نادری بفروش 🌾");}
 function sellFarmCrops(){const count=(bag.wheat||0)+(bag.carrot||0)+(bag.strawberry||0),total=(bag.wheat||0)*8+(bag.carrot||0)*10+(bag.strawberry||0)*16;if(!count){showToast("محصولی برای فروش نداری");return;}bag.wheat=bag.carrot=bag.strawberry=0;player.coins+=total;updateUI();updateTownShop();saveQuietly();showToast("خانم رضایی محصولاتت رو خرید! +"+total+" سکه 🪙");}
 function updateTownShop(){$("townShopHours").textContent="ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰ • ساعت بازی: "+String(Math.floor(worldClock/60)).padStart(2,"0")+":"+String(Math.floor(worldClock%60)).padStart(2,"0");$("townShopStock").textContent="موجودی بذر: "+(bag.seeds||0)+" • ظرفیت کوله: "+bagUsed()+"/"+backpackCaps[backpackTier]+" • سکه: "+player.coins;if($("naderiStatus"))updateNaderiUI();
   $("sellCrops").disabled=!(bag.wheat||bag.carrot||bag.strawberry);$("sellCrops").textContent="فروش محصولات برداشت‌شده • موجودی: "+((bag.wheat||0)+(bag.carrot||0)+(bag.strawberry||0));$("buyBread").hidden=true;$("buyApple").hidden=true;$("eatBread").hidden=true;$("eatApple").hidden=true;$("buySeeds").disabled=player.coins<5||!bagCanAdd(1);$("buySeeds").textContent="🌱 بسته بذر — ۵ سکه";$("buySeeds").hidden=false;}
@@ -799,8 +799,8 @@ function drawTown(){
   // Iranian-inspired low-rise homes and shops.
   drawTownBuilding(340,350,"خانه مینا و حنا","#a65343","home");
   drawTownBuilding(535,300,"خانه ناهید","#b77c4c","home");
-  drawTownBuilding(1160,345,"خواربارفروشی","#a84e3e","shop");
-  drawTownBuilding(1430,420,"نانوایی","#b86d3c","bakery");
+  drawTownBuilding(1160,345,"نجاری خانم رضایی","#a84e3e","shop");
+  drawTownBuilding(1430,420,"فروشگاه نادری","#b86d3c","shop");
   drawTownBuilding(180,430,"اتاق نگهبانی","#637e78","guard");
   drawTownBuilding(1260,760,"خانه قدیمی","#9a6550","home");
   // Windowside flower pots, shrubs, street lamps, benches.
