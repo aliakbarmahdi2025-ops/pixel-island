@@ -124,7 +124,7 @@ function addXP(amount) {
   return leveled;
 }
 function updateUI() {
-  $("health").textContent = player.health + "/" + player.maxHealth;
+  $("health").textContent = (Number.isInteger(player.health) ? player.health : player.health.toFixed(1)) + "/" + player.maxHealth;
   $("level").textContent = player.level;
   $("coins").textContent = player.coins;
   $("wood").textContent = bag.wood;
@@ -463,7 +463,10 @@ function update(dt) {
     const chaseSpeed = caveMode ? 48 : 72;
     if(distance<300&&distance>30){enemy.x+=ex/distance*chaseSpeed*dt;enemy.y+=ey/distance*chaseSpeed*dt;}
     else if(distance<=30&&damageCooldown<=0){
-      player.health=Math.max(0,player.health-1);damageCooldown=1+(player.armorLevel||0)*0.7;updateUI();saveQuietly();
+      const armorLevel=Math.max(0,Math.min(2,player.armorLevel||0));
+      const incomingDamage=armorLevel===0?1:armorLevel===1?0.7:0.4;
+      player.health=Math.max(0,Math.round((player.health-incomingDamage)*10)/10);
+      damageCooldown=1;updateUI();saveQuietly();
       if(player.health<=0){player.health=player.maxHealth;player.x=caveMode?800:1200;player.y=caveMode?1080:900;showToast("انرژیت تمام شد؛ جانت بازیابی شد");updateUI();}
       else showToast(caveMode?"نگهبان کریستالی بهت ضربه زد! 💎":"موجود بهت ضربه زد! ❤️");
     }
