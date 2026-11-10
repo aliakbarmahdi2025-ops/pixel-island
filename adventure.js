@@ -11,6 +11,7 @@ const camera = { x: 0, y: 0 };
 const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, maxHealth: 5, level: 1, xp: 0, skillPoints: 0, attackPower: 1, armorLevel: 0, coins: 0 };
 const bag = { wood: 0, stone: 0, iron: 0, crystal: 0, potion: 0, seeds: 0, wheat: 0, carrot: 0, strawberry: 0, fiber: 0, sand: 0, marble: 0, plank: 0, brick: 0, rope: 0, nail: 0, glass: 0, cloth: 0, marbleSlab: 0, ironParts: 0, templeFoundation: 0, templeColumn: 0, templeBeam: 0, templeMosaic: 0, templeBanner: 0 };
 const stations = { workbench: false, furnace: false, sawmill: false };
+const toolLevels = { axe: 0, pickaxe: 0, shovel: 0 };
 let bridgeStage = 0; // 0 broken, 1 stone piers, 2 timber deck, 3 ancient seal complete
 let harvested = new Set(), caveHarvested = new Set();
 let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
@@ -97,6 +98,7 @@ function load() {
     }
     if (data.bag) Object.assign(bag, data.bag);
     if (data.stations) Object.assign(stations, data.stations);
+    if (data.toolLevels) Object.keys(toolLevels).forEach(k => toolLevels[k] = Math.max(0, Math.min(2, Number(data.toolLevels[k]) || 0)));
     bridgeStage = Math.max(0, Math.min(3, Number(data.bridgeStage) || 0));
     if (Array.isArray(data.harvested)) harvested = new Set(data.harvested);
     if (Array.isArray(data.caveHarvested)) caveHarvested = new Set(data.caveHarvested);
@@ -115,7 +117,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, bridgeStage, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
+      bag, stations, toolLevels, bridgeStage, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -151,12 +153,14 @@ function updateUI() {
   if($("seeds"))$("seeds").textContent=bag.seeds||0;
   if($("farmCrops"))$("farmCrops").textContent="🌾 "+(bag.wheat||0)+" • 🥕 "+(bag.carrot||0)+" • 🍓 "+(bag.strawberry||0);
   ["fiber","sand","marble","plank","brick","rope","nail","glass","cloth","marbleSlab","ironParts","templeFoundation","templeColumn","templeBeam","templeMosaic","templeBanner"].forEach(k=>{const el=$(k);if(el)el.textContent=bag[k]||0;});
+  if ($("toolStatus")) $("toolStatus").textContent = "تبر " + toolLevelName("axe") + " • کلنگ " + toolLevelName("pickaxe") + " • بیل " + toolLevelName("shovel");
   $("xpText").textContent = player.xp + " / " + xpNeeded() + " XP";
   $("xpFill").style.width = Math.min(100, player.xp / xpNeeded() * 100) + "%";
   updateUpgradeUI();
   updateQuestUI();
   if ($("npcQuestStatus")) updateNpcQuestUI();
   if ($("craftPanel")) updateCraftUI();
+  if ($("stationPanel")) updateToolUI();
 }
 load();
 makeWorld();
@@ -228,7 +232,8 @@ function harvest() {
     if (d < best) { best = d; nearest = r; }
   }
   if (!nearest) { showToast("به درخت یا سنگ نزدیک‌تر شو"); return; }
-  nearest.hp--;
+  const toolType = nearest.type === "tree" || nearest.type === "bush" ? "axe" : nearest.type === "sand" ? "shovel" : "pickaxe";
+  nearest.hp -= 1 + (toolLevels[toolType] || 0);
   if (nearest.hp <= 0) {
     (caveMode ? caveHarvested : harvested).add(nearest.id);
     if (nearest.type === "tree") { bag.wood += 3; quests.wood = Math.min(10, quests.wood + 3); }
@@ -268,7 +273,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, bridgeStage, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
+      bag, stations, toolLevels, bridgeStage, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
     }));
   } catch (e) {}
 }
@@ -346,6 +351,7 @@ $("openStations").addEventListener("click",openStationPanel);
 $("workshopBtn").addEventListener("click",openStationPanel);
 $("closeStations").addEventListener("click",()=>{$("stationPanel").hidden=true;syncXpPanel();});
 ["planks","bricks","rope","nails","glass","cloth","marbleSlabs","ironParts","templeFoundation","templeColumn","templeBeam","templeMosaic","templeBanner"].forEach(type=>$("make_"+type).addEventListener("click",()=>craftWorkshopItem(type)));
+["axe","pickaxe","shovel"].forEach(type=>$("upgradeTool_"+type).addEventListener("click",()=>upgradeTool(type)));
 $("usePotion").addEventListener("click", usePotion);
 $("questBtn").addEventListener("click", () => { $("questPanel").hidden = false; updateQuestUI(); syncXpPanel(); });
 $("closeQuests").addEventListener("click", () => { $("questPanel").hidden = true; syncXpPanel(); });
@@ -534,6 +540,31 @@ function updateStationUI(){
   const ready=!!stations[r.station]&&Object.entries(r.cost).every(([k,v])=>(bag[k]||0)>=v);
   b.disabled=!ready;b.textContent=(stations[r.station]?"":"🔒 ")+labels[type]+" — "+r.label;
  }
+}
+function toolLevelName(type){return ["چوبی","آهنی","کریستالی"][Math.max(0,Math.min(2,toolLevels[type]||0))];}
+function toolUpgradeCost(type){
+ const level=toolLevels[type]||0;
+ if(level===0){return type==="axe"?{iron:4,plank:3,nail:2}:type==="pickaxe"?{iron:5,plank:2,ironParts:1}:{iron:3,plank:2,ironParts:1};}
+ if(level===1)return type==="axe"?{crystal:3,ironParts:2,marbleSlab:1}:type==="pickaxe"?{crystal:4,ironParts:2,marbleSlab:1}:{crystal:2,ironParts:1,marbleSlab:1};
+ return null;
+}
+function toolCostLabel(cost){return Object.entries(cost).map(([k,v])=>v+" "+({iron:"آهن",plank:"تخته",nail:"میخ",ironParts:"قطعه آهنی",crystal:"کریستال",marbleSlab:"تخته مرمر"}[k]||k)).join(" + ");}
+function updateToolUI(){
+ const names={axe:"تبر",pickaxe:"کلنگ",shovel:"بیل"};
+ for(const type of Object.keys(names)){
+  const b=$("upgradeTool_"+type);if(!b)continue;
+  const level=toolLevels[type]||0,cost=toolUpgradeCost(type);
+  b.disabled=!stations.workbench||!cost||Object.entries(cost).some(([k,v])=>(bag[k]||0)<v);
+  b.textContent=level>=2?"✨ "+names[type]+" کریستالی (حداکثر)":(level===0?"⚒️ ارتقای "+names[type]+" چوبی به آهنی":"💎 ارتقای "+names[type]+" آهنی به کریستالی")+" — "+toolCostLabel(cost||{});
+ }
+}
+function upgradeTool(type){
+ if(!Object.prototype.hasOwnProperty.call(toolLevels,type))return;
+ if(!stations.workbench){showToast("برای ارتقای ابزار به میزکار نیاز داری");return;}
+ const cost=toolUpgradeCost(type);if(!cost){showToast("این ابزار به بالاترین سطح رسیده");return;}
+ if(Object.entries(cost).some(([k,v])=>(bag[k]||0)<v)){showToast("برای ارتقای این ابزار مواد کافی نداری");return;}
+ Object.entries(cost).forEach(([k,v])=>bag[k]-=v);toolLevels[type]++;
+ updateUI();saveQuietly();showToast(({axe:"تبر",pickaxe:"کلنگ",shovel:"بیل"})[type]+" به سطح "+toolLevelName(type)+" ارتقا پیدا کرد! 🛠️");
 }
 function openStationPanel(){
  if(caveMode||townMode||homeInterior||Math.hypot(player.x-playerHome.x,player.y-playerHome.y)>235){showToast("برای کار با ایستگاه‌ها کنار خانه‌ات بیا");return;}
