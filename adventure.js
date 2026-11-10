@@ -36,7 +36,7 @@ const farmPlots = Array.from({length:4},(_,i)=>({id:i,x:900+(i%2)*78,y:650+Math.
 const playerHome = { x: 700, y: 520 };
 const samanHome = { x: 1900, y: 450 };
 const forestNpc = { x: 1320, y: 1010, name: "سامان", role: "جنگلبان" };
-let enemies = [], caveEnemies = [];
+let enemies = [], caveEnemies = [], lootDrops = [];
 let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
 let move = { x: 0, y: 0 };
 let toastTimer = 0;
@@ -86,6 +86,7 @@ function load() {
     if (data.bag) Object.assign(bag, data.bag);
     if (Array.isArray(data.harvested)) harvested = new Set(data.harvested);
     if (Array.isArray(data.caveHarvested)) caveHarvested = new Set(data.caveHarvested);
+    if (Array.isArray(data.lootDrops)) lootDrops = data.lootDrops.filter(d => d && Number.isFinite(d.x) && Number.isFinite(d.y) && ["coin","stone","iron","crystal","potion"].includes(d.type));
     caveMode = !!data.caveMode; if(data.caveReturn)caveReturn=data.caveReturn; if(Array.isArray(data.openedChests))openedChests=data.openedChests;
     if(data.quests)quests={...quests,...data.quests,claimed:{...quests.claimed,...(data.quests.claimed||{})}};
     npcMet = !!data.npcMet; npcTalkIndex = Number.isInteger(data.npcTalkIndex) ? data.npcTalkIndex : 0;
@@ -100,7 +101,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -146,8 +147,8 @@ load();
 makeWorld();
 makeCave();
 function makeEnemies() {
-  const spots = [[1450,900],[900,650],[1580,1120],[760,1120],[1740,760],[1120,1320],[620,820]];
-  enemies = spots.map((p,i)=>({id:"slime-"+i,x:p[0],y:p[1],spawnX:p[0],spawnY:p[1],hp:3,max:3,alive:true,respawnTimer:0}));
+  // Slimes no longer spawn in the forest; they live in the cave now.
+  enemies = [];
 }
 makeEnemies();
 function makeCave(){
@@ -158,7 +159,9 @@ function makeCave(){
  {id:"ci3",x:760,y:1020,type:"iron",hp:5,max:5},{id:"cc1",x:760,y:360,type:"crystal",hp:4,max:4},
  {id:"cc2",x:300,y:680,type:"crystal",hp:4,max:4},{id:"cc3",x:1450,y:950,type:"crystal",hp:4,max:4}];
  caveChests=[{x:590,y:230,opened:!!openedChests[0]},{x:1370,y:420,opened:!!openedChests[1]},{x:790,y:790,opened:!!openedChests[2]}];
- caveEnemies=[{id:"crystal-guardian",x:1120,y:570,spawnX:1120,spawnY:570,hp:5,max:5,alive:true,respawnTimer:0}];
+ const slimeSpots=[[300,430],[920,330],[1450,570],[600,850],[1190,930]];
+ caveEnemies=slimeSpots.map((p,i)=>({id:"cave-slime-"+i,kind:"slime",x:p[0],y:p[1],spawnX:p[0],spawnY:p[1],hp:3,max:3,alive:true,respawnTimer:0}));
+ caveEnemies.push({id:"crystal-guardian",kind:"guardian",x:1120,y:570,spawnX:1120,spawnY:570,hp:5,max:5,alive:true,respawnTimer:0});
 }
 function activeNodes(){return caveMode?caveResources.filter(r=>!caveHarvested.has(r.id)):resources.filter(r=>!harvested.has(r.id));}
 function toggleCave(){
@@ -169,6 +172,8 @@ function toggleCave(){
 
 function harvest() {
   if(caveMode){const chest=caveChests.find(c=>!c.opened&&Math.hypot(player.x-c.x,player.y-c.y)<76);if(chest){chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;const leveled=addXP(25);bag.crystal=(bag.crystal||0)+1;progressNpcCrystal(1);updateUI();saveQuietly();showToast(leveled?"سطح جدید! یک امتیاز مهارت گرفتی ⭐":"صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
+  const dropIndex=lootDrops.findIndex(d=>Math.hypot(player.x-d.x,player.y-d.y)<62);
+  if(dropIndex>=0){const drop=lootDrops.splice(dropIndex,1)[0];if(drop.type==="coin")player.coins+=drop.qty;else if(drop.type==="stone")bag.stone=(bag.stone||0)+drop.qty;else if(drop.type==="iron")bag.iron=(bag.iron||0)+drop.qty;else if(drop.type==="crystal"){bag.crystal=(bag.crystal||0)+drop.qty;progressNpcCrystal(drop.qty);}else if(drop.type==="potion")bag.potion=(bag.potion||0)+drop.qty;updateUI();saveQuietly();showToast(({coin:"🪙 سکه",stone:"🪨 سنگ",iron:"⛏️ آهن",crystal:"💎 کریستال",potion:"🧪 معجون"})[drop.type]+" ×"+drop.qty+" برداشتی!");return;}
   let nearest = null, best = 76;
   for (const r of activeNodes()) {
     const d = Math.hypot(player.x - r.x, player.y - r.y);
@@ -201,14 +206,10 @@ function attack() {
   target.hp -= player.attackPower;
   if (target.hp <= 0) {
     target.alive=false;
-    if (caveMode) {
-      target.respawnTimer=20; player.coins+=10; bag.crystal=(bag.crystal||0)+2; progressNpcCrystal(2);
-      const leveled=addXP(25); updateUI(); saveQuietly();
-      showToast(leveled?"نگهبان کریستالی شکست خورد! +۱۰ سکه و ۲ کریستال؛ سطح جدید ⭐":"نگهبان کریستالی شکست خورد! +۱۰ سکه، ۲ کریستال و ۲۵ تجربه 💎");
-    } else {
-      target.respawnTimer=12; player.coins+=5; quests.slime=Math.min(3,quests.slime+1); const leveled=addXP(15);
-      updateUI(); saveQuietly(); showToast(leveled?"موجود شکست خورد! سطح جدید و یک امتیاز مهارت ⭐":"موجود جنگلی شکست خورد! +۵ سکه و ۱۵ تجربه ⭐");
-    }
+    target.respawnTimer=target.kind==="guardian"?28:18;
+    const roll=Math.random();
+    if(target.kind==="guardian"){lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+18,y:target.y+12,type:"crystal",qty:2,rarity:"rare"});player.coins+=10;bag.crystal=(bag.crystal||0)+2;progressNpcCrystal(2);const leveled=addXP(25);updateUI();saveQuietly();showToast(leveled?"نگهبان کریستالی شکست خورد! +۱۰ سکه و ۲ کریستال؛ سطح جدید ⭐":"نگهبان کریستالی شکست خورد! +۱۰ سکه، ۲ کریستال و ۲۵ تجربه 💎");}
+    else {quests.slime=Math.min(3,quests.slime+1);const leveled=addXP(15);if(roll<0.38)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"coin",qty:3+Math.floor(Math.random()*5),rarity:"common"});else if(roll<0.62)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"stone",qty:1,rarity:"common"});else if(roll<0.82)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"iron",qty:1,rarity:"uncommon"});else if(roll<0.94)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"potion",qty:1,rarity:"rare"});else lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"crystal",qty:1,rarity:"rare"});updateUI();saveQuietly();showToast(leveled?"اسلایم غار شکست خورد! سطح جدید ⭐":"اسلایم غار شکست خورد! +۱۵ تجربه؛ شاید غنیمت انداخته باشد 💎");}
   } else showToast("ضربه زدی! ❤️ جان دشمن: "+target.hp);
 }
 
@@ -216,7 +217,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
+      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
     }));
   } catch (e) {}
 }
@@ -1043,6 +1044,7 @@ function drawPlayer(){
 
 function nightStrength(){const h=worldClock/60;const dusk=h>=18&&h<21?(h-18)/3:h>=21||h<5?1:h>=5&&h<7?(7-h)/2:0;return Math.max(0,Math.min(.68,dusk*.68));}
 function drawNightOverlay(){const a=nightStrength();if(a<=0)return;ctx.save();ctx.fillStyle="rgba(10,18,39,"+a+")";ctx.fillRect(0,0,viewW,viewH);const px=player.x-camera.x,py=player.y-camera.y;const glow=ctx.createRadialGradient(px,py,24,px,py,Math.max(viewW,viewH)*.48);glow.addColorStop(0,"rgba(255,220,145,"+(a*.32)+")");glow.addColorStop(.35,"rgba(255,210,130,"+(a*.12)+")");glow.addColorStop(1,"rgba(255,210,130,0)");ctx.fillStyle=glow;ctx.fillRect(0,0,viewW,viewH);ctx.restore();}
+function drawLootDrops(){for(const d of lootDrops){if(d.x<camera.x-40||d.x>camera.x+viewW+40||d.y<camera.y-40||d.y>camera.y+viewH+40)continue;const x=d.x-camera.x,y=d.y-camera.y+Math.sin(animTime*3+d.x*.02)*2;const colors={coin:"#f5c94b",stone:"#aab1b8",iron:"#d88c56",crystal:"#68e5e8",potion:"#c779ef"};ctx.fillStyle="rgba(0,0,0,.28)";ctx.beginPath();ctx.ellipse(x,y+8,10,4,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=colors[d.type]||"#fff";if(d.type==="crystal"){ctx.beginPath();ctx.moveTo(x,y-11);ctx.lineTo(x+7,y-2);ctx.lineTo(x+3,y+7);ctx.lineTo(x-4,y+6);ctx.lineTo(x-7,y-2);ctx.closePath();ctx.fill();}else if(d.type==="coin"){ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle="#fff0a8";ctx.fillRect(x-2,y-4,3,8);}else{ctx.fillRect(x-6,y-6,12,12);ctx.fillStyle="#fff";ctx.fillRect(x-3,y-4,3,3);}}}
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
@@ -1057,7 +1059,8 @@ function draw() {
     else drawIron(r);
   }
   const visibleEnemies = caveMode ? caveEnemies : enemies;
-  for(const e of visibleEnemies){if(!e.alive)continue;if(e.x<camera.x-60||e.x>camera.x+viewW+60||e.y<camera.y-60||e.y>camera.y+viewH+60)continue;if(caveMode)drawCrystalGuardian(e);else drawSlime(e);}
+  for(const e of visibleEnemies){if(!e.alive)continue;if(e.x<camera.x-60||e.x>camera.x+viewW+60||e.y<camera.y-60||e.y>camera.y+viewH+60)continue;if(e.kind==="slime")drawSlime(e);else drawCrystalGuardian(e);}
+  drawLootDrops();
   if(!caveMode) drawForestNpc();
   if(!caveMode){const sx=2310-camera.x,sy=900-camera.y;ctx.fillStyle="#65452c";ctx.fillRect(sx-4,sy-2,8,50);ctx.fillStyle="#b77b3e";ctx.fillRect(sx-43,sy-38,86,34);ctx.strokeStyle="#f0d49a";ctx.lineWidth=3;ctx.strokeRect(sx-43,sy-38,86,34);ctx.fillStyle="#fff0c2";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("شهر سبز",sx,sy-16);ctx.textAlign="start";}
   drawPlayer();
