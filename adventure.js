@@ -151,7 +151,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, toolLevels, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, farmSeedStock
+      bag, stations, toolLevels, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -378,7 +378,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, toolLevels, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
+      bag, stations, toolLevels, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock
     }));
   } catch (e) {}
 }
@@ -857,7 +857,7 @@ function updateFarmUI(){
 function farmTill(){
  const offsets={up:[0,-64],down:[0,64],left:[-64,0],right:[64,0]},o=offsets[playerFacing]||offsets.down;
  const x=Math.max(64,Math.min(WORLD.w-64,Math.round((player.x+o[0])/64)*64)),y=Math.max(64,Math.min(WORLD.h-64,Math.round((player.y+o[1])/64)*64));
- if(Math.abs(x-2700)<115||Math.hypot(x-playerHome.x,y-playerHome.y)<145||Math.hypot(x-samanHome.x,y-samanHome.y)<105){showToast("اینجا برای کشاورزی مناسب نیست؛ کمی دورتر زمین بزن 🌿");return;}
+ if(Math.abs(x-2700)<115||Math.hypot(x-playerHome.x,y-playerHome.y)<145||Math.hypot(x-samanHome.x,y-samanHome.y)<105||resources.some(r=>Math.hypot(r.x-x,r.y-y)<48)){showToast("اینجا برای کشاورزی مناسب نیست؛ کمی دورتر زمین بزن 🌿");return;}
  const existing=getFarmTileAt(x,y);
  if(existing>=0){if(farmPlots[existing].state==="empty"){selectedFarmPlot=existing;farmPlots[existing].state="tilled";}else{showToast("این زمین قبلاً آماده شده!");return;}}
  else{farmPlots.push({id:farmPlots.length,x,y,state:"tilled",crop:null,growth:0,wateredDay:-1,harvests:0});selectedFarmPlot=farmPlots.length-1;}
