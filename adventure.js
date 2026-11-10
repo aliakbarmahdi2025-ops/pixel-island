@@ -23,7 +23,9 @@ let npcQuest = { accepted: false, progress: 0, claimed: false };
 let homeLevel = 0, homeInterior = false, homeReturn = { x: 760, y: 590 };
 
 let townMode = false, townReturn = {x:2240,y:900}, townNpcIndex = 0;
-const townFriendship = {mina:0,hana:0,nahid:0,saeed:0,rezaei:0};
+let backpackTier = 0, furnitureOwned = {bed:false,table:false,chair:false};
+const backpackCaps = [30,50,75];
+const townFriendship = {mina:0,hana:0,nahid:0,saeed:0,rezaei:0,naderi:0};
 const townStock = {bread:0,seeds:0,apple:0};
 const TOWN = {w:1600,h:1200};
 const townPeople = [
@@ -31,7 +33,8 @@ const townPeople = [
 {id:"hana",name:"حنا",role:"خواهر مینا",x:560,y:590,color:"#348fc0",hair:"#292431"},
 {id:"nahid",name:"ناهید",role:"مادر مینا و حنا",x:420,y:650,color:"#9b3e60",hair:"#673b40"},
 {id:"saeed",name:"سعید",role:"نگهبان شهر",x:180,y:590,color:"#33465b",hair:"#28252b"},
-{id:"rezaei",name:"خانم رضایی",role:"صاحب خواربارفروشی",x:1120,y:530,color:"#4b8b50",hair:"#74483a"}
+{id:"rezaei",name:"خانم رضایی",role:"نجار روستا",x:1120,y:530,color:"#4b8b50",hair:"#74483a"},
+{id:"naderi",name:"آقای نادری",role:"فروشنده و بذر‌فروش",x:1370,y:530,color:"#52677a",hair:"#302b2b"}
 ];
 
 let worldClock = 9 * 60, worldDay = 1, selectedFarmPlot = 0, selectedCrop = "carrot";
@@ -108,6 +111,8 @@ function load() {
     npcMet = !!data.npcMet; npcTalkIndex = Number.isInteger(data.npcTalkIndex) ? data.npcTalkIndex : 0;
     if (data.npcQuest) npcQuest = { ...npcQuest, ...data.npcQuest };
     homeLevel = Math.max(0, Math.min(3, Number(data.homeLevel) || 0));
+    backpackTier = Math.max(0,Math.min(2,Number(data.backpackTier)||0));
+    if(data.furnitureOwned) furnitureOwned={...furnitureOwned,...data.furnitureOwned};
     homeInterior = !!data.homeInterior; if (data.homeReturn) homeReturn = data.homeReturn;
     townMode=!!data.townMode;if(data.townReturn)townReturn=data.townReturn;if(data.townFriendship)Object.assign(townFriendship,data.townFriendship);if(data.townStock)Object.assign(townStock,data.townStock);
     if(Number.isFinite(data.worldClock))worldClock=data.worldClock;if(Number.isFinite(data.worldDay))worldDay=data.worldDay;if(Array.isArray(data.farmPlots))data.farmPlots.forEach((p,i)=>{if(farmPlots[i])Object.assign(farmPlots[i],p);});
@@ -117,7 +122,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, toolLevels, bridgeStage, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
+      bag, stations, toolLevels, bridgeStage, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -236,6 +241,7 @@ function harvest() {
   nearest.hp -= 1 + (toolLevels[toolType] || 0);
   if (nearest.hp <= 0) {
     (caveMode ? caveHarvested : harvested).add(nearest.id);
+    const amount=nearest.type==="tree"?3:nearest.type==="stone"?2:1;if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره! برای ظرفیت بیشتر برو پیش آقای نادری 🎒");return;}
     if (nearest.type === "tree") { bag.wood += 3; quests.wood = Math.min(10, quests.wood + 3); }
     if (nearest.type === "stone") bag.stone += 2;
     if (nearest.type === "iron") { bag.iron += 1; quests.iron = Math.min(5, quests.iron + 1); }
@@ -314,7 +320,7 @@ $("farmTill").addEventListener("click",farmTill);$("farmPlant").addEventListener
 $("farmCrop").addEventListener("change",e=>{selectedCrop=e.target.value;updateFarmUI();});$("sellCrops").addEventListener("click",sellFarmCrops);
 $("attackBtn").addEventListener("pointerdown", e => { e.preventDefault(); attack(); });
 $("npcBtn").addEventListener("click", openNpcDialogue);
-$("townBtn").addEventListener("click",()=>transitionTown(true));$("townExitBtn").addEventListener("click",()=>transitionTown(false));$("townNpcBtn").addEventListener("click",openTownNpc);$("townNpcTalk").addEventListener("click",nextTownDialogue);$("townNpcShop").addEventListener("click",openTownShop);$("townNpcClose").addEventListener("click",()=>{$("townNpcPanel").hidden=true;syncXpPanel();});$("townShopClose").addEventListener("click",()=>{$("townShopPanel").hidden=true;syncXpPanel();});$("buyBread").addEventListener("click",()=>buyTownItem("bread"));$("buySeeds").addEventListener("click",()=>buyTownItem("seeds"));$("buyApple").addEventListener("click",()=>buyTownItem("apple"));
+$("townBtn").addEventListener("click",()=>transitionTown(true));$("townExitBtn").addEventListener("click",()=>transitionTown(false));$("townNpcBtn").addEventListener("click",openTownNpc);$("townNpcTalk").addEventListener("click",nextTownDialogue);$("townNpcShop").addEventListener("click",openTownShop);$("carpenterClose").addEventListener("click",()=>{$("carpenterPanel").hidden=true;syncXpPanel();});$("carpenterBuild").addEventListener("click",carpenterBuild);$("carpenterUpgrade").addEventListener("click",carpenterUpgrade);$("furnitureBed").addEventListener("click",()=>buildFurniture("bed"));$("furnitureTable").addEventListener("click",()=>buildFurniture("table"));$("furnitureChair").addEventListener("click",()=>buildFurniture("chair"));$("backpackUpgrade").addEventListener("click",upgradeBackpack);$("townNpcClose").addEventListener("click",()=>{$("townNpcPanel").hidden=true;syncXpPanel();});$("townShopClose").addEventListener("click",()=>{$("townShopPanel").hidden=true;syncXpPanel();});$("buyBread").addEventListener("click",()=>buyTownItem("bread"));$("buySeeds").addEventListener("click",()=>buyTownItem("seeds"));$("buyApple").addEventListener("click",()=>buyTownItem("apple"));
 $("eatBread").addEventListener("click",()=>consumeTownFood("bread"));
 $("eatApple").addEventListener("click",()=>consumeTownFood("apple"));
 $("npcNext").addEventListener("click", advanceNpcDialogue);
@@ -699,30 +705,40 @@ function townSchedule(dt=0){
   if(d>0&&d<44){const push=(44-d)*0.5;p.x-=dx/d*push;p.y-=dy/d*push;q.x+=dx/d*push;q.y+=dy/d*push;}
  }
 }
+function bagUsed(){return Object.values(bag).reduce((sum,v)=>sum+(Number(v)||0),0);}
+function bagCanAdd(amount=1){return bagUsed()+amount<=backpackCaps[backpackTier];}
+function bagAdd(key,amount){if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره! پیش آقای نادری ظرفیتش رو ارتقا بده 🎒");return false;}bag[key]=(bag[key]||0)+amount;return true;}
 function openTownNpc(){
  const p=townPeople.find(q=>Math.hypot(player.x-q.x,player.y-q.y)<115);if(!p)return;
  townNpcIndex=townPeople.indexOf(p);
- const lines={mina:["سلام! چه خوب که اومدی شهر سبز. 🌸","امروز هوا برای قدم زدن توی میدان عالیه!"],hana:["سلام، چه خبر؟","من دوست دارم کوچه‌های قدیمی شهر رو بگردم."],nahid:["خوش اومدی عزیزم، مواظب خودت باش. ❤️","این شهر کوچیکه، اما مردمش دل بزرگی دارن."],saeed:["سلام! به شهر سبز خوش اومدی.","من مراقب ورودی و آرامش شهرم."],rezaei:["سلام عزیزم! به خواربارفروشی من خوش اومدی.","نان تازه و خوراکی محلی دارم؛ هرچی لازم داری بگو. 🌼"]};
- const n=townFriendship[p.id]||0;$("townNpcTitle").textContent=p.name+" • "+p.role;$("townNpcDialogue").textContent=lines[p.id][n%lines[p.id].length];$("townNpcHeart").textContent="💚 میزان آشنایی: "+n;$("townNpcShop").hidden=p.id!=="rezaei";$("townNpcPanel").hidden=false;townFriendship[p.id]=Math.min(20,n+1);saveQuietly();syncXpPanel();
+ const lines={mina:["سلام! چه خوب که اومدی شهر سبز. 🌸","امروز هوا برای قدم زدن توی میدان عالیه!"],hana:["سلام، چه خبر؟","من دوست دارم کوچه‌های قدیمی شهر رو بگردم."],nahid:["خوش اومدی عزیزم، مواظب خودت باش. ❤️","این شهر کوچیکه، اما مردمش دل بزرگی دارن."],saeed:["سلام! به شهر سبز خوش اومدی.","من مراقب ورودی و آرامش شهرم."],rezaei:["سلام! من نجار شهرم. 🪚","اگه خانه‌ات رو بزرگ‌تر یا مبلمانش رو عوض کنی، کمکت می‌کنم."],naderi:["سلام! آقای نادری هستم؛ بذر تازه و کوله‌پشتی بهتر دارم. 🎒","هرچی برای مزرعه لازم داری اینجا پیدا می‌شه."]};
+ const n=townFriendship[p.id]||0;$("townNpcTitle").textContent=p.name+" • "+p.role;$("townNpcDialogue").textContent=lines[p.id][n%lines[p.id].length];$("townNpcHeart").textContent="💚 میزان آشنایی: "+n;$("townNpcShop").hidden=!["rezaei","naderi"].includes(p.id);$("townNpcShop").textContent=p.id==="rezaei"?"🪚 خدمات نجاری":"🛍️ فروشگاه نادری";$("townNpcPanel").hidden=false;townFriendship[p.id]=Math.min(20,n+1);saveQuietly();syncXpPanel();
 }
 function nextTownDialogue(){
  const p=townPeople[townNpcIndex];if(!p)return;
- const lines={mina:["از دیدنت خوشحال شدم. 💗","یه روز بیا با هم توی میدان قدم بزنیم!"],hana:["شهر رو بگرد، کلی جای قشنگ داره!","بعداً باز هم با هم حرف می‌زنیم."],nahid:["هر وقت خسته شدی، کمی استراحت کن.","خوشحالم که شهرمون رو دوست داری."],saeed:["مسیر جنگل از همون دروازه‌ایه که وارد شدی.","روز خوبی داشته باشی!"],rezaei:["اگه خرید داشتی، مغازه بازه؛ بفرما.","برای آشنایان قدیمی همیشه پیشنهاد خوب دارم."]};
+ const lines={mina:["از دیدنت خوشحال شدم. 💗","یه روز بیا با هم توی میدان قدم بزنیم!"],hana:["شهر رو بگرد، کلی جای قشنگ داره!","بعداً باز هم با هم حرف می‌زنیم."],nahid:["هر وقت خسته شدی، کمی استراحت کن.","خوشحالم که شهرمون رو دوست داری."],saeed:["مسیر جنگل از همون دروازه‌ایه که وارد شدی.","روز خوبی داشته باشی!"],rezaei:["برای ساخت و تغییر دکور خانه روی من حساب کن!","چوب و پارچه و شیشه‌ات رو بیار تا خانه‌ات رو قشنگ‌تر کنیم."],naderi:["ظرفیت کوله‌ات رو بالا ببر تا بیشتر جمع کنی.","بذر خوب، مزرعه خوب می‌سازه!"]};
  $("townNpcDialogue").textContent=lines[p.id][(townFriendship[p.id]||0)%lines[p.id].length];townFriendship[p.id]=Math.min(20,(townFriendship[p.id]||0)+1);$("townNpcHeart").textContent="💚 میزان آشنایی: "+townFriendship[p.id];saveQuietly();
 }
-function openTownShop(){const hour=worldClock/60;const open=hour>=8&&hour<20;if(!open){const h=Math.floor(hour),m=Math.floor((hour-h)*60);showToast("خواربارفروشی از ۸ صبح تا ۸ شب بازه؛ ساعت بازی "+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+" است. 🌙");return;} $("townNpcPanel").hidden=true;$("townShopPanel").hidden=false;$("townShopHours").textContent="ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰ • ساعت بازی: "+String(Math.floor(hour)).padStart(2,"0")+":"+String(Math.floor((hour%1)*60)).padStart(2,"0");updateTownShop();syncXpPanel();}
+function openTownShop(){const p=townPeople[townNpcIndex];if(!p)return;if(p.id==="rezaei"){$("townNpcPanel").hidden=true;$("carpenterPanel").hidden=false;updateCarpenterUI();syncXpPanel();return;}const hour=worldClock/60;const open=hour>=8&&hour<20;if(!open){const h=Math.floor(hour),m=Math.floor((hour-h)*60);showToast("مغازه نادری از ۸ صبح تا ۸ شب بازه؛ ساعت بازی "+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+" است. 🌙");return;} $("townNpcPanel").hidden=true;$("townShopPanel").hidden=false;updateTownShop();syncXpPanel();}
 function openFarmPanel(){selectedFarmPlot=0;$("farmPanel").hidden=false;updateFarmUI();syncXpPanel();}
 function onNewFarmDay(){const maxDays={wheat:3,carrot:2,strawberry:4};for(const p of farmPlots){if(p.state==="growing"&&p.crop&&p.wateredDay===worldDay-1){p.growth=Math.min(maxDays[p.crop]||3,p.growth+1);}p.wateredDay=-1;}showToast("روز جدید شروع شد! یادت نره مزرعه رو آبیاری کنی 🌅");}
 function updateFarmUI(){const p=farmPlots[selectedFarmPlot],days={wheat:3,carrot:2,strawberry:4};$("farmPlotsGrid").innerHTML=farmPlots.map((q,i)=>'<button type="button" data-plot="'+i+'" class="'+(i===selectedFarmPlot?'selected':'')+'">زمین '+(i+1)+' • '+(q.state==="empty"?"خالی":q.state==="tilled"?"آماده کاشت":({wheat:"گندم",carrot:"هویج",strawberry:"توت‌فرنگی"}[q.crop]||"محصول"))+(q.state==="growing"?" • "+q.growth+"/"+days[q.crop]+" روز":"")+'</button>').join("");$("farmPlotStatus").textContent=p.state==="empty"?"این زمین هنوز آماده نشده.":p.state==="tilled"?"زمین شخم‌زده است؛ حالا بذر بکار.":("محصول: "+({wheat:"گندم",carrot:"هویج",strawberry:"توت‌فرنگی"}[p.crop])+" • رشد "+p.growth+"/"+days[p.crop]+" روز • "+(p.growth>=days[p.crop]?"آماده برداشت":p.wateredDay===worldDay?"امروز آبیاری شده 💧":"امروز هنوز آب نخورده 💧"));$("farmSeeds").textContent="بذرهای تو: "+(bag.seeds||0);$("farmTill").disabled=p.state!=="empty";$("farmPlant").disabled=p.state!=="tilled"||!(bag.seeds>0);$("farmWater").disabled=p.state!=="growing"||p.growth>=days[p.crop]||p.wateredDay===worldDay;$("farmHarvest").disabled=p.state!=="growing"||p.growth<days[p.crop];}
 function farmTill(){const p=farmPlots[selectedFarmPlot];if(p.state!=="empty")return;p.state="tilled";updateFarmUI();saveQuietly();showToast("زمین آماده کاشت شد 🪴");}
 function farmPlant(){const p=farmPlots[selectedFarmPlot];if(p.state!=="tilled"||bag.seeds<1)return;bag.seeds--;p.state="growing";p.crop=selectedCrop;p.growth=0;p.wateredDay=-1;updateUI();updateFarmUI();saveQuietly();showToast("بذر کاشته شد! هر روز آبیاریش کن 🌱");}
 function farmWater(){const p=farmPlots[selectedFarmPlot],days={wheat:3,carrot:2,strawberry:4};if(p.state!=="growing"||p.wateredDay===worldDay||p.growth>=days[p.crop])return;p.wateredDay=worldDay;updateFarmUI();saveQuietly();showToast("محصول آبیاری شد 💧 فردا رشد می‌کنه!");}
-function farmHarvest(){const p=farmPlots[selectedFarmPlot],days={wheat:3,carrot:2,strawberry:4};if(p.state!=="growing"||p.growth<days[p.crop])return;bag[p.crop]=(bag[p.crop]||0)+1;Object.assign(p,{state:"empty",crop:null,growth:0,wateredDay:-1});updateUI();updateFarmUI();saveQuietly();showToast("محصول برداشت شد! ببر پیش خانم رضایی 🌾");}
+function farmHarvest(){const p=farmPlots[selectedFarmPlot],days={wheat:3,carrot:2,strawberry:4};if(p.state!=="growing"||p.growth<days[p.crop])return;if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}bag[p.crop]=(bag[p.crop]||0)+1;Object.assign(p,{state:"empty",crop:null,growth:0,wateredDay:-1});updateUI();updateFarmUI();saveQuietly();showToast("محصول برداشت شد! ببر پیش خانم رضایی 🌾");}
 function sellFarmCrops(){const count=(bag.wheat||0)+(bag.carrot||0)+(bag.strawberry||0),total=(bag.wheat||0)*8+(bag.carrot||0)*10+(bag.strawberry||0)*16;if(!count){showToast("محصولی برای فروش نداری");return;}bag.wheat=bag.carrot=bag.strawberry=0;player.coins+=total;updateUI();updateTownShop();saveQuietly();showToast("خانم رضایی محصولاتت رو خرید! +"+total+" سکه 🪙");}
-function updateTownShop(){$("townShopHours").textContent="ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰ • ساعت بازی: "+String(Math.floor(worldClock/60)).padStart(2,"0")+":"+String(Math.floor(worldClock%60)).padStart(2,"0");$("townShopStock").textContent="موجودی: نان "+townStock.bread+" • بذر "+(bag.seeds||0)+" • سیب "+townStock.apple+" | سکه: "+player.coins;
-  $("sellCrops").disabled=!(bag.wheat||bag.carrot||bag.strawberry);$("sellCrops").textContent="فروش محصولات برداشت‌شده • موجودی: "+((bag.wheat||0)+(bag.carrot||0)+(bag.strawberry||0));$("buyBread").disabled=player.coins<8;$("buySeeds").disabled=player.coins<5;$("buyApple").disabled=player.coins<6;}
+function updateTownShop(){$("townShopHours").textContent="ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰ • ساعت بازی: "+String(Math.floor(worldClock/60)).padStart(2,"0")+":"+String(Math.floor(worldClock%60)).padStart(2,"0");$("townShopStock").textContent="موجودی بذر: "+(bag.seeds||0)+" • ظرفیت کوله: "+bagUsed()+"/"+backpackCaps[backpackTier]+" • سکه: "+player.coins;
+  $("sellCrops").disabled=!(bag.wheat||bag.carrot||bag.strawberry);$("sellCrops").textContent="فروش محصولات برداشت‌شده • موجودی: "+((bag.wheat||0)+(bag.carrot||0)+(bag.strawberry||0));$("buyBread").hidden=true;$("buyApple").hidden=true;$("eatBread").hidden=true;$("eatApple").hidden=true;$("buySeeds").disabled=player.coins<5||!bagCanAdd(1);$("buySeeds").textContent="🌱 بسته بذر — ۵ سکه";$("buySeeds").hidden=false;}
 function consumeTownFood(type){if(!townStock[type]){showToast("از این خوراکی نداری!");return;}if(player.health>=player.maxHealth){showToast("جان تو کامله!");return;}townStock[type]--;player.health=Math.min(player.maxHealth,player.health+(type==="bread"?2:1));updateUI();updateTownShop();saveQuietly();showToast("خوراکی خوردی و جانت بیشتر شد ❤️");}
-function buyTownItem(type){const item={bread:{price:8,label:"نان"},seeds:{price:5,label:"بذر"},apple:{price:6,label:"سیب"}}[type];if(player.coins<item.price){showToast("سکه کافی نداری! 🪙");return;}player.coins-=item.price;if(type==="seeds")bag.seeds=(bag.seeds||0)+1;else townStock[type]++;updateUI();updateTownShop();saveQuietly();showToast(item.label+" خریدی! 🛍️");}
+function buyTownItem(type){const item={bread:{price:8,label:"نان"},seeds:{price:5,label:"بذر"},apple:{price:6,label:"سیب"}}[type];if(!item||player.coins<item.price){showToast("سکه کافی نداری! 🪙");return;}if(type==="seeds"&&!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}player.coins-=item.price;if(type==="seeds")bag.seeds=(bag.seeds||0)+1;else townStock[type]++;updateUI();updateTownShop();saveQuietly();showToast(item.label+" خریدی! 🛍️");}
+function updateCarpenterUI(){const title=homeLevel===0?"هنوز خانه‌ای نداری":homeLevel===1?"کلبه چوبی":homeLevel===2?"خانه بزرگ":"خانه لوکس";$("carpenterStatus").textContent=title+" • چوب "+bag.wood+" • سنگ "+bag.stone+" • تخته "+bag.plank+" • پارچه "+bag.cloth+" • سکه "+player.coins;$("carpenterBuild").hidden=homeLevel>0;$("carpenterUpgrade").hidden=homeLevel===0||homeLevel>=3;$("carpenterBuild").disabled=bag.wood<12||bag.stone<6;$("carpenterUpgrade").disabled=homeLevel===1?(bag.wood<18||bag.stone<10||player.coins<10):(bag.wood<30||bag.stone<20||player.coins<35);$("furnitureBed").disabled=furnitureOwned.bed||bag.plank<8||bag.cloth<3;$("furnitureTable").disabled=furnitureOwned.table||bag.plank<6||bag.nail<4;$("furnitureChair").disabled=furnitureOwned.chair||bag.plank<4||bag.nail<2;$("furnitureStatus").textContent="وسایل ساخته‌شده: "+Object.entries(furnitureOwned).filter(([k,v])=>v).map(([k])=>({bed:"تخت",table:"میز",chair:"صندلی"}[k])).join("، "||"") ;}
+function carpenterBuild(){buildPlayerHome();updateCarpenterUI();}
+function carpenterUpgrade(){upgradePlayerHome();updateCarpenterUI();}
+function buildFurniture(type){const recipes={bed:{cost:{plank:8,cloth:3},label:"تخت"},table:{cost:{plank:6,nail:4},label:"میز"},chair:{cost:{plank:4,nail:2},label:"صندلی"}};const r=recipes[type];if(!r||furnitureOwned[type])return;if(!Object.entries(r.cost).every(([k,v])=>(bag[k]||0)>=v)){showToast("مصالح کافی نداری");return;}Object.entries(r.cost).forEach(([k,v])=>bag[k]-=v);furnitureOwned[type]=true;updateUI();updateCarpenterUI();saveQuietly();showToast(r.label+" برای خانه ساخته شد! 🪑");}
+function upgradeBackpack(){const costs=[{coins:40,plank:8},{coins:100,plank:18,cloth:8}];if(backpackTier>=2){showToast("کوله‌پشتی به آخرین سطح رسیده!");return;}const cost=costs[backpackTier];if(player.coins<cost.coins||bag.plank<(cost.plank||0)||(cost.cloth&&bag.cloth<cost.cloth)){showToast("برای ارتقای کوله منابع کافی نداری");return;}player.coins-=cost.coins;bag.plank-=cost.plank;if(cost.cloth)bag.cloth-=cost.cloth;backpackTier++;updateUI();updateTownShop();saveQuietly();showToast("کوله‌پشتی ارتقا پیدا کرد! ظرفیت: "+backpackCaps[backpackTier]+" 🎒");}
+function updateNaderiUI(){const c=[{coins:40,plank:8},{coins:100,plank:18,cloth:8}][backpackTier];$("backpackUpgrade").hidden=backpackTier>=2;$("backpackUpgrade").disabled=!c||player.coins<c.coins||bag.plank<c.plank||(c.cloth&&bag.cloth<c.cloth);$("naderiStatus").textContent="ظرفیت کوله: "+bagUsed()+" / "+backpackCaps[backpackTier]+" • سکه: "+player.coins;}
+function openNaderiShop(){const p=townPeople[townNpcIndex];if(!p||p.id!=="naderi")return;openTownShop();updateNaderiUI();}
 function drawFarmPlots(){
  for(const p of farmPlots){
   const x=p.x-camera.x,y=p.y-camera.y;
