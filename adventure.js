@@ -1412,3 +1412,4 @@ showToast("به جنگل خوش آمدی! 🌲");
 requestAnimationFrame(loop);
 addEventListener("pagehide", saveQuietly);
 })();
+// Stage 29 final validation marker: carpenter, merchant, furniture and backpack progression.
