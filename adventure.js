@@ -395,6 +395,7 @@ function saveQuietly() {
 const keys = new Set();
 addEventListener("keydown", e => {
   if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+  if(["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"].includes(e.key.toLowerCase()))moveTarget=null;
   keys.add(e.key.toLowerCase());
 });
 addEventListener("keyup", e => keys.delete(e.key.toLowerCase()));
@@ -476,7 +477,11 @@ function tickWorldInteraction(dt){
   if(t.type==="resource"){
     const node=activeNodes().find(r=>r.id===t.id);
     if(!node){moveTarget=null;return;}
-    if(interactionTimer<=0){harvest(t.id);interactionTimer=.48;}
+    if(interactionTimer<=0){
+      const amount=node.type==="tree"?3:(node.type==="stone"||node.type==="bush"||node.type==="sand")?2:1;
+      if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره؛ اول ظرفیتش رو بیشتر کن 🎒");moveTarget=null;return;}
+      harvest(t.id);interactionTimer=.48;
+    }
     if(!activeNodes().some(r=>r.id===t.id))moveTarget=null;
   }else if(t.type==="enemy"){
     const target=(templeMode?templeEnemies:caveMode?caveEnemies:enemies).find(e=>e.id===t.id&&e.alive);
@@ -497,11 +502,9 @@ function tickWorldInteraction(dt){
   else if(t.type==="temple"){templeInteract();moveTarget=null;}
 }
 
-$("actionBtn").addEventListener("pointerdown", e => { e.preventDefault(); templeMode?templeInteract():harvest(); });
 $("farmBtn").addEventListener("click",openFarmPanel);$("farmClose").addEventListener("click",()=>{$("farmPanel").hidden=true;syncXpPanel();});$("farmPlotsGrid").addEventListener("click",e=>{const b=e.target.closest("[data-plot]");if(!b)return;selectedFarmPlot=Number(b.dataset.plot);updateFarmUI();});
 $("farmTill").addEventListener("click",farmTill);$("farmPlant").addEventListener("click",farmPlant);$("farmWater").addEventListener("click",farmWater);$("farmHarvest").addEventListener("click",farmHarvest);
 $("farmCrop").addEventListener("change",e=>{selectedCrop=e.target.value;updateFarmUI();});$("sellCrops").addEventListener("click",sellFarmCrops);
-$("attackBtn").addEventListener("pointerdown", e => { e.preventDefault(); attack(); });
 $("npcBtn").addEventListener("click", openNpcDialogue);
 $("townBtn").addEventListener("click",()=>transitionTown(true));$("townExitBtn").addEventListener("click",()=>transitionTown(false));$("townNpcBtn").addEventListener("click",openTownNpc);$("townNpcTalk").addEventListener("click",nextTownDialogue);$("townNpcShop").addEventListener("click",openTownShop);$("carpenterClose").addEventListener("click",()=>{$("carpenterPanel").hidden=true;syncXpPanel();});$("carpenterBuild").addEventListener("click",carpenterBuild);$("carpenterUpgrade").addEventListener("click",carpenterUpgrade);$("furnitureBed").addEventListener("click",()=>buildFurniture("bed"));$("furnitureTable").addEventListener("click",()=>buildFurniture("table"));$("furnitureChair").addEventListener("click",()=>buildFurniture("chair"));$("backpackUpgrade").addEventListener("click",upgradeBackpack);$("townNpcClose").addEventListener("click",()=>{$("townNpcPanel").hidden=true;syncXpPanel();});$("townShopClose").addEventListener("click",()=>{$("townShopPanel").hidden=true;syncXpPanel();});$("buyBread").addEventListener("click",()=>buyTownItem("bread"));$("buySeeds").addEventListener("click",()=>buyCropSeed(selectedCrop));$("seedShopList").addEventListener("click",e=>{const b=e.target.closest("[data-seed]");if(b)buyCropSeed(b.dataset.seed);});$("buyApple").addEventListener("click",()=>buyTownItem("apple"));
 $("eatBread").addEventListener("click",()=>consumeTownFood("bread"));
@@ -1658,8 +1661,9 @@ function loop(time) {
   requestAnimationFrame(loop);
 }
 updateUI();
+updateHotbar();
 syncXpPanel();
-showToast("به جنگل خوش آمدی! 🌲");
+showToast("روی زمین بزن تا حرکت کنی؛ روی منابع بزن تا خودکار جمع‌آوری کنی 🌿");
 requestAnimationFrame(loop);
 addEventListener("pagehide", saveQuietly);
 })();
