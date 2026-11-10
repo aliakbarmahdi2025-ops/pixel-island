@@ -111,6 +111,7 @@
     </div>
     <button id="closeStations">بستن کارگاه</button>
   </section>
+  <section id="bridgePanel" class="panel" hidden><h2>🌉 بازسازی پل باستانی</h2><p class="bridge-story">رودخانه راه معبد را بلعیده. سامان می‌گوید این پل فقط با سه مرحله بازسازی و مهر کریستالی دوباره استوار می‌شود.</p><div id="bridgeStatus" class="bridge-status"></div><p id="bridgeRecipe" class="bridge-recipe"></p><p class="bridge-warning">برای بازسازی، میزکار، کوره و اره‌کاری باید هر سه ساخته شده باشند. مصالح هر مرحله یک‌جا مصرف می‌شوند.</p><button id="bridgeBuildBtn">ساخت این بخش از پل</button><button id="bridgeClose">بستن</button></section>
   <section id="farmPanel" class="panel" hidden><h2>🌱 مزرعه کوچک من</h2><p id="farmSeeds">بذرهای تو: ۰</p><div id="farmPlotsGrid" class="farm-plots"></div><p id="farmPlotStatus">یک زمین را انتخاب کن.</p><label for="farmCrop">نوع محصول</label><select id="farmCrop"><option value="carrot">🥕 هویج • ۲ روز</option><option value="wheat">🌾 گندم • ۳ روز</option><option value="strawberry">🍓 توت‌فرنگی • ۴ روز</option></select><div class="upgrade-list"><button id="farmTill">🪴 شخم زدن زمین</button><button id="farmPlant">🌱 کاشت بذر</button><button id="farmWater">💧 آبیاری امروز</button><button id="farmHarvest">🧺 برداشت محصول</button></div><button id="farmClose">بستن</button></section>
   <section id="townNpcPanel" class="panel" hidden><h2 id="townNpcTitle">اهالی شهر سبز</h2><p id="townNpcDialogue"></p><p id="townNpcHeart"></p><div class="npc-actions"><button id="townNpcTalk">گفتگوی بعدی</button><button id="townNpcShop" hidden>🛍️ دیدن اجناس مغازه</button><button id="townNpcClose">خداحافظ</button></div></section><section id="townShopPanel" class="panel" hidden><h2>🛒 خواربارفروشی خانم رضایی</h2><p>هرچی لازم داری، با خیال راحت نگاه کن!</p><div class="upgrade-list"><button id="buyBread">🍞 نان تازه — ۸ سکه (۲ جان)</button><button id="buySeeds">🌱 بسته بذر — ۵ سکه</button><button id="buyApple">🍎 سیب محلی — ۶ سکه (۱ جان)</button><button id="sellCrops">🌾 فروش محصولات برداشت‌شده</button></div><p id="townShopHours">ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰</p><p id="townShopStock"></p><button id="eatBread">🍞 خوردن نان</button><button id="eatApple">🍎 خوردن سیب</button><button id="townShopClose">بستن مغازه</button></section><div id="townClock" hidden>☀️ ۰۹:۰۰</div><div id="townFade"></div><div id="toast" role="status"></div>
   <div id="controls">
@@ -119,7 +120,7 @@
     <button id="attackBtn">⚔️<small>حمله</small></button>
     <button id="caveBtn" hidden>🕳️ ورود به غار</button>
     <button id="homeBtn" hidden>🏡 خانه</button><button id="farmBtn" hidden>🌱 مزرعه</button><button id="workshopBtn" hidden>🏗️ کارگاه</button>
-    <button id="npcBtn" hidden>💬 صحبت</button><button id="townBtn" hidden>🏘️ ورود به شهر</button><button id="townNpcBtn" hidden>💬 صحبت با اهالی</button><button id="townExitBtn" hidden>🌲 بازگشت به جنگل</button>
+    <button id="npcBtn" hidden>💬 صحبت</button><button id="townBtn" hidden>🏘️ ورود به شهر</button><button id="townNpcBtn" hidden>💬 صحبت با اهالی</button><button id="townExitBtn" hidden>🌲 بازگشت به جنگل</button><button id="bridgeBtn" hidden>🌉 پل باستانی</button>
   </div>
   <div id="help">با جوی‌استیک حرکت کن؛ برای جمع‌آوری برداشت و برای دفاع حمله را بزن.</div>
   <script src="adventure.js"></script>
