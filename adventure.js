@@ -100,6 +100,7 @@ function load() {
       if (!Object.prototype.hasOwnProperty.call(data.player, "skillPoints")) player.skillPoints = Math.max(0, player.level - 1);
     }
     if (data.bag) Object.assign(bag, data.bag);
+    if(!Number.isFinite(Number(data.backpackTier))){const used=Object.values(bag).reduce((n,v)=>n+(Number(v)||0),0);backpackTier=used>50?2:used>30?1:0;}
     if (data.stations) Object.assign(stations, data.stations);
     if (data.toolLevels) Object.keys(toolLevels).forEach(k => toolLevels[k] = Math.max(0, Math.min(2, Number(data.toolLevels[k]) || 0)));
     bridgeStage = Math.max(0, Math.min(3, Number(data.bridgeStage) || 0));
@@ -728,7 +729,7 @@ function farmPlant(){const p=farmPlots[selectedFarmPlot];if(p.state!=="tilled"||
 function farmWater(){const p=farmPlots[selectedFarmPlot],days={wheat:3,carrot:2,strawberry:4};if(p.state!=="growing"||p.wateredDay===worldDay||p.growth>=days[p.crop])return;p.wateredDay=worldDay;updateFarmUI();saveQuietly();showToast("محصول آبیاری شد 💧 فردا رشد می‌کنه!");}
 function farmHarvest(){const p=farmPlots[selectedFarmPlot],days={wheat:3,carrot:2,strawberry:4};if(p.state!=="growing"||p.growth<days[p.crop])return;if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}bag[p.crop]=(bag[p.crop]||0)+1;Object.assign(p,{state:"empty",crop:null,growth:0,wateredDay:-1});updateUI();updateFarmUI();saveQuietly();showToast("محصول برداشت شد! ببر پیش خانم رضایی 🌾");}
 function sellFarmCrops(){const count=(bag.wheat||0)+(bag.carrot||0)+(bag.strawberry||0),total=(bag.wheat||0)*8+(bag.carrot||0)*10+(bag.strawberry||0)*16;if(!count){showToast("محصولی برای فروش نداری");return;}bag.wheat=bag.carrot=bag.strawberry=0;player.coins+=total;updateUI();updateTownShop();saveQuietly();showToast("خانم رضایی محصولاتت رو خرید! +"+total+" سکه 🪙");}
-function updateTownShop(){$("townShopHours").textContent="ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰ • ساعت بازی: "+String(Math.floor(worldClock/60)).padStart(2,"0")+":"+String(Math.floor(worldClock%60)).padStart(2,"0");$("townShopStock").textContent="موجودی بذر: "+(bag.seeds||0)+" • ظرفیت کوله: "+bagUsed()+"/"+backpackCaps[backpackTier]+" • سکه: "+player.coins;
+function updateTownShop(){$("townShopHours").textContent="ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰ • ساعت بازی: "+String(Math.floor(worldClock/60)).padStart(2,"0")+":"+String(Math.floor(worldClock%60)).padStart(2,"0");$("townShopStock").textContent="موجودی بذر: "+(bag.seeds||0)+" • ظرفیت کوله: "+bagUsed()+"/"+backpackCaps[backpackTier]+" • سکه: "+player.coins;if($("naderiStatus"))updateNaderiUI();
   $("sellCrops").disabled=!(bag.wheat||bag.carrot||bag.strawberry);$("sellCrops").textContent="فروش محصولات برداشت‌شده • موجودی: "+((bag.wheat||0)+(bag.carrot||0)+(bag.strawberry||0));$("buyBread").hidden=true;$("buyApple").hidden=true;$("eatBread").hidden=true;$("eatApple").hidden=true;$("buySeeds").disabled=player.coins<5||!bagCanAdd(1);$("buySeeds").textContent="🌱 بسته بذر — ۵ سکه";$("buySeeds").hidden=false;}
 function consumeTownFood(type){if(!townStock[type]){showToast("از این خوراکی نداری!");return;}if(player.health>=player.maxHealth){showToast("جان تو کامله!");return;}townStock[type]--;player.health=Math.min(player.maxHealth,player.health+(type==="bread"?2:1));updateUI();updateTownShop();saveQuietly();showToast("خوراکی خوردی و جانت بیشتر شد ❤️");}
 function buyTownItem(type){const item={bread:{price:8,label:"نان"},seeds:{price:5,label:"بذر"},apple:{price:6,label:"سیب"}}[type];if(!item||player.coins<item.price){showToast("سکه کافی نداری! 🪙");return;}if(type==="seeds"&&!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}player.coins-=item.price;if(type==="seeds")bag.seeds=(bag.seeds||0)+1;else townStock[type]++;updateUI();updateTownShop();saveQuietly();showToast(item.label+" خریدی! 🛍️");}
@@ -883,7 +884,7 @@ const townSpriteCache = {};
 function makePixelTownSprite(id, frame) {
  const c=document.createElement("canvas");c.width=80;c.height=112;
  const g=c.getContext("2d");
- const mina=id==="mina",hana=id==="hana",saeed=id==="saeed";
+ const mina=id==="mina",hana=id==="hana",saeed=id==="saeed",naderi=id==="naderi";
  const walk=frame===1?-2:frame===2?2:0;
  const skin="#e9b99c",skinHi="#f7d4bb",skinShade="#c98f78";
  const hair=mina?"#65402f":hana?"#29232d":"#302b2b";
@@ -900,7 +901,7 @@ function makePixelTownSprite(id, frame) {
  px(25,96+walk,13,6,boot);px(43,96-walk,14,6,boot);
  px(27,97+walk,7,2,"#77706a");px(45,97-walk,8,2,"#77706a");
  // Back hair and long side locks for the sisters; short hair for Saeed.
- if(!saeed){
+ if(!saeed&&!naderi){
   px(19,13,42,39,hair);px(15,27,8,43,hair);px(57,27,8,43,hair);
   px(17,54,8,19,hair);px(55,53,8,20,hair);
   px(22,16,12,4,hairHi);px(43,14,12,3,hairHi);
@@ -912,7 +913,7 @@ function makePixelTownSprite(id, frame) {
  px(25,43,30,32,top);px(20,49,6,17,top);px(54,49,6,17,top);
  px(28,45,23,5,topHi);px(21,51,3,10,topHi);px(56,51,3,10,topHi);
  px(29,73,22,3,mina?"#f2c36e":hana?"#e6e0d4":"#b8a98e");
- if(!saeed){
+ if(!saeed&&!naderi){
   // Modest skirt with a layered hem and subtle fabric folds.
   px(22,76,36,11,bottom);px(19,81,42,8,bottom);
   px(24,78,4,8,mina?"#67506a":"#e4e2e4");px(51,78,3,8,mina?"#67506a":"#e4e2e4");
@@ -953,12 +954,13 @@ function makePixelTownSprite(id, frame) {
  px(31,32,4,5,"#392d30");px(47,32,4,5,"#392d30");
  px(32,32,2,2,"#fff8ed");px(48,32,2,2,"#fff8ed");
  px(40,36,2,3,skinShade);px(37,41,7,2,"#a85f62");px(39,41,3,1,"#ffe4d5");
- if(!saeed){px(27,38,4,3,"#e8a1a0");px(51,38,4,3,"#e8a1a0");}
+ if(!saeed&&!naderi){px(27,38,4,3,"#e8a1a0");px(51,38,4,3,"#e8a1a0");}
  else{px(31,43,22,3,hair);px(35,45,14,4,hair);}
  // Character-specific accents.
  if(mina){px(59,54,3,7,"#f3cf75");px(60,55,2,3,"#fff1b8");px(24,47,3,8,"#f6a6c6");}
  if(hana){px(38,47,5,5,"#e8edf4");px(39,48,3,3,"#f5d98d");px(54,77,3,5,"#7ba9d0");}
  if(saeed){px(34,48,4,5,"#d7d4c9");px(42,48,4,5,"#d7d4c9");}
+  if(naderi){px(27,30,13,8,"#6d7778");px(45,30,13,8,"#6d7778");px(39,32,7,2,"#6d7778");px(29,32,9,4,"#b9dce0");px(47,32,9,4,"#b9dce0");}
  // Crisp outer silhouette accents.
  g.strokeStyle="#352b2d";g.lineWidth=1;g.strokeRect(18.5,42.5,43,37);
  // Extra pixel-art finish: fabric seams, hair strands, face lighting and grounded shoe shine.
@@ -1123,6 +1125,9 @@ function drawInterior() {
   ctx.fillStyle="#f2d78e";ctx.fillRect(ox+w/2-21,oy+h-84,42,27);
   if(homeLevel>=2){ctx.fillStyle="#a7c7d0";ctx.fillRect(ox+w-90,oy+215,42,58);ctx.fillStyle="#e4c276";ctx.fillRect(ox+65,oy+215,58,35);}
   if(homeLevel>=3){ctx.fillStyle="#d6bd8d";ctx.fillRect(ox+w/2-65,oy+190,130,28);ctx.fillStyle="#8e6844";ctx.fillRect(ox+w/2-58,oy+196,116,16);}
+   if(furnitureOwned.bed){ctx.fillStyle="#65452f";ctx.fillRect(ox+65,oy+h-150,110,48);ctx.fillStyle="#e8d6b4";ctx.fillRect(ox+70,oy+h-145,100,25);ctx.fillStyle="#9a6a49";ctx.fillRect(ox+70,oy+h-120,100,15);}
+   if(furnitureOwned.table){ctx.fillStyle="#6f492c";ctx.fillRect(ox+w-180,oy+h-160,85,12);ctx.fillRect(ox+w-174,oy+h-148,7,28);ctx.fillRect(ox+w-110,oy+h-148,7,28);}
+   if(furnitureOwned.chair){ctx.fillStyle="#875b36";ctx.fillRect(ox+w-235,oy+h-145,35,8);ctx.fillRect(ox+w-235,oy+h-175,7,34);ctx.fillRect(ox+w-232,oy+h-137,5,18);ctx.fillRect(ox+w-207,oy+h-137,5,18);}
   ctx.fillStyle="#fff0c2";ctx.font="bold 16px Tahoma";ctx.textAlign="center";ctx.fillText("خانه من",viewW/2,oy-8);ctx.textAlign="start";
   ctx.fillStyle="#f0d18c";ctx.fillRect(viewW/2-32,oy+h-18,64,18);
 }
