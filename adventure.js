@@ -220,7 +220,7 @@ function makeCave(){
  {id:"cc2",x:300,y:680,type:"crystal",hp:4,max:4},{id:"cc3",x:1450,y:950,type:"crystal",hp:4,max:4},
  {id:"cm1",x:560,y:560,type:"marble",hp:5,max:5},{id:"cm2",x:980,y:860,type:"marble",hp:5,max:5},{id:"cm3",x:1450,y:300,type:"marble",hp:5,max:5},
  {id:"cm4",x:180,y:560,type:"marble",hp:5,max:5},{id:"cm5",x:880,y:170,type:"marble",hp:5,max:5},{id:"cm6",x:1180,y:180,type:"marble",hp:5,max:5},{id:"cm7",x:250,y:1040,type:"marble",hp:5,max:5},{id:"cm8",x:520,y:1080,type:"marble",hp:5,max:5},{id:"cm9",x:960,y:520,type:"marble",hp:5,max:5},{id:"cm10",x:1240,y:760,type:"marble",hp:5,max:5},{id:"cm11",x:1480,y:1080,type:"marble",hp:5,max:5},{id:"cm12",x:760,y:680,type:"marble",hp:5,max:5},{id:"cm13",x:1120,y:1040,type:"marble",hp:5,max:5},{id:"cm14",x:180,y:820,type:"marble",hp:5,max:5},{id:"cm15",x:1380,y:160,type:"marble",hp:5,max:5},{id:"cm16",x:1040,y:240,type:"marble",hp:5,max:5},{id:"cm17",x:400,y:180,type:"marble",hp:5,max:5},{id:"cm18",x:900,y:1120,type:"marble",hp:5,max:5}];
- caveChests=[{x:590,y:230,opened:!!openedChests[0]},{x:1370,y:420,opened:!!openedChests[1]},{x:790,y:790,opened:!!openedChests[2]}];
+ caveChests=[{id:"cave-chest-0",x:590,y:230,opened:!!openedChests[0]},{id:"cave-chest-1",x:1370,y:420,opened:!!openedChests[1]},{id:"cave-chest-2",x:790,y:790,opened:!!openedChests[2]}];
  const slimeSpots=[[300,430],[920,330],[1450,570],[600,850],[1190,930]];
  caveEnemies=slimeSpots.map((p,i)=>({id:"cave-slime-"+i,kind:"slime",x:p[0],y:p[1],spawnX:p[0],spawnY:p[1],hp:3,max:3,alive:true,respawnTimer:0}));
  caveEnemies.push({id:"crystal-guardian",kind:"guardian",x:1120,y:570,spawnX:1120,spawnY:570,hp:5,max:5,alive:true,respawnTimer:0});
@@ -469,7 +469,15 @@ function canvasWorldTap(e){
 canvas.addEventListener("pointerdown",canvasWorldTap);
 function tickWorldInteraction(dt){
   if(!moveTarget)return;
-  const t=moveTarget,d=Math.hypot(player.x-t.x,player.y-t.y);
+  const t=moveTarget;
+  if(t.type==="enemy"){
+    const live=(templeMode?templeEnemies:caveMode?caveEnemies:enemies).find(e=>e.id===t.id&&e.alive);
+    if(live){t.x=live.x;t.y=live.y;}
+  }else if(t.type==="townNpc"){
+    const person=townPeople.find(p=>p.id===t.id);
+    if(person){t.x=person.x;t.y=person.y;}
+  }else if(t.type==="forestNpc"){t.x=forestNpc.x;t.y=forestNpc.y;}
+  const d=Math.hypot(player.x-t.x,player.y-t.y);
   const stops={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12};
   if(d>(stops[t.type]??10))return;
   playerMoving=false;
@@ -876,7 +884,6 @@ function update(dt) {
   $("npcBtn").hidden = true;
   $("homeBtn").hidden = templeMode || townMode || caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
   $("homeBtn").textContent = homeInterior ? "🚪 خروج از خانه" : "🏡 خانه";
-  $("actionBtn").innerHTML=templeMode?"🔮<small>تعامل</small>":"⛏️<small>برداشت</small>";
   const nearWorkshop=!templeMode&&!townMode&&!caveMode&&!homeInterior&&Math.hypot(player.x-playerHome.x,player.y-playerHome.y)<235&&Object.values(stations).some(Boolean);
   $("workshopBtn").hidden=!nearWorkshop;
 }
@@ -1588,6 +1595,8 @@ function drawPlayer(){
    }
    ctx.restore();
  }
+ const tool=TOOL_INFO[selectedTool];
+ if(tool){ctx.save();ctx.font="16px Tahoma";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(tool.icon,x+(playerFacing==="left"?-17:17),y+3);ctx.restore();}
  if(attackFlash>0){ctx.save();ctx.translate(x,y);ctx.scale(.82,.82);ctx.strokeStyle="#fff0a8";ctx.lineWidth=3;ctx.beginPath();const a=playerFacing==="left"?Math.PI:playerFacing==="up"?-Math.PI/2:playerFacing==="down"?Math.PI/2:0;ctx.arc(0,0,39,a-.75,a+.75);ctx.stroke();ctx.restore();}
 }
 
