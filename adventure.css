@@ -96,3 +96,6 @@ button:active{transform:translateY(2px)}
 #townNpcPanel,#townShopPanel{border:2px solid #c9a879;box-shadow:0 12px 34px #17120d66}
 
 #townClock{position:fixed;top:calc(env(safe-area-inset-top,0px) + 72px);right:12px;z-index:5;padding:7px 12px;border:1px solid #e7d2a0;border-radius:12px;background:#263c30dd;color:#fff1c8;font:800 14px Tahoma;box-shadow:0 3px 10px #0005;pointer-events:none}
+
+/* Stage 17: farm panel and pixel plot selection */
+.farm-plots{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.farm-plots button{background:#65472e;border-color:#b58b58;font-size:12px;padding:10px 6px}.farm-plots button.selected{background:#386b43;border-color:#c2e49a;box-shadow:0 0 0 2px #c2e49a inset}#farmPlotStatus{background:#294532;padding:10px;border-radius:9px;font-size:12px;line-height:1.8}#farmCrop{width:100%;margin:8px 0;padding:10px;border-radius:9px;background:#e8e0c8;color:#30291e;font:bold 13px Tahoma}#farmBtn{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);background:#39734a;border-color:#b4df91;pointer-events:auto;white-space:nowrap;z-index:4}#farmBtn:active{transform:translateX(-50%) translateY(2px)}#sellCrops{background:#39734a;border-color:#b4df91;min-height:46px}

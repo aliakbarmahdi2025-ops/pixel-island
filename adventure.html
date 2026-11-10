@@ -34,6 +34,7 @@
       <div>🪨 سنگ: <b id="stone">0</b></div>
       <div>⛏️ آهن: <b id="iron">0</b></div>
       <div>💎 کریستال: <b id="crystal">0</b></div>
+      <div>🌱 بذر: <b id="seeds">0</b></div><div id="farmCrops">🌾 ۰ • 🥕 ۰ • 🍓 ۰</div>
       <div>🧪 معجون: <b id="potion">0</b></div>
       <button id="usePotion">نوشیدن معجون</button>
     </div>
@@ -86,13 +87,14 @@
     </div>
     <button id="closeCraft">بستن</button>
   </section>
-  <section id="townNpcPanel" class="panel" hidden><h2 id="townNpcTitle">اهالی شهر سبز</h2><p id="townNpcDialogue"></p><p id="townNpcHeart"></p><div class="npc-actions"><button id="townNpcTalk">گفتگوی بعدی</button><button id="townNpcShop" hidden>🛍️ دیدن اجناس مغازه</button><button id="townNpcClose">خداحافظ</button></div></section><section id="townShopPanel" class="panel" hidden><h2>🛒 خواربارفروشی خانم رضایی</h2><p>هرچی لازم داری، با خیال راحت نگاه کن!</p><div class="upgrade-list"><button id="buyBread">🍞 نان تازه — ۸ سکه (۲ جان)</button><button id="buySeeds">🌱 بسته بذر — ۵ سکه</button><button id="buyApple">🍎 سیب محلی — ۶ سکه (۱ جان)</button></div><p id="townShopHours">ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰</p><p id="townShopStock"></p><button id="eatBread">🍞 خوردن نان</button><button id="eatApple">🍎 خوردن سیب</button><button id="townShopClose">بستن مغازه</button></section><div id="townClock" hidden>☀️ ۰۹:۰۰</div><div id="townFade"></div><div id="toast" role="status"></div>
+  <section id="farmPanel" class="panel" hidden><h2>🌱 مزرعه کوچک من</h2><p id="farmSeeds">بذرهای تو: ۰</p><div id="farmPlotsGrid" class="farm-plots"></div><p id="farmPlotStatus">یک زمین را انتخاب کن.</p><label for="farmCrop">نوع محصول</label><select id="farmCrop"><option value="carrot">🥕 هویج • ۲ روز</option><option value="wheat">🌾 گندم • ۳ روز</option><option value="strawberry">🍓 توت‌فرنگی • ۴ روز</option></select><div class="upgrade-list"><button id="farmTill">🪴 شخم زدن زمین</button><button id="farmPlant">🌱 کاشت بذر</button><button id="farmWater">💧 آبیاری امروز</button><button id="farmHarvest">🧺 برداشت محصول</button></div><button id="farmClose">بستن</button></section>
+  <section id="townNpcPanel" class="panel" hidden><h2 id="townNpcTitle">اهالی شهر سبز</h2><p id="townNpcDialogue"></p><p id="townNpcHeart"></p><div class="npc-actions"><button id="townNpcTalk">گفتگوی بعدی</button><button id="townNpcShop" hidden>🛍️ دیدن اجناس مغازه</button><button id="townNpcClose">خداحافظ</button></div></section><section id="townShopPanel" class="panel" hidden><h2>🛒 خواربارفروشی خانم رضایی</h2><p>هرچی لازم داری، با خیال راحت نگاه کن!</p><div class="upgrade-list"><button id="buyBread">🍞 نان تازه — ۸ سکه (۲ جان)</button><button id="buySeeds">🌱 بسته بذر — ۵ سکه</button><button id="buyApple">🍎 سیب محلی — ۶ سکه (۱ جان)</button><button id="sellCrops">🌾 فروش محصولات برداشت‌شده</button></div><p id="townShopHours">ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰</p><p id="townShopStock"></p><button id="eatBread">🍞 خوردن نان</button><button id="eatApple">🍎 خوردن سیب</button><button id="townShopClose">بستن مغازه</button></section><div id="townClock" hidden>☀️ ۰۹:۰۰</div><div id="townFade"></div><div id="toast" role="status"></div>
   <div id="controls">
     <div id="joystick"><div id="stick"></div></div>
     <button id="actionBtn">⛏️<small>برداشت</small></button>
     <button id="attackBtn">⚔️<small>حمله</small></button>
     <button id="caveBtn" hidden>🕳️ ورود به غار</button>
-    <button id="homeBtn" hidden>🏡 خانه</button>
+    <button id="homeBtn" hidden>🏡 خانه</button><button id="farmBtn" hidden>🌱 مزرعه</button>
     <button id="npcBtn" hidden>💬 صحبت</button><button id="townBtn" hidden>🏘️ ورود به شهر</button><button id="townNpcBtn" hidden>💬 صحبت با اهالی</button><button id="townExitBtn" hidden>🌲 بازگشت به جنگل</button>
   </div>
   <div id="help">با جوی‌استیک حرکت کن؛ برای جمع‌آوری برداشت و برای دفاع حمله را بزن.</div>
