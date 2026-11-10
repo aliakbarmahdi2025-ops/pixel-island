@@ -35,7 +35,7 @@ let worldClock = 9 * 60, worldDay = 1, selectedFarmPlot = 0, selectedCrop = "car
 const farmPlots = Array.from({length:4},(_,i)=>({id:i,x:900+(i%2)*78,y:650+Math.floor(i/2)*72,state:"empty",crop:null,growth:0,wateredDay:-1}));
 const playerHome = { x: 700, y: 520 };
 const samanHome = { x: 1900, y: 450 };
-const forestNpc = { x: 1320, y: 1010, name: "سامان", role: "جنگلبان" };
+const forestNpc = { x: 1320, y: 1010, name: "سامان", role: "پیر دانای جنگل" };
 let enemies = [], caveEnemies = [], lootDrops = [];
 let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
 let move = { x: 0, y: 0 };
@@ -262,6 +262,10 @@ $("townBtn").addEventListener("click",()=>transitionTown(true));$("townExitBtn")
 $("eatBread").addEventListener("click",()=>consumeTownFood("bread"));
 $("eatApple").addEventListener("click",()=>consumeTownFood("apple"));
 $("npcNext").addEventListener("click", advanceNpcDialogue);
+ $("npcAskStart").addEventListener("click",()=>askSaman("start"));
+ $("npcAskCave").addEventListener("click",()=>askSaman("cave"));
+ $("npcAskGear").addEventListener("click",()=>askSaman("gear"));
+ $("npcAskWorld").addEventListener("click",()=>askSaman("world"));
 $("npcQuestAccept").addEventListener("click", acceptNpcQuest);
 $("npcQuestClaim").addEventListener("click", claimNpcQuest);
 $("homeBtn").addEventListener("click", handleHomeButton);
@@ -303,10 +307,13 @@ function syncXpPanel() {
 }
 addEventListener("resize", syncXpPanel);
 const npcLines = [
-  "این جنگل قدیمی‌تر از چیزیه که به نظر میاد. مراقب موجودات سبز باش!",
-  "اگر کریستال پیدا کردی، نگهش دار؛ توی غار به کارت میاد.",
-  "برای قوی‌تر شدن، منابع جمع کن و از میز ساخت تجهیزات استفاده کن.",
-  "راه غار از بخش شرقی جنگل می‌گذره. اونجا چیزهای ارزشمندی پیدا می‌کنی."
+  "خوش اومدی، مسافر. من سامانم؛ سال‌های زیادیه که از این جنگل مراقبت می‌کنم. هر وقت راه رو گم کردی یا پرسشی داشتی، پیش من بیا.",
+  "اگر تازه شروع کردی، اول از درخت‌ها چوب و از سنگ‌ها مصالح جمع کن. با منابع می‌تونی تجهیزاتت رو بهتر کنی.",
+  "غار در بخش شرقی جنگله. با آمادگی واردش شو؛ کریستال‌های کمیاب اونجا پیدا می‌شن.",
+  "برای قوی‌تر شدن، شمشیر و زره‌ات رو ارتقا بده. زره آهنی و بعد زره کریستالی آسیب دشمن‌ها رو کمتر می‌کنن.",
+  "اگر دنبال کار تازه‌ای هستی، مأموریت تخته‌اعلان رو بررسی کن و گاهی هم سری به اهالی شهر سبز بزن.",
+  "یادت باشه مزرعه‌ات رو هر روز آب بدی. محصول رسیده رو می‌تونی پیش خانم رضایی ببری و بفروشی.",
+  "هر سفر بزرگی با قدم‌های کوچیک شروع می‌شه. اول خوب آماده شو، بعد برو سراغ ماجراجویی بعدی."
 ];
 function updateNpcQuestUI() {
   const status = $("npcQuestStatus");
@@ -367,6 +374,16 @@ function openNpcDialogue() {
   updateUI();
   saveQuietly();
   syncXpPanel();
+}
+function askSaman(topic) {
+  const answers = {
+    start: "سامان: اول از اطراف جنگل چوب و سنگ جمع کن، ابزار بساز و مأموریت‌های تخته‌اعلان رو انجام بده. عجله نکن؛ قدم‌به‌قدم قوی‌تر می‌شی.",
+    cave: "سامان: ورودی غار در شرق جنگله. داخل غار مراقب اسلایم‌ها و نگهبان کریستالی باش. کریستال‌ها رو جمع کن؛ برای ساخت زره و تجهیزات ارزش دارن.",
+    gear: "سامان: منابع لازم رو جمع کن و از میز ساخت استفاده کن. اول زره آهنی بساز و بعد برای زره کریستالی آماده شو؛ زره بهتر آسیب کمتری بهت می‌رسونه.",
+    world: "سامان: بذر از خانم رضایی بخر و هر روز مزرعه رو آب بده. محصول رسیده رو بفروش. توی شهر هم با مینا، حنا، ناهید، سعید و خانم رضایی حرف بزن؛ شاید کمکت کنن."
+  };
+  $("npcDialogue").textContent = answers[topic] || "سامان: هر وقت پرسشی داشتی، یکی از موضوع‌ها رو انتخاب کن.";
+  saveQuietly();
 }
 function advanceNpcDialogue() {
   $("npcDialogue").textContent = npcLines[npcTalkIndex % npcLines.length];
@@ -1052,7 +1069,7 @@ function drawForestNpc() {
  const x=forestNpc.x-camera.x,y=forestNpc.y-camera.y;
  const near=Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y)<145;
  if(x< -70||x>viewW+70||y< -90||y>viewH+70)return;
- drawPixelPerson(x,y+39,{hair:"#5b402c",hairHi:"#9a7048",skin:"#d7a17e",skinLight:"#f0c5a2",top:"#486d4b",topHi:"#8eaa70",bottom:"#4a493b",boots:"#2e302a",accent:"#c8ae77"},{step:Math.sin(animTime*2.2)*.5,bob:Math.sin(animTime*2.4)*.6});
+ drawPixelPerson(x,y+39,{hair:"#d8d4c9",hairHi:"#fff3d6",skin:"#c99475",skinLight:"#edc2a2",top:"#687653",topHi:"#aab78a",bottom:"#514a3b",boots:"#302d29",accent:"#d1b77e"},{step:Math.sin(animTime*2.2)*.5,bob:Math.sin(animTime*2.4)*.6,scale:.82,beard:true,beardColor:"#eee9dc",old:true});
  if(!npcQuest.claimed){ctx.fillStyle="#ffe58a";ctx.font="bold 17px Tahoma";ctx.textAlign="center";ctx.fillText("!",x,y-57);}
  ctx.fillStyle="#fff2c7";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#34432e";ctx.strokeText(forestNpc.name+" • "+forestNpc.role,x,y-47);ctx.fillText(forestNpc.name+" • "+forestNpc.role,x,y-47);ctx.textAlign="start";
 }
@@ -1089,7 +1106,15 @@ function drawPixelPerson(x,base,p,opts={}){
  else{ctx.fillRect(x-6,base-61+bob,2,2);ctx.fillRect(x+4,base-61+bob,2,2);}
  ctx.fillStyle="#fff0d9";ctx.fillRect(x-6,base-61+bob,1,1);ctx.fillRect(x+4,base-61+bob,1,1);
  ctx.fillStyle="#b77d65";ctx.fillRect(x-1,base-57+bob,2,2);ctx.fillStyle="#8f5552";ctx.fillRect(x-2,base-53+bob,4,1);
- if(opts.beard){ctx.fillStyle=p.hair;ctx.fillRect(x-6,base-54+bob,12,5);ctx.fillRect(x-8,base-57+bob,3,4);ctx.fillRect(x+5,base-57+bob,3,4);}
+ if(opts.beard){
+   const beard=opts.beardColor||p.hair;
+   ctx.fillStyle=beard;ctx.fillRect(x-7,base-55+bob,14,5);ctx.fillRect(x-9,base-58+bob,4,6);ctx.fillRect(x+6,base-58+bob,4,6);ctx.fillRect(x-6,base-50+bob,12,4);ctx.fillRect(x-4,base-46+bob,8,3);
+   ctx.fillStyle="rgba(255,255,245,.7)";ctx.fillRect(x-5,base-54+bob,3,2);ctx.fillRect(x+2,base-49+bob,3,2);
+ }
+ if(opts.old){
+   ctx.fillStyle="#9c715f";ctx.fillRect(x-7,base-59+bob,3,1);ctx.fillRect(x+4,base-59+bob,3,1);ctx.fillRect(x-2,base-55+bob,4,1);
+   ctx.fillStyle="#eee6d8";ctx.fillRect(x-7,base-72+bob,5,2);ctx.fillRect(x+2,base-72+bob,5,2);
+ }
  ctx.restore();
 }
 function drawPlayer(){
