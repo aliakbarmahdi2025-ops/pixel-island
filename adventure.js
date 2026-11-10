@@ -1010,6 +1010,31 @@ function drawPlayer(){
  const x=player.x-camera.x,y=player.y-camera.y;
  const leg=playerMoving?Math.sin(animTime*13)*3.2:0;
  drawPixelPerson(x,y+36,{hair:"#50382a",hairHi:"#98704f",skin:"#d7a17e",skinLight:"#f0c5a2",top:"#294967",topHi:"#5e8caf",bottom:"#393c46",boots:"#252b34",accent:"#d8c49a"},{step:leg,bob:playerMoving?Math.abs(Math.sin(animTime*13))*1.2:Math.sin(animTime*2.4)*.35,facing:playerFacing});
+ // Visible armor is drawn over the base outfit and follows the player animation.
+ const armor=player.armorLevel||0;
+ if(armor>0){
+   const bob=playerMoving?Math.abs(Math.sin(animTime*13))*1.2:Math.sin(animTime*2.4)*.35;
+   const by=y+36+bob;
+   ctx.save();
+   if(armor===1){
+     // Iron cuirass, shoulder guards and bracers.
+     ctx.fillStyle="#58636d";ctx.fillRect(x-9,by-44,18,23);
+     ctx.fillStyle="#aeb9c1";ctx.fillRect(x-7,by-43,14,3);ctx.fillRect(x-7,by-37,14,2);
+     ctx.fillStyle="#77838d";ctx.fillRect(x-10,by-40,4,10);ctx.fillRect(x+6,by-40,4,10);
+     ctx.fillStyle="#c7d0d5";ctx.fillRect(x-12,by-40,5,5);ctx.fillRect(x+7,by-40,5,5);
+     ctx.fillStyle="#3d4851";ctx.fillRect(x-8,by-22,16,3);
+     ctx.fillStyle="#d2b66e";ctx.fillRect(x-2,by-22,4,3);
+   }else{
+     // Crystal armor: bright cyan plates with a faceted chest gem.
+     ctx.fillStyle="#236d83";ctx.fillRect(x-10,by-44,20,23);
+     ctx.fillStyle="#58d4df";ctx.fillRect(x-7,by-43,14,3);ctx.fillRect(x-7,by-37,3,12);ctx.fillRect(x+4,by-37,3,12);
+     ctx.fillStyle="#83f4ec";ctx.fillRect(x-12,by-41,5,6);ctx.fillRect(x+7,by-41,5,6);
+     ctx.fillStyle="#17485e";ctx.fillRect(x-8,by-23,16,4);
+     ctx.fillStyle="#d5ffff";ctx.beginPath();ctx.moveTo(x,by-39);ctx.lineTo(x+4,by-34);ctx.lineTo(x,by-29);ctx.lineTo(x-4,by-34);ctx.closePath();ctx.fill();
+     ctx.fillStyle="#3c9caf";ctx.fillRect(x-2,by-35,2,2);
+   }
+   ctx.restore();
+ }
  if(attackFlash>0){ctx.strokeStyle="#fff0a8";ctx.lineWidth=3;ctx.beginPath();const a=playerFacing==="left"?Math.PI:playerFacing==="up"?-Math.PI/2:playerFacing==="down"?Math.PI/2:0;ctx.arc(x,y,39,a-.75,a+.75);ctx.stroke();}
 }
 
