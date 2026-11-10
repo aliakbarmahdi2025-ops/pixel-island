@@ -262,6 +262,10 @@ $("townBtn").addEventListener("click",()=>transitionTown(true));$("townExitBtn")
 $("eatBread").addEventListener("click",()=>consumeTownFood("bread"));
 $("eatApple").addEventListener("click",()=>consumeTownFood("apple"));
 $("npcNext").addEventListener("click", advanceNpcDialogue);
+ $("npcAskStart").addEventListener("click",()=>askSaman("start"));
+ $("npcAskCave").addEventListener("click",()=>askSaman("cave"));
+ $("npcAskGear").addEventListener("click",()=>askSaman("gear"));
+ $("npcAskWorld").addEventListener("click",()=>askSaman("world"));
 $("npcQuestAccept").addEventListener("click", acceptNpcQuest);
 $("npcQuestClaim").addEventListener("click", claimNpcQuest);
 $("homeBtn").addEventListener("click", handleHomeButton);
@@ -370,6 +374,16 @@ function openNpcDialogue() {
   updateUI();
   saveQuietly();
   syncXpPanel();
+}
+function askSaman(topic) {
+  const answers = {
+    start: "سامان: اول از اطراف جنگل چوب و سنگ جمع کن، ابزار بساز و مأموریت‌های تخته‌اعلان رو انجام بده. عجله نکن؛ قدم‌به‌قدم قوی‌تر می‌شی.",
+    cave: "سامان: ورودی غار در شرق جنگله. داخل غار مراقب اسلایم‌ها و نگهبان کریستالی باش. کریستال‌ها رو جمع کن؛ برای ساخت زره و تجهیزات ارزش دارن.",
+    gear: "سامان: منابع لازم رو جمع کن و از میز ساخت استفاده کن. اول زره آهنی بساز و بعد برای زره کریستالی آماده شو؛ زره بهتر آسیب کمتری بهت می‌رسونه.",
+    world: "سامان: بذر از خانم رضایی بخر و هر روز مزرعه رو آب بده. محصول رسیده رو بفروش. توی شهر هم با مینا، حنا، ناهید، سعید و خانم رضایی حرف بزن؛ شاید کمکت کنن."
+  };
+  $("npcDialogue").textContent = answers[topic] || "سامان: هر وقت پرسشی داشتی، یکی از موضوع‌ها رو انتخاب کن.";
+  saveQuietly();
 }
 function advanceNpcDialogue() {
   $("npcDialogue").textContent = npcLines[npcTalkIndex % npcLines.length];
