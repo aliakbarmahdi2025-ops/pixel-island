@@ -99,3 +99,13 @@ button:active{transform:translateY(2px)}
 
 /* Stage 17: farm panel and pixel plot selection */
 .farm-plots{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.farm-plots button{background:#65472e;border-color:#b58b58;font-size:12px;padding:10px 6px}.farm-plots button.selected{background:#386b43;border-color:#c2e49a;box-shadow:0 0 0 2px #c2e49a inset}#farmPlotStatus{background:#294532;padding:10px;border-radius:9px;font-size:12px;line-height:1.8}#farmCrop{width:100%;margin:8px 0;padding:10px;border-radius:9px;background:#e8e0c8;color:#30291e;font:bold 13px Tahoma}#farmBtn{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);background:#39734a;border-color:#b4df91;pointer-events:auto;white-space:nowrap;z-index:4}#farmBtn:active{transform:translateX(-50%) translateY(2px)}#sellCrops{background:#39734a;border-color:#b4df91;min-height:46px}
+
+/* Stage 26 — gathering and workshop construction. */
+#workshopBtn{position:absolute;left:50%;bottom:168px;transform:translateX(-50%);pointer-events:auto;white-space:nowrap;background:#69502f;border-color:#e7c987;z-index:4;box-shadow:0 3px 0 #17251d}
+#workshopBtn:active{transform:translateX(-50%) translateY(2px)}
+#craftPanel h3,#stationPanel h3{margin:14px 0 8px;color:#e6c987;font-size:14px;text-align:right}
+#stationPanel .upgrade-list button{min-height:42px;background:#385c4b;border-color:#a8d7a4;font-size:12px}
+#stationPanel .upgrade-list button:disabled{opacity:.4;filter:grayscale(1)}
+.station-note{font-size:12px;line-height:1.8;color:#e5f1ce;background:#294532;padding:8px;border-radius:8px}
+#inventory .slots{max-height:48dvh;overflow:auto;padding:2px}
+#inventory .slots div{font-size:12px;padding:9px}
