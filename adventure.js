@@ -531,7 +531,7 @@ function townSchedule(dt=0){
  // Keep residents from walking through one another; a small personal-space force separates nearby NPCs.
  for(let a=0;a<townPeople.length;a++)for(let b=a+1;b<townPeople.length;b++){
   const p=townPeople[a],q=townPeople[b],dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);
-  if(d>0&&d<62){const push=(62-d)*0.5;p.x-=dx/d*push;p.y-=dy/d*push;q.x+=dx/d*push;q.y+=dy/d*push;}
+  if(d>0&&d<44){const push=(44-d)*0.5;p.x-=dx/d*push;p.y-=dy/d*push;q.x+=dx/d*push;q.y+=dy/d*push;}
  }
 }
 function openTownNpc(){
@@ -811,18 +811,18 @@ function getTownSpriteFrames(id){
 function drawTownPeople(){
  townPeople.forEach(p=>{
   const x=p.x-camera.x,y=p.y-camera.y;
-  if(x< -100||x>viewW+100||y< -135||y>viewH+100)return;
+  if(x< -60||x>viewW+60||y< -70||y>viewH+70)return;
   const walking=!!p.walking,phase=animTime*8+(p.x*.013);
   const frame=walking?(Math.floor(phase)%2+1):0;
   const bob=walking?Math.abs(Math.sin(phase))*1.1:Math.sin(animTime*2+p.x*.01)*.35;
   const frames=getTownSpriteFrames(p.id);
-  ctx.fillStyle="#302923";ctx.globalAlpha=.25;ctx.beginPath();ctx.ellipse(x,y+5,20,6,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
-  ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(frames[frame],x-40,y-112+bob,80,112);ctx.restore();
+  ctx.fillStyle="#302923";ctx.globalAlpha=.28;ctx.beginPath();ctx.ellipse(x,y+2,9,3,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+  ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(frames[frame],x-20,y-56+bob,40,56);ctx.restore();
   if(p.id==="mina"||p.id==="hana"){
-   if(Math.floor(animTime*2.1+p.x*.017)%9===0){ctx.fillStyle="#fff7ed";ctx.fillRect(x-8,y-77+bob,4,1);ctx.fillRect(x+5,y-77+bob,4,1);}
+   if(Math.floor(animTime*2.1+p.x*.017)%9===0){ctx.fillStyle="#fff7ed";ctx.fillRect(x-4,y-38+bob,2,1);ctx.fillRect(x+3,y-38+bob,2,1);}
   }
-  ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#44352f";ctx.strokeText(p.name,x,y-120+bob);ctx.fillStyle="#fff7df";ctx.fillText(p.name,x,y-120+bob);
-  if(Math.hypot(player.x-p.x,player.y-p.y)<120){ctx.fillStyle="#ffe9a0";ctx.font="bold 18px Tahoma";ctx.fillText("✦",x,y-137+bob);}
+  ctx.font="bold 10px Tahoma";ctx.textAlign="center";ctx.lineWidth=2;ctx.strokeStyle="#44352f";ctx.strokeText(p.name,x,y-61+bob);ctx.fillStyle="#fff7df";ctx.fillText(p.name,x,y-61+bob);
+  if(Math.hypot(player.x-p.x,player.y-p.y)<95){ctx.fillStyle="#ffe9a0";ctx.font="bold 13px Tahoma";ctx.fillText("✦",x,y-70+bob);}
   ctx.textAlign="start";
  });
 }
@@ -1058,8 +1058,8 @@ function drawForestNpc() {
 }
 
 function drawPixelPerson(x,base,p,opts={}){
- const step=opts.step||0,bob=opts.bob||0;
- ctx.save();
+ const step=opts.step||0,bob=opts.bob||0,scale=opts.scale||1;
+ ctx.save();ctx.translate(x,base);ctx.scale(scale,scale);x=0;base=0;
  ctx.fillStyle="rgba(14,20,17,.34)";ctx.beginPath();ctx.ellipse(x,base+1,13,4.5,0,0,Math.PI*2);ctx.fill();
  // legs, boots and small alternating stride
  ctx.fillStyle=p.bottom;ctx.fillRect(x-7,base-19+step,6,16);ctx.fillRect(x+1,base-19-step,6,16);
@@ -1095,33 +1095,33 @@ function drawPixelPerson(x,base,p,opts={}){
 function drawPlayer(){
  const x=player.x-camera.x,y=player.y-camera.y;
  const leg=playerMoving?Math.sin(animTime*13)*3.2:0;
- drawPixelPerson(x,y+36,{hair:"#50382a",hairHi:"#98704f",skin:"#d7a17e",skinLight:"#f0c5a2",top:"#294967",topHi:"#5e8caf",bottom:"#393c46",boots:"#252b34",accent:"#d8c49a"},{step:leg,bob:playerMoving?Math.abs(Math.sin(animTime*13))*1.2:Math.sin(animTime*2.4)*.35,facing:playerFacing});
+ drawPixelPerson(x,y+36,{hair:"#50382a",hairHi:"#98704f",skin:"#d7a17e",skinLight:"#f0c5a2",top:"#294967",topHi:"#5e8caf",bottom:"#393c46",boots:"#252b34",accent:"#d8c49a"},{step:leg,bob:playerMoving?Math.abs(Math.sin(animTime*13))*1.2:Math.sin(animTime*2.4)*.35,facing:playerFacing,scale:.82});
  // Visible armor is drawn over the base outfit and follows the player animation.
  const armor=player.armorLevel||0;
  if(armor>0){
    const bob=playerMoving?Math.abs(Math.sin(animTime*13))*1.2:Math.sin(animTime*2.4)*.35;
    const by=y+36+bob;
-   ctx.save();
+   ctx.save();ctx.translate(x,by);ctx.scale(.82,.82);const ax=0,ay=0;
    if(armor===1){
      // Iron cuirass, shoulder guards and bracers.
-     ctx.fillStyle="#58636d";ctx.fillRect(x-9,by-44,18,23);
-     ctx.fillStyle="#aeb9c1";ctx.fillRect(x-7,by-43,14,3);ctx.fillRect(x-7,by-37,14,2);
-     ctx.fillStyle="#77838d";ctx.fillRect(x-10,by-40,4,10);ctx.fillRect(x+6,by-40,4,10);
-     ctx.fillStyle="#c7d0d5";ctx.fillRect(x-12,by-40,5,5);ctx.fillRect(x+7,by-40,5,5);
-     ctx.fillStyle="#3d4851";ctx.fillRect(x-8,by-22,16,3);
-     ctx.fillStyle="#d2b66e";ctx.fillRect(x-2,by-22,4,3);
+     ctx.fillStyle="#58636d";ctx.fillRect(ax-9,ay-44,18,23);
+     ctx.fillStyle="#aeb9c1";ctx.fillRect(ax-7,ay-43,14,3);ctx.fillRect(ax-7,ay-37,14,2);
+     ctx.fillStyle="#77838d";ctx.fillRect(ax-10,ay-40,4,10);ctx.fillRect(ax+6,ay-40,4,10);
+     ctx.fillStyle="#c7d0d5";ctx.fillRect(ax-12,ay-40,5,5);ctx.fillRect(ax+7,ay-40,5,5);
+     ctx.fillStyle="#3d4851";ctx.fillRect(ax-8,ay-22,16,3);
+     ctx.fillStyle="#d2b66e";ctx.fillRect(ax-2,ay-22,4,3);
    }else{
      // Crystal armor: bright cyan plates with a faceted chest gem.
-     ctx.fillStyle="#236d83";ctx.fillRect(x-10,by-44,20,23);
-     ctx.fillStyle="#58d4df";ctx.fillRect(x-7,by-43,14,3);ctx.fillRect(x-7,by-37,3,12);ctx.fillRect(x+4,by-37,3,12);
-     ctx.fillStyle="#83f4ec";ctx.fillRect(x-12,by-41,5,6);ctx.fillRect(x+7,by-41,5,6);
-     ctx.fillStyle="#17485e";ctx.fillRect(x-8,by-23,16,4);
-     ctx.fillStyle="#d5ffff";ctx.beginPath();ctx.moveTo(x,by-39);ctx.lineTo(x+4,by-34);ctx.lineTo(x,by-29);ctx.lineTo(x-4,by-34);ctx.closePath();ctx.fill();
-     ctx.fillStyle="#3c9caf";ctx.fillRect(x-2,by-35,2,2);
+     ctx.fillStyle="#236d83";ctx.fillRect(ax-10,ay-44,20,23);
+     ctx.fillStyle="#58d4df";ctx.fillRect(ax-7,ay-43,14,3);ctx.fillRect(ax-7,ay-37,3,12);ctx.fillRect(ax+4,ay-37,3,12);
+     ctx.fillStyle="#83f4ec";ctx.fillRect(ax-12,ay-41,5,6);ctx.fillRect(ax+7,ay-41,5,6);
+     ctx.fillStyle="#17485e";ctx.fillRect(ax-8,ay-23,16,4);
+     ctx.fillStyle="#d5ffff";ctx.beginPath();ctx.moveTo(ax,ay-39);ctx.lineTo(ax+4,ay-34);ctx.lineTo(ax,ay-29);ctx.lineTo(ax-4,ay-34);ctx.closePath();ctx.fill();
+     ctx.fillStyle="#3c9caf";ctx.fillRect(ax-2,ay-35,2,2);
    }
    ctx.restore();
  }
- if(attackFlash>0){ctx.strokeStyle="#fff0a8";ctx.lineWidth=3;ctx.beginPath();const a=playerFacing==="left"?Math.PI:playerFacing==="up"?-Math.PI/2:playerFacing==="down"?Math.PI/2:0;ctx.arc(x,y,39,a-.75,a+.75);ctx.stroke();}
+ if(attackFlash>0){ctx.save();ctx.translate(x,y);ctx.scale(.82,.82);ctx.strokeStyle="#fff0a8";ctx.lineWidth=3;ctx.beginPath();const a=playerFacing==="left"?Math.PI:playerFacing==="up"?-Math.PI/2:playerFacing==="down"?Math.PI/2:0;ctx.arc(0,0,39,a-.75,a+.75);ctx.stroke();ctx.restore();}
 }
 
 function nightStrength(){const h=worldClock/60;const dusk=h>=18&&h<21?(h-18)/3:h>=21||h<5?1:h>=5&&h<7?(7-h)/2:0;return Math.max(0,Math.min(.68,dusk*.68));}
