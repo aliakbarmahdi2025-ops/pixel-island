@@ -13,6 +13,8 @@ const bag = { wood: 0, stone: 0, iron: 0, crystal: 0, potion: 0, seeds: 0, wheat
 const stations = { workbench: false, furnace: false, sawmill: false };
 const toolLevels = { axe: 0, pickaxe: 0, shovel: 0 };
 let bridgeStage = 0; // 0 broken, 1 stone piers, 2 timber deck, 3 ancient seal complete
+const TEMPLE={w:2200,h:1500,floors:5};
+let templeMode=false,templeFloor=1,templeUnlocked=1,templePuzzleSolved={},templeBosses={},templeEnemies=[],templeReturn={x:3040,y:1710};
 let harvested = new Set(), caveHarvested = new Set();
 let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
 let caveResources = [], caveChests = [];
@@ -104,6 +106,10 @@ function load() {
     if (data.stations) Object.assign(stations, data.stations);
     if (data.toolLevels) Object.keys(toolLevels).forEach(k => toolLevels[k] = Math.max(0, Math.min(2, Number(data.toolLevels[k]) || 0)));
     bridgeStage = Math.max(0, Math.min(3, Number(data.bridgeStage) || 0));
+    templeMode=!!data.templeMode;templeFloor=Math.max(1,Math.min(TEMPLE.floors,Number(data.templeFloor)||1));templeUnlocked=Math.max(1,Math.min(TEMPLE.floors,Number(data.templeUnlocked)||1));
+    templePuzzleSolved=data.templePuzzleSolved&&typeof data.templePuzzleSolved==="object"?data.templePuzzleSolved:{};
+    templeBosses=data.templeBosses&&typeof data.templeBosses==="object"?data.templeBosses:{};
+    if(data.templeReturn)templeReturn=data.templeReturn;
     if (Array.isArray(data.harvested)) harvested = new Set(data.harvested);
     if (Array.isArray(data.caveHarvested)) caveHarvested = new Set(data.caveHarvested);
     if (Array.isArray(data.lootDrops)) lootDrops = data.lootDrops.filter(d => d && Number.isFinite(d.x) && Number.isFinite(d.y) && ["coin","stone","iron","crystal","potion"].includes(d.type));
@@ -123,7 +129,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, toolLevels, bridgeStage, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
+      bag, stations, toolLevels, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -228,7 +234,72 @@ function buildBridgeStage(){
  showToast(bridgeStage===3?"پل باستانی کامل شد! مسیر معبد باز شد 🏛️":"بخش تازه‌ای از پل ساخته شد! 🪵");
 }
 
+
+function templePuzzleCost(f){return [null,{templeMosaic:2,templeBanner:1},{templeMosaic:3,templeBanner:1},{templeMosaic:4,templeBanner:2},{templeMosaic:5,templeBanner:2},{templeMosaic:6,templeBanner:3}][f];}
+function templeCanSolve(){return Object.entries(templePuzzleCost(templeFloor)).every(([k,v])=>(bag[k]||0)>=v);}
+function createTempleEnemies(){
+ templeEnemies=[];const f=templeFloor;
+ [[650,370],[850,1030],[1220,360]].forEach((p,i)=>templeEnemies.push({id:"temple-sentinel-"+f+"-"+i,kind:"templeSentinel",x:p[0],y:p[1],spawnX:p[0],spawnY:p[1],hp:2+f,max:2+f,alive:true,respawnTimer:0}));
+ if(!templeBosses[f])templeEnemies.push({id:"temple-warden-"+f,kind:"templeBoss",x:1660,y:750,spawnX:1660,spawnY:750,hp:8+f*3,max:8+f*3,alive:true,respawnTimer:0});
+}
+function openTemplePanel(){
+ $("templePanel").hidden=false;
+ $("templeStatus").textContent="پیشرفت: طبقه "+templeUnlocked+" از "+TEMPLE.floors+" باز شده است.";
+ $("templeEnterBtn").textContent=templeMode?"ادامه‌ی کاوش":"ورود به معبد";syncXpPanel();
+}
+function enterTemple(){
+ if(bridgeStage<3){showToast("اول پل باستانی را کامل کن");return;}
+ templeReturn={x:player.x,y:player.y};templeMode=true;caveMode=false;townMode=false;homeInterior=false;
+ templeFloor=Math.min(templeUnlocked,TEMPLE.floors);player.x=160;player.y=750;createTempleEnemies();
+ $("templePanel").hidden=true;showToast("به تالار نخست معبد خوش آمدی؛ مراقب نگهبان‌ها باش 🏛️");saveQuietly();syncXpPanel();
+}
+function leaveTemple(){
+ templeMode=false;player.x=templeReturn.x;player.y=templeReturn.y;$("templePanel").hidden=true;
+ showToast("از معبد خارج شدی؛ پیشرفتت ذخیره شد 🌲");saveQuietly();syncXpPanel();
+}
+function templeInteract(){
+ const exitD=Math.hypot(player.x-145,player.y-750),sealD=Math.hypot(player.x-1040,player.y-520),gateD=Math.hypot(player.x-2020,player.y-750);
+ if(exitD<115){leaveTemple();return;}
+ if(sealD<125){
+  if(templePuzzleSolved[templeFloor]){showToast("مهر این طبقه قبلاً فعال شده.");return;}
+  const cost=templePuzzleCost(templeFloor);
+  if(!templeCanSolve()){showToast("موزاییک و پرچم کافی نداری؛ مواد لازم: "+Object.entries(cost).map(([k,v])=>(k==="templeMosaic"?"موزاییک ":"پرچم ")+v).join(" و "));return;}
+  Object.entries(cost).forEach(([k,v])=>bag[k]-=v);templePuzzleSolved[templeFloor]=true;updateUI();saveQuietly();showToast("مهر باستانی روشن شد! ✨");return;
+ }
+ if(gateD<135){
+  if(!templeBosses[templeFloor]){showToast("اول نگهبان این طبقه را شکست بده!");return;}
+  if(!templePuzzleSolved[templeFloor]){showToast("اول مهر مرکزی را فعال کن.");return;}
+  if(templeFloor===TEMPLE.floors){
+   player.coins+=250;bag.crystal=(bag.crystal||0)+12;bag.templeMosaic=(bag.templeMosaic||0)+5;templeMode=false;player.x=templeReturn.x;player.y=templeReturn.y;updateUI();saveQuietly();showToast("راز معبد را کشف کردی! +۲۵۰ سکه و ۱۲ کریستال 🏆");return;
+  }
+  templeFloor++;templeUnlocked=Math.max(templeUnlocked,templeFloor);player.x=160;player.y=750;createTempleEnemies();saveQuietly();showToast("طبقه‌ی "+templeFloor+" از ۵ باز شد؛ ماجراجویی ادامه دارد…");return;
+ }
+ showToast("به محراب، نگهبان یا دروازه نزدیک‌تر شو.");
+}
+function drawTempleGround(){
+ const f=templeFloor,base=["#292b2b","#302b32","#26343a","#34302a","#252733"][f-1];ctx.fillStyle=base;ctx.fillRect(0,0,TEMPLE.w,TEMPLE.h);
+ for(let y=0;y<TEMPLE.h;y+=64)for(let x=0;x<TEMPLE.w;x+=64){const h=terrainHash(x/64+f*17,y/64+f*31);ctx.fillStyle=h>.5?"rgba(190,166,119,.08)":"rgba(0,0,0,.12)";ctx.fillRect(x+3,y+3,58,58);if(h>.83){ctx.fillStyle="rgba(218,190,137,.16)";ctx.fillRect(x+12,y+14,18,3);ctx.fillRect(x+12,y+14,3,14);}}
+ ctx.fillStyle="#15191c";ctx.fillRect(0,0,TEMPLE.w,54);ctx.fillRect(0,TEMPLE.h-54,TEMPLE.w,54);ctx.fillRect(0,0,54,TEMPLE.h);ctx.fillRect(TEMPLE.w-54,0,54,TEMPLE.h);
+ ctx.fillStyle="#84785f";ctx.fillRect(60,60,TEMPLE.w-120,10);ctx.fillRect(60,TEMPLE.h-70,TEMPLE.w-120,10);
+ ctx.fillStyle=f===5?"#4d2635":"#55432f";ctx.fillRect(770,220,470,1050);
+ for(let i=0;i<10;i++){const x=250+(i%5)*420,y=i<5?210:1290;ctx.fillStyle="rgba(0,0,0,.35)";ctx.fillRect(x-30,y-18,60,48);ctx.fillStyle="#45494a";ctx.fillRect(x-25,y-90,50,170);ctx.fillStyle="#77766a";ctx.fillRect(x-19,y-84,38,150);ctx.fillStyle="#aaa184";ctx.fillRect(x-30,y-96,60,16);ctx.fillRect(x-30,y+62,60,18);}
+ for(let i=0;i<18;i++){const x=180+(i*137)%1800,y=170+(i*223)%1120;ctx.fillStyle="#191d20";ctx.fillRect(x,y,24,12);ctx.fillStyle="#77736a";ctx.fillRect(x+3,y-4,14,8);}
+ const px=1040,py=520;ctx.fillStyle="rgba(0,0,0,.35)";ctx.beginPath();ctx.ellipse(px,py+30,105,42,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle=templePuzzleSolved[f]?"#71e6d5":"#b79b67";ctx.lineWidth=8;ctx.beginPath();ctx.arc(px,py,78,0,Math.PI*2);ctx.stroke();ctx.strokeStyle="#776348";ctx.lineWidth=3;
+ for(let a=0;a<8;a++){const an=a*Math.PI/4;ctx.beginPath();ctx.moveTo(px+Math.cos(an)*28,py+Math.sin(an)*28);ctx.lineTo(px+Math.cos(an)*70,py+Math.sin(an)*70);ctx.stroke();}
+ ctx.fillStyle=templePuzzleSolved[f]?"#76e9dc":"#b48b50";ctx.beginPath();ctx.arc(px,py,22,0,Math.PI*2);ctx.fill();
+ const gx=2020;ctx.fillStyle="#171a1b";ctx.fillRect(gx-70,620,140,190);ctx.fillStyle="#8e8065";ctx.fillRect(gx-82,600,164,22);ctx.fillRect(gx-82,790,164,20);ctx.fillRect(gx-66,620,18,170);ctx.fillRect(gx+48,620,18,170);ctx.fillStyle=templeBosses[f]&&templePuzzleSolved[f]?"#77d9c6":"#403b34";ctx.fillRect(gx-34,660,68,130);
+ ctx.fillStyle="#b59b6d";ctx.fillRect(91,620,108,18);ctx.fillRect(97,790,96,18);ctx.fillStyle="#25282a";ctx.fillRect(110,638,70,152);
+ ctx.fillStyle="#e8d5a5";ctx.font="bold 24px Tahoma";ctx.textAlign="center";ctx.fillText("تالار "+f+" • از ۵",1100,115);ctx.font="bold 15px Tahoma";ctx.fillText("مهر باستانی",px,py-112);ctx.fillText("دروازه‌ی طبقه‌ی بعد",gx,585);ctx.textAlign="start";
+ for(const [x,y] of [[360,520],[1710,520],[360,990],[1710,990]]){const g=ctx.createRadialGradient(x,y,3,x,y,105);g.addColorStop(0,"rgba(255,174,75,.24)");g.addColorStop(1,"rgba(255,174,75,0)");ctx.fillStyle=g;ctx.fillRect(x-110,y-110,220,220);ctx.fillStyle="#b47b42";ctx.fillRect(x-9,y-5,18,22);ctx.fillStyle="#ffd27b";ctx.fillRect(x-4,y-20,8,17);}
+}
+function drawTempleEnemy(e){
+ const x=e.x-camera.x,y=e.y-camera.y,boss=e.kind==="templeBoss",sc=boss?1.7:1;ctx.save();ctx.translate(x,y);ctx.scale(sc,sc);
+ ctx.fillStyle="rgba(0,0,0,.32)";ctx.beginPath();ctx.ellipse(0,18,27,9,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=boss?"#5d3c68":"#566b63";ctx.fillRect(-19,-30,38,43);ctx.fillStyle=boss?"#9a6aa6":"#8ba18a";ctx.fillRect(-15,-27,30,29);ctx.fillStyle="#d9c69a";ctx.fillRect(-23,-36,46,9);ctx.fillStyle="#f5c86c";ctx.fillRect(-9,-19,5,5);ctx.fillRect(4,-19,5,5);ctx.fillStyle="#33383b";ctx.fillRect(-13,8,10,15);ctx.fillRect(3,8,10,15);if(boss){ctx.fillStyle="#77e6dc";ctx.fillRect(-5,-10,10,11);}ctx.restore();
+ if(boss){ctx.fillStyle="#17191c";ctx.fillRect(x-34,y-57,68,6);ctx.fillStyle="#d85f59";ctx.fillRect(x-33,y-56,66*Math.max(0,e.hp/e.max),4);}
+}
+
 function harvest() {
+  if(templeMode){templeInteract();return;}
   if(caveMode){const chest=caveChests.find(c=>!c.opened&&Math.hypot(player.x-c.x,player.y-c.y)<76);if(chest){if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;const leveled=addXP(25);bag.crystal=(bag.crystal||0)+1;progressNpcCrystal(1);updateUI();saveQuietly();showToast(leveled?"سطح جدید! یک امتیاز مهارت گرفتی ⭐":"صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
   const dropIndex=lootDrops.findIndex(d=>Math.hypot(player.x-d.x,player.y-d.y)<62);
   if(dropIndex>=0){const preview=lootDrops[dropIndex];if(preview.type!=="coin"&&!bagCanAdd(preview.qty)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}const drop=lootDrops.splice(dropIndex,1)[0];if(drop.type==="coin")player.coins+=drop.qty;else if(drop.type==="stone")bag.stone=(bag.stone||0)+drop.qty;else if(drop.type==="iron")bag.iron=(bag.iron||0)+drop.qty;else if(drop.type==="crystal"){bag.crystal=(bag.crystal||0)+drop.qty;progressNpcCrystal(drop.qty);}else if(drop.type==="potion")bag.potion=(bag.potion||0)+drop.qty;updateUI();saveQuietly();showToast(({coin:"🪙 سکه",stone:"🪨 سنگ",iron:"⛏️ آهن",crystal:"💎 کریستال",potion:"🧪 معجون"})[drop.type]+" ×"+drop.qty+" برداشتی!");return;}
@@ -263,7 +334,7 @@ function attack() {
   if (attackCooldown > 0) return;
   attackCooldown = 0.32; attackFlash = 0.18;
   let target = null, best = 104;
-  const targets = caveMode ? caveEnemies : enemies;
+  const targets = templeMode ? templeEnemies : caveMode ? caveEnemies : enemies;
   for (const e of targets) { if (!e.alive) continue; const d=Math.hypot(player.x-e.x,player.y-e.y); if(d<best){best=d;target=e;} }
   if (!target) { showToast("برای حمله به موجود نزدیک‌تر شو"); return; }
   target.hp -= player.attackPower;
@@ -271,7 +342,9 @@ function attack() {
     target.alive=false;
     target.respawnTimer=target.kind==="guardian"?28:18;
     const roll=Math.random();
-    if(target.kind==="guardian"){lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+18,y:target.y+12,type:"crystal",qty:2,rarity:"rare"});player.coins+=10;bag.crystal=(bag.crystal||0)+2;progressNpcCrystal(2);const leveled=addXP(25);updateUI();saveQuietly();showToast(leveled?"نگهبان کریستالی شکست خورد! +۱۰ سکه و ۲ کریستال؛ سطح جدید ⭐":"نگهبان کریستالی شکست خورد! +۱۰ سکه، ۲ کریستال و ۲۵ تجربه 💎");}
+    if(target.kind==="templeBoss"){templeBosses[templeFloor]=true;player.coins+=25+templeFloor*10;bag.crystal=(bag.crystal||0)+2+templeFloor;bag.templeMosaic=(bag.templeMosaic||0)+1;progressNpcCrystal(2+templeFloor);addXP(35+templeFloor*10);updateUI();saveQuietly();showToast("نگهبان معبد شکست خورد! غنیمت کمیاب گرفتی 🏛️");}
+    else if(target.kind==="templeSentinel"){addXP(10+templeFloor*2);if(Math.random()<.45)bag.crystal=(bag.crystal||0)+1;updateUI();saveQuietly();showToast("نگهبان تالار شکست خورد!");}
+    else if(target.kind==="guardian"){lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+18,y:target.y+12,type:"crystal",qty:2,rarity:"rare"});player.coins+=10;bag.crystal=(bag.crystal||0)+2;progressNpcCrystal(2);const leveled=addXP(25);updateUI();saveQuietly();showToast(leveled?"نگهبان کریستالی شکست خورد! +۱۰ سکه و ۲ کریستال؛ سطح جدید ⭐":"نگهبان کریستالی شکست خورد! +۱۰ سکه، ۲ کریستال و ۲۵ تجربه 💎");}
     else {quests.slime=Math.min(3,quests.slime+1);const leveled=addXP(15);if(roll<0.38)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"coin",qty:3+Math.floor(Math.random()*5),rarity:"common"});else if(roll<0.62)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"stone",qty:1,rarity:"common"});else if(roll<0.82)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"iron",qty:1,rarity:"uncommon"});else if(roll<0.94)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"potion",qty:1,rarity:"rare"});else lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"crystal",qty:1,rarity:"rare"});updateUI();saveQuietly();showToast(leveled?"اسلایم غار شکست خورد! سطح جدید ⭐":"اسلایم غار شکست خورد! +۱۵ تجربه؛ شاید غنیمت انداخته باشد 💎");}
   } else showToast("ضربه زدی! ❤️ جان دشمن: "+target.hp);
 }
@@ -315,7 +388,7 @@ function releaseJoy(e) {
 }
 joy.addEventListener("pointerup", releaseJoy);
 joy.addEventListener("pointercancel", releaseJoy);
-$("actionBtn").addEventListener("pointerdown", e => { e.preventDefault(); harvest(); });
+$("actionBtn").addEventListener("pointerdown", e => { e.preventDefault(); templeMode?templeInteract():harvest(); });
 $("farmBtn").addEventListener("click",openFarmPanel);$("farmClose").addEventListener("click",()=>{$("farmPanel").hidden=true;syncXpPanel();});$("farmPlotsGrid").addEventListener("click",e=>{const b=e.target.closest("[data-plot]");if(!b)return;selectedFarmPlot=Number(b.dataset.plot);updateFarmUI();});
 $("farmTill").addEventListener("click",farmTill);$("farmPlant").addEventListener("click",farmPlant);$("farmWater").addEventListener("click",farmWater);$("farmHarvest").addEventListener("click",farmHarvest);
 $("farmCrop").addEventListener("change",e=>{selectedCrop=e.target.value;updateFarmUI();});$("sellCrops").addEventListener("click",sellFarmCrops);
@@ -341,7 +414,9 @@ $("saveBtn").addEventListener("click", save);
 $("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); syncXpPanel(); });
 $("closeBag").addEventListener("click", () => { $("inventory").hidden = true; syncXpPanel(); });
 $("caveBtn").addEventListener("click",toggleCave);
-$("bridgeBtn").addEventListener("click",()=>{if(bridgeStage>=3){showToast("دروازه معبد باستانی در مرحله بعد باز می‌شود 🏛️");}else openBridgePanel();});
+$("bridgeBtn").addEventListener("click",()=>{if(bridgeStage>=3)openTemplePanel();else openBridgePanel();});
+$("templeEnterBtn").addEventListener("click",enterTemple);
+$("templeClose").addEventListener("click",()=>{$("templePanel").hidden=true;syncXpPanel();});
 $("bridgeBuildBtn").addEventListener("click",buildBridgeStage);
 $("bridgeClose").addEventListener("click",()=>{$("bridgePanel").hidden=true;syncXpPanel();});
 $("craftBtn").addEventListener("click", () => { $("craftPanel").hidden = false; updateCraftUI(); syncXpPanel(); });
@@ -372,7 +447,7 @@ $("upgradeSpeed").addEventListener("click", () => buyUpgrade("speed"));
 $("upgradeAttack").addEventListener("click", () => buyUpgrade("attack"));
 
 function syncXpPanel() {
-  const panelIds = ["inventory", "upgradePanel", "craftPanel", "stationPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel", "bridgePanel"];
+  const panelIds = ["inventory", "upgradePanel", "craftPanel", "stationPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel", "bridgePanel", "templePanel"];
   const hud = $("hud");
   const xp = $("xpPanel");
   xp.hidden = panelIds.some(id => !$(id).hidden);
@@ -616,26 +691,26 @@ function update(dt) {
   if(worldClock >= 1440){worldClock -= 1440;worldDay++;onNewFarmDay();saveQuietly();}
   if(townMode)townSchedule(dt);
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt);
-  const activeEnemies = (caveMode || homeInterior || townMode) ? (caveMode ? caveEnemies : []) : enemies;
+  const activeEnemies = templeMode ? templeEnemies : (caveMode || homeInterior || townMode) ? (caveMode ? caveEnemies : []) : enemies;
   for(const enemy of activeEnemies){
     if(!enemy.alive){
       enemy.respawnTimer = Math.max(0, enemy.respawnTimer - dt);
-      if(enemy.respawnTimer <= 0){ enemy.alive = true; enemy.hp = enemy.max; enemy.x = enemy.spawnX; enemy.y = enemy.spawnY; }
+      if(enemy.respawnTimer <= 0 && enemy.kind!=="templeBoss"){ enemy.alive = true; enemy.hp = enemy.max; enemy.x = enemy.spawnX; enemy.y = enemy.spawnY; }
       continue;
     }
     const ex=player.x-enemy.x,ey=player.y-enemy.y,distance=Math.hypot(ex,ey)||1;
-    const chaseSpeed = caveMode ? 48 : 72;
+    const chaseSpeed = templeMode ? 56 : caveMode ? 48 : 72;
     if(distance<300&&distance>30){enemy.x+=ex/distance*chaseSpeed*dt;enemy.y+=ey/distance*chaseSpeed*dt;}
     else if(distance<=30&&damageCooldown<=0){
       const armorLevel=Math.max(0,Math.min(2,player.armorLevel||0));
       const incomingDamage=armorLevel===0?1:armorLevel===1?0.7:0.4;
       player.health=Math.max(0,Math.round((player.health-incomingDamage)*10)/10);
       damageCooldown=1;updateUI();saveQuietly();
-      if(player.health<=0){player.health=player.maxHealth;player.x=caveMode?800:1200;player.y=caveMode?1080:900;showToast("انرژیت تمام شد؛ جانت بازیابی شد");updateUI();}
+      if(player.health<=0){player.health=player.maxHealth;if(templeMode){player.x=160;player.y=750;}else{player.x=caveMode?800:1200;player.y=caveMode?1080:900;}showToast("انرژیت تمام شد؛ جانت بازیابی شد");updateUI();}
       else showToast(caveMode?"نگهبان کریستالی بهت ضربه زد! 💎":"موجود بهت ضربه زد! ❤️");
     }
   }
-  if (!caveMode && !homeInterior && !townMode) {
+  if (!templeMode && !caveMode && !homeInterior && !townMode) {
     const night = worldClock >= 20 * 60 || worldClock < 6 * 60;
     const targetX = night ? samanHome.x : 1690;
     const targetY = night ? samanHome.y + 72 : 650;
@@ -660,29 +735,29 @@ function update(dt) {
     if(!townMode&&!caveMode&&!homeInterior&&crossedRiver&&!(bridgeStage>=3&&player.y>=1620&&player.y<=1800)) player.x=oldX<2700?2648:2752;
   }
   animTime += dt;
-  const mw = caveMode ? CAVE.w : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
-  const mh = caveMode ? CAVE.h : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h;
+  const mw = templeMode ? TEMPLE.w : caveMode ? CAVE.w : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
+  const mh = templeMode ? TEMPLE.h : caveMode ? CAVE.h : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h;
   player.x=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mw-((caveMode || homeInterior || townMode)?55:24),player.x));
   player.y=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mh-((caveMode || homeInterior || townMode)?55:24),player.y));
   camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
   $("caveBtn").hidden = townMode || homeInterior || (caveMode ? false : Math.hypot(player.x-2080,player.y-1450)>115);
   const bridgeDistance=Math.hypot(player.x-2525,player.y-1710),gateDistance=Math.hypot(player.x-3000,player.y-1710);
-  $("bridgeBtn").hidden=townMode||caveMode||homeInterior||(bridgeStage>=3?gateDistance>125:bridgeDistance>145);
+  $("bridgeBtn").hidden=templeMode||townMode||caveMode||homeInterior||(bridgeStage>=3?gateDistance>125:bridgeDistance>145);
   $("bridgeBtn").textContent=bridgeStage>=3?"🏛️ دروازه معبد":"🌉 پل باستانی";
-  $("townBtn").hidden=townMode||caveMode||homeInterior||Math.hypot(player.x-2310,player.y-900)>115;
+  $("townBtn").hidden=templeMode||townMode||caveMode||homeInterior||Math.hypot(player.x-2310,player.y-900)>115;
   $("townExitBtn").hidden=!townMode || Math.hypot(player.x-800,player.y-1110)>105;
   $("townClock").hidden=homeInterior||caveMode;
   {const hh=Math.floor(worldClock/60),mm=Math.floor(worldClock%60),night=hh>=20||hh<6;$("townClock").textContent=(night?"🌙 ":"☀️ ")+String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0")+" • روز "+worldDay;}
-  $("farmBtn").hidden=townMode||caveMode||homeInterior||Math.hypot(player.x-900,player.y-686)>190;
+  $("farmBtn").hidden=templeMode||townMode||caveMode||homeInterior||Math.hypot(player.x-900,player.y-686)>190;
   const nearTownPerson=townMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
   $("townNpcBtn").hidden=!nearTownPerson;
   $("townNpcBtn").textContent=nearTownPerson?"💬 صحبت با "+nearTownPerson.name:"💬 صحبت با اهالی";
   $("caveBtn").textContent=caveMode?"🚪 خروج از غار":"🕳️ ورود به غار";
-  $("npcBtn").hidden = caveMode || homeInterior || Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y) > 145;
-  $("homeBtn").hidden = townMode || caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
+  $("npcBtn").hidden = templeMode || caveMode || homeInterior || Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y) > 145;
+  $("homeBtn").hidden = templeMode || townMode || caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
   $("homeBtn").textContent = homeInterior ? "🚪 خروج از خانه" : "🏡 خانه";
-  const nearWorkshop=!townMode&&!caveMode&&!homeInterior&&Math.hypot(player.x-playerHome.x,player.y-playerHome.y)<235&&Object.values(stations).some(Boolean);
+  const nearWorkshop=!templeMode&&!townMode&&!caveMode&&!homeInterior&&Math.hypot(player.x-playerHome.x,player.y-playerHome.y)<235&&Object.values(stations).some(Boolean);
   $("workshopBtn").hidden=!nearWorkshop;
 }
 
@@ -1374,6 +1449,7 @@ function drawAncientBridge(){
 
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
+  if (templeMode) { drawTempleGround(); for(const e of templeEnemies){if(e.alive)drawTempleEnemy(e);} drawPlayer(); return; }
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
   if(townMode){drawTown();drawTownPeople();drawPlayer();drawNightOverlay();return;}
   if(caveMode){drawCaveGround();drawCaveObjects();}else {drawGround();drawAncientBridge();}
@@ -1413,3 +1489,5 @@ requestAnimationFrame(loop);
 addEventListener("pagehide", saveQuietly);
 })();
 // Stage 29 final validation marker: carpenter, merchant, furniture and backpack progression.
+
+// Stage 30: five-floor ancient temple with persistent seals and guardians.
