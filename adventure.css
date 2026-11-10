@@ -122,3 +122,12 @@ button:active{transform:translateY(2px)}
 
 /* Stage 29 — carpenter and seed merchant panels. */
 #carpenterPanel .upgrade-list button{background:#79572f;border-color:#e6c77c;min-height:44px}#backpackUpgrade{background:#356b55;border-color:#a8d7a4;min-height:46px;width:100%}#carpenterStatus,#furnitureStatus,#naderiStatus{line-height:1.9}
+
+/* Stage 31 — free seasonal farming */
+.seed-shop-list{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0;max-height:210px;overflow:auto}
+.seed-shop-list button{display:flex;flex-direction:column;gap:3px;align-items:center;background:#355b3c;border-color:#a8c98a;padding:8px 5px;font-size:12px}
+.seed-shop-list button small{font-size:10px;color:#e9d9ae}
+.seed-shop-list button:disabled{opacity:.42}
+#farmSeason{font-weight:bold;color:#f0d99c;text-align:center}
+#farmCropInfo{font-size:11px;line-height:1.7;text-align:center}
+.farm-plots{max-height:140px;overflow:auto}
