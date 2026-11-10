@@ -667,67 +667,86 @@ function drawTownBuilding(x,y,label,roof,kind){
 }
 const townSpriteCache = {};
 function makePixelTownSprite(id, frame) {
- const c=document.createElement("canvas");c.width=64;c.height=96;
+ const c=document.createElement("canvas");c.width=80;c.height=112;
  const g=c.getContext("2d");
- const mina=id==="mina";
- const hair=mina?"#54282b":"#211c29",hairLight=mina?"#92514b":"#5a4a5c";
- const skin="#ffe0ca",skinLight="#fff0df",skinShade="#e9b69d";
- const shirt=mina?"#e94f91":"#287db8",shirtLight=mina?"#ff9bc0":"#76c4e7",shirtShade=mina?"#b93872":"#1b5e91";
- const skirt=mina?"#302b40":"#c8cbd4";
- const walk=frame===1?-3:frame===2?3:0;
- // Back hair silhouette and long side locks
- g.fillStyle=hair;g.fillRect(17,8,31,34);g.fillRect(12,19,8,37);g.fillRect(45,18,8,39);
- g.fillRect(14,43,8,15);g.fillRect(43,43,8,17);
- g.fillStyle=hairLight;g.fillRect(19,11,9,4);g.fillRect(33,9,10,3);g.fillRect(13,25,4,15);
- // Shoes and legs, separated for readable walk cycles
- g.fillStyle="#302a30";g.fillRect(21,79+walk,8,9);g.fillRect(36,79-walk,8,9);
- g.fillStyle="#f5eadf";g.fillRect(18,87+walk,13,5);g.fillRect(34,87-walk,14,5);
- g.fillStyle="#b9aeb0";g.fillRect(20,90+walk,9,2);g.fillRect(36,90-walk,10,2);
- g.fillStyle=skirt;g.fillRect(19,61,28,18);g.fillRect(17,66,32,9);
- g.fillStyle=mina?"#4a4050":"#e5e1e3";g.fillRect(20,64,25,3);
- // Torso and puff sleeves
- g.fillStyle=shirtShade;g.fillRect(16,38,34,28);g.fillRect(11,43,9,19);g.fillRect(46,43,9,19);
- g.fillStyle=shirt;g.fillRect(18,38,30,26);g.fillRect(13,43,7,16);g.fillRect(46,43,7,16);
- g.fillStyle=shirtLight;g.fillRect(21,40,23,5);g.fillRect(14,45,4,10);g.fillRect(47,45,4,10);
- g.fillStyle="#f4d38a";g.fillRect(28,61,10,3);g.fillRect(32,59,3,7);
- // Neck and broad, bright face
- g.fillStyle=skinShade;g.fillRect(28,30,12,12);
- g.fillStyle=skin;g.fillRect(24,17,21,23);g.fillRect(21,22,4,10);g.fillRect(44,22,4,10);
- g.fillStyle=skinLight;g.fillRect(27,19,14,13);g.fillRect(25,25,3,7);
- g.fillStyle=skinShade;g.fillRect(22,29,3,4);g.fillRect(44,29,3,4);
- // Hair cap and fringe, leaving a clear face window
- g.fillStyle=hair;g.fillRect(19,9,29,13);g.fillRect(17,13,8,12);g.fillRect(43,12,7,12);
- g.fillRect(22,7,20,5);
- g.fillStyle=hairLight;g.fillRect(23,10,9,3);g.fillRect(36,9,7,2);
- // side curls frame the face and continue down the shoulders
- g.fillStyle=hair;g.fillRect(17,22,6,24);g.fillRect(45,21,6,25);
- g.fillRect(14,39,7,13);g.fillRect(46,39,7,14);
- g.fillStyle=hairLight;g.fillRect(17,31,3,9);g.fillRect(47,29,2,10);
- // Fringe strands
- g.fillStyle=hair;g.fillRect(22,16,8,4);g.fillRect(29,13,8,5);g.fillRect(37,15,8,4);
- g.fillStyle=hairLight;g.fillRect(25,15,5,2);g.fillRect(36,14,5,2);
- // Eyes, eyebrows, nose, smile and blush
- g.fillStyle=hair;g.fillRect(25,24,6,2);g.fillRect(37,24,6,2);
- g.fillStyle="#3b2830";g.fillRect(26,27,4,5);g.fillRect(38,27,4,5);
- g.fillStyle="#fffaf0";g.fillRect(27,27,2,2);g.fillRect(39,27,2,2);
- g.fillStyle="#7a514d";g.fillRect(27,32,3,1);g.fillRect(39,32,3,1);
- g.fillStyle=skinShade;g.fillRect(33,32,2,3);
- g.fillStyle="#d66d7c";g.fillRect(31,36,7,2);g.fillStyle="#ffe5d9";g.fillRect(33,36,3,1);
- g.fillStyle="#f3a2a2";g.fillRect(23,33,5,3);g.fillRect(42,33,5,3);
- // Draw the complete face AFTER the hair silhouette so dark hair never covers the skin.
- g.fillStyle=skinShade;g.fillRect(22,25,3,10);g.fillRect(44,25,3,10);
- g.fillStyle=skin;g.fillRect(24,19,21,21);g.fillRect(22,24,3,9);g.fillRect(44,24,3,9);
- g.fillStyle=skinLight;g.fillRect(27,20,14,12);g.fillRect(26,25,3,6);
- g.fillStyle="#3b2830";g.fillRect(26,27,4,5);g.fillRect(38,27,4,5);
- g.fillStyle="#fffaf0";g.fillRect(27,27,2,2);g.fillRect(39,27,2,2);
- g.fillStyle=skinShade;g.fillRect(33,32,2,3);
- g.fillStyle="#d66d7c";g.fillRect(31,36,7,2);g.fillStyle="#ffe5d9";g.fillRect(33,36,3,1);
- g.fillStyle="#f3a2a2";g.fillRect(23,33,5,3);g.fillRect(42,33,5,3);
- // jewelry / signature details
- if(mina){g.fillStyle="#f8d477";g.fillRect(48,45,3,6);g.fillStyle="#fff0b7";g.fillRect(49,46,1,3);}
- else{g.fillStyle="#e6f3fa";g.fillRect(31,43,6,4);g.fillStyle="#f4d68d";g.fillRect(33,61,3,2);}
- // pixel outline accents keep the silhouette crisp at game scale
- g.strokeStyle="#34242e";g.lineWidth=1;g.strokeRect(16.5,37.5,33,28);
+ const mina=id==="mina",hana=id==="hana",saeed=id==="saeed";
+ const walk=frame===1?-2:frame===2?2:0;
+ const skin="#e9b99c",skinHi="#f7d4bb",skinShade="#c98f78";
+ const hair=mina?"#65402f":hana?"#29232d":"#302b2b";
+ const hairHi=mina?"#a36c49":hana?"#62515f":"#64504a";
+ const top=mina?"#d94f91":hana?"#347fb6":"#52677a";
+ const topHi=mina?"#f58bb5":hana?"#79b8dc":"#8da1ad";
+ const topShade=mina?"#9f376b":hana?"#205b89":"#354b5b";
+ const bottom=saeed?"#3c4148":mina?"#403447":"#d0d1d8";
+ const boot="#292b32";
+ const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
+ // Ground shadow, boots and separated legs.
+ g.fillStyle="rgba(26,24,23,.25)";g.beginPath();g.ellipse(40,103,17,4,0,0,Math.PI*2);g.fill();
+ px(27,84+walk,9,13,bottom);px(44,84-walk,9,13,bottom);
+ px(25,96+walk,13,6,boot);px(43,96-walk,14,6,boot);
+ px(27,97+walk,7,2,"#77706a");px(45,97-walk,8,2,"#77706a");
+ // Back hair and long side locks for the sisters; short hair for Saeed.
+ if(!saeed){
+  px(19,13,42,39,hair);px(15,27,8,43,hair);px(57,27,8,43,hair);
+  px(17,54,8,19,hair);px(55,53,8,20,hair);
+  px(22,16,12,4,hairHi);px(43,14,12,3,hairHi);
+ }else{
+  px(22,17,36,26,hair);px(19,25,5,16,hair);px(56,25,5,15,hair);
+ }
+ // Outfit silhouette: shaped shoulders, sleeves, torso and lower garment.
+ px(23,43,34,35,topShade);px(18,48,8,22,topShade);px(54,48,8,22,topShade);
+ px(25,43,30,32,top);px(20,49,6,17,top);px(54,49,6,17,top);
+ px(28,45,23,5,topHi);px(21,51,3,10,topHi);px(56,51,3,10,topHi);
+ px(29,73,22,3,mina?"#f2c36e":hana?"#e6e0d4":"#b8a98e");
+ if(!saeed){
+  // Modest skirt with a layered hem and subtle fabric folds.
+  px(22,76,36,11,bottom);px(19,81,42,8,bottom);
+  px(24,78,4,8,mina?"#67506a":"#e4e2e4");px(51,78,3,8,mina?"#67506a":"#e4e2e4");
+  px(31,79,2,7,mina?"#59435d":"#adb2bd");px(45,79,2,7,mina?"#59435d":"#adb2bd");
+ }else{
+  // Civilian jacket, visible collar, buttons and trousers.
+  px(27,45,26,27,top);px(37,45,3,28,topShade);px(29,46,7,5,"#d7d1c1");
+  px(43,46,7,5,"#d7d1c1");px(39,53,2,2,"#e5d2a1");px(39,61,2,2,"#e5d2a1");
+  px(28,75,8,12,bottom);px(44,75,8,12,bottom);
+  px(28,78,3,2,"#666a6d");px(45,78,3,2,"#666a6d");
+ }
+ // Arms, hands, neck.
+ px(17,56,7,18,topShade);px(56,56,7,18,topShade);
+ px(18,58,5,12,top);px(57,58,5,12,top);
+ px(18,72,6,7,skin);px(56,72,6,7,skin);
+ px(33,36,14,11,skinShade);px(34,36,12,9,skin);
+ // Face, ears and light planes.
+ px(25,21,30,25,skinShade);px(27,19,26,27,skin);
+ px(30,21,18,17,skinHi);px(24,28,4,10,skin);px(52,28,4,10,skin);
+ px(28,35,5,4,"#d99d8c");px(47,35,5,4,"#d99d8c");
+ // Hair cap and signature fringe, drawn around but not over the face.
+ if(mina){
+  px(20,12,40,14,hair);px(18,18,10,16,hair);px(52,17,10,17,hair);
+  px(22,22,9,5,hair);px(31,18,11,6,hair);px(42,21,10,5,hair);
+  px(17,37,8,30,hair);px(55,37,8,31,hair);
+  px(20,15,12,3,hairHi);px(42,14,10,3,hairHi);px(18,44,3,12,hairHi);
+ }else if(hana){
+  px(20,12,40,15,hair);px(18,19,10,17,hair);px(52,18,10,18,hair);
+  px(22,22,10,5,hair);px(33,18,10,6,hair);px(43,22,9,5,hair);
+  px(17,38,8,30,hair);px(55,37,8,32,hair);
+  px(22,15,9,3,hairHi);px(43,14,9,3,hairHi);px(57,43,3,11,hairHi);
+ }else{
+  px(21,14,38,12,hair);px(24,10,29,8,hair);px(20,20,7,8,hair);
+  px(28,13,9,3,hairHi);px(45,12,8,3,hairHi);
+ }
+ // Eyes, brows, nose, mouth and cheek highlights.
+ px(29,29,7,2,hair);px(46,29,7,2,hair);
+ px(31,32,4,5,"#392d30");px(47,32,4,5,"#392d30");
+ px(32,32,2,2,"#fff8ed");px(48,32,2,2,"#fff8ed");
+ px(40,36,2,3,skinShade);px(37,41,7,2,"#a85f62");px(39,41,3,1,"#ffe4d5");
+ if(!saeed){px(27,38,4,3,"#e8a1a0");px(51,38,4,3,"#e8a1a0");}
+ else{px(31,43,22,3,hair);px(35,45,14,4,hair);}
+ // Character-specific accents.
+ if(mina){px(59,54,3,7,"#f3cf75");px(60,55,2,3,"#fff1b8");px(24,47,3,8,"#f6a6c6");}
+ if(hana){px(38,47,5,5,"#e8edf4");px(39,48,3,3,"#f5d98d");px(54,77,3,5,"#7ba9d0");}
+ if(saeed){px(34,48,4,5,"#d7d4c9");px(42,48,4,5,"#d7d4c9");}
+ // Crisp outer silhouette accents.
+ g.strokeStyle="#352b2d";g.lineWidth=1;g.strokeRect(18.5,42.5,43,37);
  return c;
 }
 function getTownSpriteFrames(id){
@@ -741,25 +760,14 @@ function drawTownPeople(){
   const walking=!!p.walking,phase=animTime*8+(p.x*.013);
   const frame=walking?(Math.floor(phase)%2+1):0;
   const bob=walking?Math.abs(Math.sin(phase))*1.1:Math.sin(animTime*2+p.x*.01)*.35;
-  const blink=Math.floor(animTime*2.1+p.x*.017)%9===0;
+  const frames=getTownSpriteFrames(p.id);
+  ctx.fillStyle="#302923";ctx.globalAlpha=.25;ctx.beginPath();ctx.ellipse(x,y+5,20,6,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+  ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(frames[frame],x-40,y-112+bob,80,112);ctx.restore();
   if(p.id==="mina"||p.id==="hana"){
-   const frames=getTownSpriteFrames(p.id);
-   ctx.fillStyle="#302923";ctx.globalAlpha=.24;ctx.beginPath();ctx.ellipse(x,y+5,22,7,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
-   ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(frames[frame],x-34,y-104+bob,68,102);ctx.restore();
-   if(blink){ctx.fillStyle="#fff7ed";ctx.fillRect(x-8,y-73+bob,4,1);ctx.fillRect(x+5,y-73+bob,4,1);}
-   ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#44352f";ctx.strokeText(p.name,x,y-112+bob);ctx.fillStyle="#fff7df";ctx.fillText(p.name,x,y-112+bob);
-   if(Math.hypot(player.x-p.x,player.y-p.y)<125){ctx.fillStyle="#ffe9a0";ctx.font="bold 18px Tahoma";ctx.fillText("✦",x,y-128+bob);}
-   ctx.textAlign="start";return;
+   if(Math.floor(animTime*2.1+p.x*.017)%9===0){ctx.fillStyle="#fff7ed";ctx.fillRect(x-8,y-77+bob,4,1);ctx.fillRect(x+5,y-77+bob,4,1);}
   }
-  const palettes={
-   nahid:{hair:"#493239",hairHi:"#80545a",skin:"#d7a17f",skinLight:"#f0c5a2",top:"#86495c",topHi:"#c47a82",bottom:"#493c48",boots:"#302d32",accent:"#d9b879"},
-   saeed:{hair:"#242329",hairHi:"#51454a",skin:"#d49a78",skinLight:"#efbd99",top:"#354b61",topHi:"#71899a",bottom:"#303944",boots:"#282a30",accent:"#c5b99e"},
-   rezaei:{hair:"#574036",hairHi:"#98705a",skin:"#d9a181",skinLight:"#f2c5a3",top:"#456e4d",topHi:"#8daf78",bottom:"#50443d",boots:"#302b29",accent:"#d9bd7a"}
-  };
-  const a=palettes[p.id]||palettes.rezaei;
-  drawPixelPerson(x,y+43,{...a,longHair:p.id==="nahid"||p.id==="rezaei",beard:p.id==="saeed"},{step:walking?Math.sin(phase)*3:Math.sin(animTime*2+p.x*.01)*.4,bob});
-  ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#43392f";ctx.strokeText(p.name,x,y-51+bob);ctx.fillStyle="#fff7df";ctx.fillText(p.name,x,y-51+bob);
-  if(Math.hypot(player.x-p.x,player.y-p.y)<115){ctx.fillStyle="#ffe9a0";ctx.font="bold 17px Tahoma";ctx.fillText("✦",x,y-65+bob);}
+  ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#44352f";ctx.strokeText(p.name,x,y-120+bob);ctx.fillStyle="#fff7df";ctx.fillText(p.name,x,y-120+bob);
+  if(Math.hypot(player.x-p.x,player.y-p.y)<120){ctx.fillStyle="#ffe9a0";ctx.font="bold 18px Tahoma";ctx.fillText("✦",x,y-137+bob);}
   ctx.textAlign="start";
  });
 }
