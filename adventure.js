@@ -241,8 +241,8 @@ function harvest() {
   const toolType = nearest.type === "tree" || nearest.type === "bush" ? "axe" : nearest.type === "sand" ? "shovel" : "pickaxe";
   nearest.hp -= 1 + (toolLevels[toolType] || 0);
   if (nearest.hp <= 0) {
+    const amount=nearest.type==="tree"?3:(nearest.type==="stone"||nearest.type==="bush"||nearest.type==="sand")?2:1;if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره! برای ظرفیت بیشتر برو پیش آقای نادری 🎒");return;}
     (caveMode ? caveHarvested : harvested).add(nearest.id);
-    const amount=nearest.type==="tree"?3:nearest.type==="stone"?2:1;if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره! برای ظرفیت بیشتر برو پیش آقای نادری 🎒");return;}
     if (nearest.type === "tree") { bag.wood += 3; quests.wood = Math.min(10, quests.wood + 3); }
     if (nearest.type === "stone") bag.stone += 2;
     if (nearest.type === "iron") { bag.iron += 1; quests.iron = Math.min(5, quests.iron + 1); }
