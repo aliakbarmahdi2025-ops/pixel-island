@@ -182,6 +182,7 @@ function makeEnemies() {
   enemies = [];
 }
 makeEnemies();
+if(templeMode)createTempleEnemies();
 function makeCave(){
  caveResources=[
  {id:"cs1",x:250,y:250,type:"stone",hp:4,max:4},{id:"cs2",x:1320,y:250,type:"stone",hp:4,max:4},
@@ -277,6 +278,7 @@ function templeInteract(){
  showToast("به محراب، نگهبان یا دروازه نزدیک‌تر شو.");
 }
 function drawTempleGround(){
+ ctx.save();ctx.translate(-camera.x,-camera.y);
  const f=templeFloor,base=["#292b2b","#302b32","#26343a","#34302a","#252733"][f-1];ctx.fillStyle=base;ctx.fillRect(0,0,TEMPLE.w,TEMPLE.h);
  for(let y=0;y<TEMPLE.h;y+=64)for(let x=0;x<TEMPLE.w;x+=64){const h=terrainHash(x/64+f*17,y/64+f*31);ctx.fillStyle=h>.5?"rgba(190,166,119,.08)":"rgba(0,0,0,.12)";ctx.fillRect(x+3,y+3,58,58);if(h>.83){ctx.fillStyle="rgba(218,190,137,.16)";ctx.fillRect(x+12,y+14,18,3);ctx.fillRect(x+12,y+14,3,14);}}
  ctx.fillStyle="#15191c";ctx.fillRect(0,0,TEMPLE.w,54);ctx.fillRect(0,TEMPLE.h-54,TEMPLE.w,54);ctx.fillRect(0,0,54,TEMPLE.h);ctx.fillRect(TEMPLE.w-54,0,54,TEMPLE.h);
@@ -291,6 +293,7 @@ function drawTempleGround(){
  ctx.fillStyle="#b59b6d";ctx.fillRect(91,620,108,18);ctx.fillRect(97,790,96,18);ctx.fillStyle="#25282a";ctx.fillRect(110,638,70,152);
  ctx.fillStyle="#e8d5a5";ctx.font="bold 24px Tahoma";ctx.textAlign="center";ctx.fillText("تالار "+f+" • از ۵",1100,115);ctx.font="bold 15px Tahoma";ctx.fillText("مهر باستانی",px,py-112);ctx.fillText("دروازه‌ی طبقه‌ی بعد",gx,585);ctx.textAlign="start";
  for(const [x,y] of [[360,520],[1710,520],[360,990],[1710,990]]){const g=ctx.createRadialGradient(x,y,3,x,y,105);g.addColorStop(0,"rgba(255,174,75,.24)");g.addColorStop(1,"rgba(255,174,75,0)");ctx.fillStyle=g;ctx.fillRect(x-110,y-110,220,220);ctx.fillStyle="#b47b42";ctx.fillRect(x-9,y-5,18,22);ctx.fillStyle="#ffd27b";ctx.fillRect(x-4,y-20,8,17);}
+ ctx.restore();
 }
 function drawTempleEnemy(e){
  const x=e.x-camera.x,y=e.y-camera.y,boss=e.kind==="templeBoss",sc=boss?1.7:1;ctx.save();ctx.translate(x,y);ctx.scale(sc,sc);
@@ -353,7 +356,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, toolLevels, bridgeStage, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
+      bag, stations, toolLevels, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
     }));
   } catch (e) {}
 }
@@ -747,7 +750,7 @@ function update(dt) {
   $("bridgeBtn").textContent=bridgeStage>=3?"🏛️ دروازه معبد":"🌉 پل باستانی";
   $("townBtn").hidden=templeMode||townMode||caveMode||homeInterior||Math.hypot(player.x-2310,player.y-900)>115;
   $("townExitBtn").hidden=!townMode || Math.hypot(player.x-800,player.y-1110)>105;
-  $("townClock").hidden=homeInterior||caveMode;
+  $("townClock").hidden=templeMode||homeInterior||caveMode;
   {const hh=Math.floor(worldClock/60),mm=Math.floor(worldClock%60),night=hh>=20||hh<6;$("townClock").textContent=(night?"🌙 ":"☀️ ")+String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0")+" • روز "+worldDay;}
   $("farmBtn").hidden=templeMode||townMode||caveMode||homeInterior||Math.hypot(player.x-900,player.y-686)>190;
   const nearTownPerson=townMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
@@ -757,6 +760,7 @@ function update(dt) {
   $("npcBtn").hidden = templeMode || caveMode || homeInterior || Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y) > 145;
   $("homeBtn").hidden = templeMode || townMode || caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
   $("homeBtn").textContent = homeInterior ? "🚪 خروج از خانه" : "🏡 خانه";
+  $("actionBtn").innerHTML=templeMode?"🔮<small>تعامل</small>":"⛏️<small>برداشت</small>";
   const nearWorkshop=!templeMode&&!townMode&&!caveMode&&!homeInterior&&Math.hypot(player.x-playerHome.x,player.y-playerHome.y)<235&&Object.values(stations).some(Boolean);
   $("workshopBtn").hidden=!nearWorkshop;
 }
