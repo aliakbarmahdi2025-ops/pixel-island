@@ -41,6 +41,7 @@ const townPeople = [
 
 let worldClock = 9 * 60, worldDay = 1, selectedFarmPlot = -1, selectedCrop = "carrot";
 const FARM_CROPS = {
+ wheat:{name:"گندم",icon:"🌾",season:"spring",days:3,price:8,seed:4,color:"#d8bf70"},
  carrot:{name:"هویج",icon:"🥕",season:"spring",days:2,price:10,seed:5,color:"#e58a42"},
  potato:{name:"سیب‌زمینی",icon:"🥔",season:"spring",days:4,price:18,seed:8,color:"#b68a54"},
  cauliflower:{name:"گل‌کلم",icon:"🥦",season:"spring",days:6,price:35,seed:13,color:"#d8dfb5"},
@@ -183,8 +184,8 @@ function updateUI() {
   if ($("armorStatus")) $("armorStatus").textContent = ["بدون زره","زره آهنی","زره کریستالی"][Math.max(0,Math.min(2,player.armorLevel||0))];
   $("crystal").textContent = bag.crystal || 0;
   $("potion").textContent = bag.potion || 0;
-  if($("seeds"))$("seeds").textContent=bag.seeds||0;
-  if($("farmCrops"))$("farmCrops").textContent="🌾 "+(bag.wheat||0)+" • 🥕 "+(bag.carrot||0)+" • 🍓 "+(bag.strawberry||0);
+  if($("seeds"))$("seeds").textContent=Object.values(farmSeedStock).reduce((n,v)=>n+v,0)+(bag.seeds||0);
+  if($("farmCrops"))$("farmCrops").textContent=Object.entries(FARM_CROPS).filter(([k])=>(bag[k]||0)>0).map(([k,c])=>c.icon+" "+bag[k]).join(" • ")||"هنوز محصولی برداشت نکردی";
   ["fiber","sand","marble","plank","brick","rope","nail","glass","cloth","marbleSlab","ironParts","templeFoundation","templeColumn","templeBeam","templeMosaic","templeBanner"].forEach(k=>{const el=$(k);if(el)el.textContent=bag[k]||0;});
   if ($("toolStatus")) $("toolStatus").textContent = "تبر " + toolLevelName("axe") + " • کلنگ " + toolLevelName("pickaxe") + " • بیل " + toolLevelName("shovel");
   $("xpText").textContent = player.xp + " / " + xpNeeded() + " XP";
@@ -806,7 +807,7 @@ function townSchedule(dt=0){
   if(d>0&&d<44){const push=(44-d)*0.5;p.x-=dx/d*push;p.y-=dy/d*push;q.x+=dx/d*push;q.y+=dy/d*push;}
  }
 }
-function bagUsed(){return Object.values(bag).reduce((sum,v)=>sum+(Number(v)||0),0);}
+function bagUsed(){return Object.values(bag).reduce((sum,v)=>sum+(Number(v)||0),0)+Object.values(farmSeedStock).reduce((sum,v)=>sum+(Number(v)||0),0);}
 function bagCanAdd(amount=1){return bagUsed()+amount<=backpackCaps[backpackTier];}
 function bagAdd(key,amount){if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره! پیش آقای نادری ظرفیتش رو ارتقا بده 🎒");return false;}bag[key]=(bag[key]||0)+amount;return true;}
 function openTownNpc(){
@@ -854,15 +855,13 @@ function updateFarmUI(){
  $("farmPlant").textContent=crop.season===season?"🌱 کاشت "+crop.name:"🔒 مخصوص "+FARM_SEASONS[crop.season];
 }
 function farmTill(){
- let p=selectedFarmPlot>=0?farmPlots[selectedFarmPlot]:null;
- if(!p||p.state!=="empty"){
-  const offsets={up:[0,-64],down:[0,64],left:[-64,0],right:[64,0]},o=offsets[playerFacing]||offsets.down;
-  const x=Math.max(64,Math.min(WORLD.w-64,Math.round((player.x+o[0])/64)*64)),y=Math.max(64,Math.min(WORLD.h-64,Math.round((player.y+o[1])/64)*64));
-  if(Math.abs(x-2700)<115||Math.hypot(x-playerHome.x,y-playerHome.y)<145||Math.hypot(x-samanHome.x,y-samanHome.y)<105){showToast("اینجا برای کشاورزی مناسب نیست؛ کمی دورتر زمین بزن 🌿");return;}
-  if(getFarmTileAt(x,y)>=0){showToast("این زمین قبلاً آماده شده!");return;}
-  p={id:farmPlots.length,x,y,state:"empty",crop:null,growth:0,wateredDay:-1,harvests:0};farmPlots.push(p);selectedFarmPlot=farmPlots.length-1;
- }else if(p.state!=="empty"){return;}
- p.state="tilled";updateFarmUI();saveQuietly();showToast("زمین جدیدت شخم خورد! 🪴");
+ const offsets={up:[0,-64],down:[0,64],left:[-64,0],right:[64,0]},o=offsets[playerFacing]||offsets.down;
+ const x=Math.max(64,Math.min(WORLD.w-64,Math.round((player.x+o[0])/64)*64)),y=Math.max(64,Math.min(WORLD.h-64,Math.round((player.y+o[1])/64)*64));
+ if(Math.abs(x-2700)<115||Math.hypot(x-playerHome.x,y-playerHome.y)<145||Math.hypot(x-samanHome.x,y-samanHome.y)<105){showToast("اینجا برای کشاورزی مناسب نیست؛ کمی دورتر زمین بزن 🌿");return;}
+ const existing=getFarmTileAt(x,y);
+ if(existing>=0){if(farmPlots[existing].state==="empty"){selectedFarmPlot=existing;farmPlots[existing].state="tilled";}else{showToast("این زمین قبلاً آماده شده!");return;}}
+ else{farmPlots.push({id:farmPlots.length,x,y,state:"tilled",crop:null,growth:0,wateredDay:-1,harvests:0});selectedFarmPlot=farmPlots.length-1;}
+ updateFarmUI();saveQuietly();showToast("زمین جدیدت شخم خورد! 🪴");
 }
 function farmPlant(){
  const p=farmPlots[selectedFarmPlot],crop=FARM_CROPS[selectedCrop],season=getFarmSeason();
@@ -889,11 +888,11 @@ function farmHarvest(){
 function buyCropSeed(type){
  const crop=FARM_CROPS[type];if(!crop)return;
  if(crop.season!==getFarmSeason()){showToast("بذر "+crop.name+" فعلاً خارج از فصلشه!");return;}
- if(player.coins<crop.seed){showToast("سکه کافی نداری!");return;}
+ if(player.coins<crop.seed){showToast("سکه کافی نداری!");return;}if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}
  player.coins-=crop.seed;farmSeedStock[type]++;updateUI();updateTownShop();updateFarmUI();saveQuietly();showToast("یک بسته بذر "+crop.name+" خریدی 🌱");
 }
 function sellFarmCrops(){let count=0,total=0;for(const [key,crop] of Object.entries(FARM_CROPS)){const n=bag[key]||0;count+=n;total+=n*crop.price;bag[key]=0;}if(!count){showToast("محصولی برای فروش نداری");return;}player.coins+=total;updateUI();updateTownShop();saveQuietly();showToast("آقای نادری محصولاتت رو خرید! +"+total+" سکه 🪙");}
-function updateTownShop(){$("townShopHours").textContent="ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰ • ساعت بازی: "+String(Math.floor(worldClock/60)).padStart(2,"0")+":"+String(Math.floor(worldClock%60)).padStart(2,"0");$("townShopStock").textContent="موجودی بذر: "+(bag.seeds||0)+" • ظرفیت کوله: "+bagUsed()+"/"+backpackCaps[backpackTier]+" • سکه: "+player.coins;if($("naderiStatus"))updateNaderiUI();
+function updateTownShop(){$("townShopHours").textContent="ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰ • ساعت بازی: "+String(Math.floor(worldClock/60)).padStart(2,"0")+":"+String(Math.floor(worldClock%60)).padStart(2,"0");$("townShopStock").textContent="موجودی بذر: "+Object.values(farmSeedStock).reduce((n,v)=>n+v,0)+" • ظرفیت کوله: "+bagUsed()+"/"+backpackCaps[backpackTier]+" • سکه: "+player.coins;if($("naderiStatus"))updateNaderiUI();
   const cropCount=Object.keys(FARM_CROPS).reduce((n,k)=>n+(bag[k]||0),0);$("sellCrops").disabled=!cropCount;$("sellCrops").textContent="فروش محصولات برداشت‌شده • موجودی: "+cropCount;$("seedShopList").innerHTML=Object.entries(FARM_CROPS).map(([k,c])=>'<button type="button" data-seed="'+k+'" '+(c.season!==getFarmSeason()||player.coins<c.seed?'disabled':'')+'><span>'+c.icon+" "+c.name+'</span><small>'+c.seed+" سکه • "+FARM_SEASONS[c.season]+'</small></button>').join("");$("buyBread").hidden=true;$("buyApple").hidden=true;$("eatBread").hidden=true;$("eatApple").hidden=true;$("buySeeds").disabled=player.coins<(FARM_CROPS[selectedCrop]?.seed||999)||FARM_CROPS[selectedCrop]?.season!==getFarmSeason();$("buySeeds").textContent="🌱 خرید بذر "+(FARM_CROPS[selectedCrop]?.name||"");$("buySeeds").hidden=false;}
 function consumeTownFood(type){if(!townStock[type]){showToast("از این خوراکی نداری!");return;}if(player.health>=player.maxHealth){showToast("جان تو کامله!");return;}townStock[type]--;player.health=Math.min(player.maxHealth,player.health+(type==="bread"?2:1));updateUI();updateTownShop();saveQuietly();showToast("خوراکی خوردی و جانت بیشتر شد ❤️");}
 function buyTownItem(type){const item={bread:{price:8,label:"نان"},seeds:{price:5,label:"بذر"},apple:{price:6,label:"سیب"}}[type];if(!item||player.coins<item.price){showToast("سکه کافی نداری! 🪙");return;}if(type==="seeds"&&!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}player.coins-=item.price;if(type==="seeds")bag.seeds=(bag.seeds||0)+1;else townStock[type]++;updateUI();updateTownShop();saveQuietly();showToast(item.label+" خریدی! 🛍️");}
