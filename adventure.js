@@ -11,6 +11,7 @@ const camera = { x: 0, y: 0 };
 const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, maxHealth: 5, level: 1, xp: 0, skillPoints: 0, attackPower: 1, armorLevel: 0, coins: 0 };
 const bag = { wood: 0, stone: 0, iron: 0, crystal: 0, potion: 0, seeds: 0, wheat: 0, carrot: 0, strawberry: 0, fiber: 0, sand: 0, marble: 0, plank: 0, brick: 0, rope: 0, nail: 0, glass: 0, cloth: 0, marbleSlab: 0, ironParts: 0, templeFoundation: 0, templeColumn: 0, templeBeam: 0, templeMosaic: 0, templeBanner: 0 };
 const stations = { workbench: false, furnace: false, sawmill: false };
+let bridgeStage = 0; // 0 broken, 1 stone piers, 2 timber deck, 3 ancient seal complete
 let harvested = new Set(), caveHarvested = new Set();
 let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
 let caveResources = [], caveChests = [];
@@ -96,6 +97,7 @@ function load() {
     }
     if (data.bag) Object.assign(bag, data.bag);
     if (data.stations) Object.assign(stations, data.stations);
+    bridgeStage = Math.max(0, Math.min(3, Number(data.bridgeStage) || 0));
     if (Array.isArray(data.harvested)) harvested = new Set(data.harvested);
     if (Array.isArray(data.caveHarvested)) caveHarvested = new Set(data.caveHarvested);
     if (Array.isArray(data.lootDrops)) lootDrops = data.lootDrops.filter(d => d && Number.isFinite(d.x) && Number.isFinite(d.y) && ["coin","stone","iron","crystal","potion"].includes(d.type));
@@ -113,7 +115,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
+      bag, stations, bridgeStage, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -171,7 +173,8 @@ function makeCave(){
  {id:"ci1",x:420,y:450,type:"iron",hp:5,max:5},{id:"ci2",x:1320,y:650,type:"iron",hp:5,max:5},
  {id:"ci3",x:760,y:1020,type:"iron",hp:5,max:5},{id:"cc1",x:760,y:360,type:"crystal",hp:4,max:4},
  {id:"cc2",x:300,y:680,type:"crystal",hp:4,max:4},{id:"cc3",x:1450,y:950,type:"crystal",hp:4,max:4},
- {id:"cm1",x:560,y:560,type:"marble",hp:5,max:5},{id:"cm2",x:980,y:860,type:"marble",hp:5,max:5},{id:"cm3",x:1450,y:300,type:"marble",hp:5,max:5}];
+ {id:"cm1",x:560,y:560,type:"marble",hp:5,max:5},{id:"cm2",x:980,y:860,type:"marble",hp:5,max:5},{id:"cm3",x:1450,y:300,type:"marble",hp:5,max:5},
+ {id:"cm4",x:180,y:560,type:"marble",hp:5,max:5},{id:"cm5",x:880,y:170,type:"marble",hp:5,max:5},{id:"cm6",x:1180,y:180,type:"marble",hp:5,max:5},{id:"cm7",x:250,y:1040,type:"marble",hp:5,max:5},{id:"cm8",x:520,y:1080,type:"marble",hp:5,max:5},{id:"cm9",x:960,y:520,type:"marble",hp:5,max:5},{id:"cm10",x:1240,y:760,type:"marble",hp:5,max:5},{id:"cm11",x:1480,y:1080,type:"marble",hp:5,max:5},{id:"cm12",x:760,y:680,type:"marble",hp:5,max:5},{id:"cm13",x:1120,y:1040,type:"marble",hp:5,max:5},{id:"cm14",x:180,y:820,type:"marble",hp:5,max:5},{id:"cm15",x:1380,y:160,type:"marble",hp:5,max:5},{id:"cm16",x:1040,y:240,type:"marble",hp:5,max:5},{id:"cm17",x:400,y:180,type:"marble",hp:5,max:5},{id:"cm18",x:900,y:1120,type:"marble",hp:5,max:5}];
  caveChests=[{x:590,y:230,opened:!!openedChests[0]},{x:1370,y:420,opened:!!openedChests[1]},{x:790,y:790,opened:!!openedChests[2]}];
  const slimeSpots=[[300,430],[920,330],[1450,570],[600,850],[1190,930]];
  caveEnemies=slimeSpots.map((p,i)=>({id:"cave-slime-"+i,kind:"slime",x:p[0],y:p[1],spawnX:p[0],spawnY:p[1],hp:3,max:3,alive:true,respawnTimer:0}));
@@ -182,6 +185,37 @@ function toggleCave(){
  if(!caveMode){caveReturn={x:player.x,y:player.y};caveMode=true;player.x=800;player.y=1080;showToast("وارد غار جنگلی شدی 🕯️");}
  else{caveMode=false;player.x=caveReturn.x;player.y=caveReturn.y;showToast("به جنگل برگشتی 🌲");}
  saveQuietly();
+}
+
+
+const bridgeRecipes = [
+ {name:"پایه‌های سنگی",cost:{brick:30,marbleSlab:6,ironParts:3},hint:"۳۰ آجر سنگی • ۶ تخته مرمر • ۳ قطعه آهنی"},
+ {name:"عرشه چوبی و مهارها",cost:{plank:45,nail:18,rope:14},hint:"۴۵ تخته • ۱۸ میخ • ۱۴ طناب"},
+ {name:"مهر باستانی معبد",cost:{crystal:6,glass:6,cloth:6,templeFoundation:2,templeColumn:1,templeBeam:1},hint:"۶ کریستال • ۶ شیشه • ۶ پارچه • ۲ پایه • ۱ ستون • ۱ تیر معبد"}
+];
+function bridgeCanBuild(stage){
+ const recipe=bridgeRecipes[stage];return !!recipe&&Object.values(stations).every(Boolean)&&Object.entries(recipe.cost).every(([k,v])=>(bag[k]||0)>=v);
+}
+function updateBridgeUI(){
+ const title=$("bridgeStatus"),btn=$("bridgeBuildBtn"),detail=$("bridgeRecipe");
+ if(bridgeStage>=3){title.textContent="پل باستانی بازسازی شد؛ راه معبد باز است!";detail.textContent="آن‌سوی رودخانه، جاده سنگی تا دروازه معبد ادامه دارد.";btn.hidden=true;return;}
+ const r=bridgeRecipes[bridgeStage];
+ title.textContent="مرحله "+(bridgeStage+1)+" از ۳: "+r.name;
+ detail.textContent="نیازمندی‌ها: "+r.hint+"\nبرای ساخت این بخش، هر سه ایستگاه کارگاه باید ساخته شده باشند.";
+ btn.hidden=false;btn.disabled=!bridgeCanBuild(bridgeStage);
+ btn.textContent=bridgeCanBuild(bridgeStage)?"ساخت این بخش از پل":"هنوز همه مصالح آماده نیست";
+}
+function openBridgePanel(){
+ $("bridgePanel").hidden=false;updateBridgeUI();syncXpPanel();
+}
+function buildBridgeStage(){
+ if(bridgeStage>=3)return;
+ if(!Object.values(stations).every(Boolean)){showToast("اول میزکار، کوره و اره‌کاری را بساز");return;}
+ const r=bridgeRecipes[bridgeStage];
+ if(!bridgeCanBuild(bridgeStage)){showToast("مصالح این مرحله هنوز کامل نیست");return;}
+ Object.entries(r.cost).forEach(([k,v])=>bag[k]=(bag[k]||0)-v);
+ bridgeStage++;updateUI();updateBridgeUI();saveQuietly();
+ showToast(bridgeStage===3?"پل باستانی کامل شد! مسیر معبد باز شد 🏛️":"بخش تازه‌ای از پل ساخته شد! 🪵");
 }
 
 function harvest() {
@@ -234,7 +268,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
+      bag, stations, bridgeStage, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
     }));
   } catch (e) {}
 }
@@ -295,6 +329,9 @@ $("saveBtn").addEventListener("click", save);
 $("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); syncXpPanel(); });
 $("closeBag").addEventListener("click", () => { $("inventory").hidden = true; syncXpPanel(); });
 $("caveBtn").addEventListener("click",toggleCave);
+$("bridgeBtn").addEventListener("click",()=>{if(bridgeStage>=3){showToast("دروازه معبد باستانی در مرحله بعد باز می‌شود 🏛️");}else openBridgePanel();});
+$("bridgeBuildBtn").addEventListener("click",buildBridgeStage);
+$("bridgeClose").addEventListener("click",()=>{$("bridgePanel").hidden=true;syncXpPanel();});
 $("craftBtn").addEventListener("click", () => { $("craftPanel").hidden = false; updateCraftUI(); syncXpPanel(); });
 $("closeCraft").addEventListener("click", () => { $("craftPanel").hidden = true; syncXpPanel(); });
 $("craftSword").addEventListener("click", () => craft("sword"));
@@ -322,7 +359,7 @@ $("upgradeSpeed").addEventListener("click", () => buyUpgrade("speed"));
 $("upgradeAttack").addEventListener("click", () => buyUpgrade("attack"));
 
 function syncXpPanel() {
-  const panelIds = ["inventory", "upgradePanel", "craftPanel", "stationPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel"];
+  const panelIds = ["inventory", "upgradePanel", "craftPanel", "stationPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel", "bridgePanel"];
   const hud = $("hud");
   const xp = $("xpPanel");
   xp.hidden = panelIds.some(id => !$(id).hidden);
@@ -572,6 +609,7 @@ function update(dt) {
   if (keys.has("d") || keys.has("arrowright")) dx += 1;
   if (keys.has("w") || keys.has("arrowup")) dy -= 1;
   if (keys.has("s") || keys.has("arrowdown")) dy += 1;
+  const oldX=player.x,oldY=player.y;
   const len = Math.hypot(dx, dy);
   playerMoving = len > 0.08;
   if (playerMoving) {
@@ -579,6 +617,9 @@ function update(dt) {
     else playerFacing = dy > 0 ? "down" : "up";
     player.x += dx / len * player.speed * dt;
     player.y += dy / len * player.speed * dt;
+    // A deep river divides the forest. Only the completed ancient bridge permits crossing.
+    const crossedRiver=(oldX<2700&&player.x>=2700)||(oldX>2700&&player.x<=2700);
+    if(!townMode&&!caveMode&&!homeInterior&&crossedRiver&&!(bridgeStage>=3&&player.y>=1620&&player.y<=1800)) player.x=oldX<2700?2648:2752;
   }
   animTime += dt;
   const mw = caveMode ? CAVE.w : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
@@ -588,6 +629,9 @@ function update(dt) {
   camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
   $("caveBtn").hidden = townMode || homeInterior || (caveMode ? false : Math.hypot(player.x-2080,player.y-1450)>115);
+  const bridgeDistance=Math.hypot(player.x-2525,player.y-1710),gateDistance=Math.hypot(player.x-3000,player.y-1710);
+  $("bridgeBtn").hidden=townMode||caveMode||homeInterior||(bridgeStage>=3?gateDistance>125:bridgeDistance>145);
+  $("bridgeBtn").textContent=bridgeStage>=3?"🏛️ دروازه معبد":"🌉 پل باستانی";
   $("townBtn").hidden=townMode||caveMode||homeInterior||Math.hypot(player.x-2310,player.y-900)>115;
   $("townExitBtn").hidden=!townMode || Math.hypot(player.x-800,player.y-1110)>105;
   $("townClock").hidden=homeInterior||caveMode;
@@ -1245,11 +1289,42 @@ function drawPlayer(){
 function nightStrength(){const h=worldClock/60;const dusk=h>=18&&h<21?(h-18)/3:h>=21||h<5?1:h>=5&&h<7?(7-h)/2:0;return Math.max(0,Math.min(.68,dusk*.68));}
 function drawNightOverlay(){const a=nightStrength();if(a<=0)return;ctx.save();ctx.fillStyle="rgba(10,18,39,"+a+")";ctx.fillRect(0,0,viewW,viewH);const px=player.x-camera.x,py=player.y-camera.y;const glow=ctx.createRadialGradient(px,py,24,px,py,Math.max(viewW,viewH)*.48);glow.addColorStop(0,"rgba(255,220,145,"+(a*.32)+")");glow.addColorStop(.35,"rgba(255,210,130,"+(a*.12)+")");glow.addColorStop(1,"rgba(255,210,130,0)");ctx.fillStyle=glow;ctx.fillRect(0,0,viewW,viewH);ctx.restore();}
 function drawLootDrops(){for(const d of lootDrops){if(d.x<camera.x-40||d.x>camera.x+viewW+40||d.y<camera.y-40||d.y>camera.y+viewH+40)continue;const x=d.x-camera.x,y=d.y-camera.y+Math.sin(animTime*3+d.x*.02)*2;const colors={coin:"#f5c94b",stone:"#aab1b8",iron:"#d88c56",crystal:"#68e5e8",potion:"#c779ef"};ctx.fillStyle="rgba(0,0,0,.28)";ctx.beginPath();ctx.ellipse(x,y+8,10,4,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=colors[d.type]||"#fff";if(d.type==="crystal"){ctx.beginPath();ctx.moveTo(x,y-11);ctx.lineTo(x+7,y-2);ctx.lineTo(x+3,y+7);ctx.lineTo(x-4,y+6);ctx.lineTo(x-7,y-2);ctx.closePath();ctx.fill();}else if(d.type==="coin"){ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle="#fff0a8";ctx.fillRect(x-2,y-4,3,8);}else{ctx.fillRect(x-6,y-6,12,12);ctx.fillStyle="#fff";ctx.fillRect(x-3,y-4,3,3);}}}
+
+function drawAncientBridge(){
+ const rx=2700-camera.x;
+ // A broad, animated river cuts across the eastern forest and reaches the map edges.
+ ctx.fillStyle="#173f4b";ctx.fillRect(rx-76,-camera.y,152,WORLD.h);
+ for(let y=0;y<WORLD.h;y+=64){const sy=y-camera.y;ctx.fillStyle="#245e68";ctx.fillRect(rx-68,sy+8,136,34);ctx.fillStyle="#4b9290";ctx.fillRect(rx-48+Math.sin(y*.03+animTime)*12,sy+17,42,3);ctx.fillRect(rx+12+Math.cos(y*.025+animTime)*10,sy+30,28,2);ctx.fillStyle="#183c49";ctx.fillRect(rx-75,sy+47,150,5);}
+ // River banks
+ ctx.fillStyle="#806c45";ctx.fillRect(rx-91,-camera.y,15,WORLD.h);ctx.fillRect(rx+76,-camera.y,15,WORLD.h);
+ // Stone piers appear after the first construction phase.
+ if(bridgeStage>=1){for(const side of [-1,1]){const x=rx+side*44;ctx.fillStyle="#26363a";ctx.fillRect(x-17,1650-camera.y,34,120);ctx.fillStyle="#89918a";ctx.fillRect(x-14,1653-camera.y,28,110);ctx.fillStyle="#c1bda4";ctx.fillRect(x-17,1647-camera.y,34,9);}}
+ // The old broken span is visible even before repairs.
+ const by=1710-camera.y;
+ ctx.fillStyle="#3c2a20";ctx.fillRect(rx-154,by-13,308,26);
+ if(bridgeStage>=2){
+  ctx.fillStyle="#69452b";ctx.fillRect(rx-150,by-19,300,38);
+  for(let i=0;i<12;i++){const x=rx-145+i*25;ctx.fillStyle=i%2?"#a87945":"#bd8d52";ctx.fillRect(x,by-17,20,34);ctx.fillStyle="#e0b879";ctx.fillRect(x+2,by-15,15,3);}
+  ctx.fillStyle="#523a27";ctx.fillRect(rx-153,by-25,306,6);ctx.fillRect(rx-153,by+19,306,6);
+  for(const side of [-1,1]){ctx.fillStyle="#8d6238";ctx.fillRect(rx+side*139,by-47,8,70);ctx.fillStyle="#d4ad70";ctx.fillRect(rx+side*136,by-49,14,5);}
+ }else{
+  ctx.fillStyle="#9b7043";ctx.fillRect(rx-130,by-9,92,8);ctx.fillRect(rx+34,by+4,86,8);ctx.fillStyle="#4b3021";ctx.fillRect(rx-44,by-24,8,50);ctx.fillRect(rx+58,by-28,8,49);
+ }
+ if(bridgeStage>=3){
+  ctx.fillStyle="#e5d29b";ctx.fillRect(rx-8,by-12,16,24);ctx.fillStyle="#6dd8d2";ctx.fillRect(rx-4,by-8,8,16);
+  ctx.fillStyle="#b7a77c";ctx.fillRect(2835-camera.x,by-13,180,26);ctx.fillStyle="#d8c99d";for(let i=0;i<7;i++)ctx.fillRect(2844-camera.x+i*25,by-10,13,3);
+  const gx=3000-camera.x,gy=1710-camera.y;
+  ctx.fillStyle="#493b30";ctx.fillRect(gx-48,gy-75,96,84);ctx.fillStyle="#b49a69";ctx.fillRect(gx-40,gy-69,80,76);ctx.fillStyle="#493b30";ctx.fillRect(gx-19,gy-5,38,50);ctx.fillStyle="#d5bd83";ctx.fillRect(gx-50,gy-83,100,12);ctx.fillRect(gx-57,gy-77,14,72);ctx.fillRect(gx+43,gy-77,14,72);ctx.fillStyle="#f0d99b";ctx.font="bold 14px Tahoma";ctx.textAlign="center";ctx.fillText("معبد باستانی",gx,gy-98);ctx.textAlign="start";
+ }else{
+  const gx=3000-camera.x,gy=1710-camera.y;ctx.fillStyle="#78684e";ctx.fillRect(gx-35,gy-38,70,48);ctx.fillStyle="#b5a47a";ctx.fillRect(gx-28,gy-32,56,42);ctx.fillStyle="#4a4135";ctx.fillRect(gx-12,gy-4,24,16);ctx.fillStyle="#e9d39d";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("راه معبد",gx,gy-50);ctx.textAlign="start";
+ }
+}
+
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
   if(townMode){drawTown();drawTownPeople();drawPlayer();drawNightOverlay();return;}
-  if(caveMode){drawCaveGround();drawCaveObjects();}else drawGround();
+  if(caveMode){drawCaveGround();drawCaveObjects();}else {drawGround();drawAncientBridge();}
   if (!caveMode) { drawHouse(playerHome.x, playerHome.y, homeLevel, false); drawHouse(samanHome.x, samanHome.y, 1, true); drawFarmPlots(); drawStations(); }
   for (const r of activeNodes()) {
     if (r.x < camera.x - 60 || r.x > camera.x + viewW + 60 || r.y < camera.y - 60 || r.y > camera.y + viewH + 60) continue;
