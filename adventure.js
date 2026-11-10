@@ -251,7 +251,7 @@ function openTemplePanel(){
 function enterTemple(){
  if(bridgeStage<3){showToast("اول پل باستانی را کامل کن");return;}
  templeReturn={x:player.x,y:player.y};templeMode=true;caveMode=false;townMode=false;homeInterior=false;
- templeFloor=Math.min(templeUnlocked,TEMPLE.floors);player.x=160;player.y=750;createTempleEnemies();
+ templeFloor=Math.min(templeFloor,templeUnlocked,TEMPLE.floors);player.x=160;player.y=750;createTempleEnemies();
  $("templePanel").hidden=true;showToast("به تالار نخست معبد خوش آمدی؛ مراقب نگهبان‌ها باش 🏛️");saveQuietly();syncXpPanel();
 }
 function leaveTemple(){
