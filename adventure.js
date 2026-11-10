@@ -65,23 +65,23 @@ function makeWorld() {
   for (let i = 0; i < 190; i++) {
     const x = 100 + rand() * (WORLD.w - 200);
     const y = 100 + rand() * (WORLD.h - 200);
-    if (Math.hypot(x - player.x, y - player.y) < 130 || Math.hypot(x-playerHome.x,y-playerHome.y)<155 || Math.hypot(x-samanHome.x,y-samanHome.y)<155) continue;
+    if (Math.abs(x-2700)<105 || Math.hypot(x - player.x, y - player.y) < 130 || Math.hypot(x-playerHome.x,y-playerHome.y)<155 || Math.hypot(x-samanHome.x,y-samanHome.y)<155) continue;
     const type = rand() < 0.72 ? "tree" : "stone";
     resources.push({ id: "node-" + i, x, y, type, hp: type === "tree" ? 3 : 4, max: type === "tree" ? 3 : 4 });
   }
   for (let i = 0; i < 30; i++) {
     const x = 120 + rand() * (WORLD.w - 240), y = 120 + rand() * (WORLD.h - 240);
-    if (Math.hypot(x-playerHome.x,y-playerHome.y)<145 || Math.hypot(x-samanHome.x,y-samanHome.y)<145) continue;
+    if (Math.abs(x-2700)<105 || Math.hypot(x-playerHome.x,y-playerHome.y)<145 || Math.hypot(x-samanHome.x,y-samanHome.y)<145) continue;
     resources.push({ id: "iron-" + i, x, y, type: "iron", hp: 5, max: 5 });
   }
   for (let i = 0; i < 48; i++) {
     const x=100+rand()*(WORLD.w-200),y=100+rand()*(WORLD.h-200);
-    if(Math.hypot(x-playerHome.x,y-playerHome.y)<175||Math.hypot(x-samanHome.x,y-samanHome.y)<150)continue;
+    if(Math.abs(x-2700)<105||Math.hypot(x-playerHome.x,y-playerHome.y)<175||Math.hypot(x-samanHome.x,y-samanHome.y)<150)continue;
     resources.push({id:"fiber-bush-"+i,x,y,type:"bush",hp:2,max:2});
   }
   for (let i = 0; i < 24; i++) {
     const x=100+rand()*(WORLD.w-200),y=100+rand()*(WORLD.h-200);
-    if(Math.hypot(x-playerHome.x,y-playerHome.y)<175)continue;
+    if(Math.abs(x-2700)<105||Math.hypot(x-playerHome.x,y-playerHome.y)<175)continue;
     resources.push({id:"sand-pile-"+i,x,y,type:"sand",hp:3,max:3});
   }
 }
@@ -189,7 +189,7 @@ function toggleCave(){
 
 
 const bridgeRecipes = [
- {name:"پایه‌های سنگی",cost:{brick:30,marbleSlab:6,ironParts:3},hint:"۳۰ آجر سنگی • ۶ تخته مرمر • ۳ قطعه آهنی"},
+ {name:"پایه‌های سنگی",cost:{brick:30,marbleSlab:5,ironParts:3},hint:"۳۰ آجر سنگی • ۵ تخته مرمر • ۳ قطعه آهنی"},
  {name:"عرشه چوبی و مهارها",cost:{plank:45,nail:18,rope:14},hint:"۴۵ تخته • ۱۸ میخ • ۱۴ طناب"},
  {name:"مهر باستانی معبد",cost:{crystal:6,glass:6,cloth:6,templeFoundation:2,templeColumn:1,templeBeam:1},hint:"۶ کریستال • ۶ شیشه • ۶ پارچه • ۲ پایه • ۱ ستون • ۱ تیر معبد"}
 ];
