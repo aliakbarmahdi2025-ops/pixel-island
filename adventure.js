@@ -594,14 +594,16 @@ function drawTown(){
     ctx.fillStyle=n<3?"#c7b487":n<7?"#d1bd91":"#cbb78b";
     ctx.fillRect(gx*tile-camera.x,gy*tile-camera.y,tile+1,tile+1);
     if(n===2||n===8){ctx.fillStyle="#b39d73";ctx.fillRect(gx*tile+8-camera.x,gy*tile+13-camera.y,3,2);ctx.fillRect(gx*tile+27-camera.x,gy*tile+30-camera.y,2,3);}
+    if(n===1||n===6){ctx.fillStyle="#b09a72";ctx.fillRect(gx*tile+5-camera.x,gy*tile+6-camera.y,8,1);ctx.fillRect(gx*tile+26-camera.x,gy*tile+27-camera.y,6,1);}
+    if(n===4){ctx.fillStyle="#e0cea5";ctx.fillRect(gx*tile+17-camera.x,gy*tile+9-camera.y,2,2);ctx.fillRect(gx*tile+31-camera.x,gy*tile+33-camera.y,3,2);}
   }
   // A winding, worn stone road connects the gate to the square.
   ctx.fillStyle="#a58c65";ctx.beginPath();ctx.moveTo(680-camera.x,1200-camera.y);ctx.lineTo(920-camera.x,1200-camera.y);ctx.lineTo(900-camera.x,810-camera.y);ctx.lineTo(880-camera.x,700-camera.y);ctx.lineTo(720-camera.x,700-camera.y);ctx.lineTo(700-camera.x,820-camera.y);ctx.closePath();ctx.fill();
-  for(let y=730;y<1190;y+=42)for(let x=710;x<900;x+=48){const xx=x-camera.x,yy=y-camera.y;ctx.fillStyle=((x+y)%3)?"#c8b58d":"#bca77f";ctx.fillRect(xx,yy,42,31);ctx.strokeStyle="#a58e69";ctx.lineWidth=1;ctx.strokeRect(xx,yy,42,31);}
+  for(let y=730;y<1190;y+=42)for(let x=710;x<900;x+=48){const xx=x-camera.x,yy=y-camera.y;ctx.fillStyle=((x+y)%3)?"#c8b58d":"#bca77f";ctx.fillRect(xx,yy,42,31);ctx.strokeStyle="#a58e69";ctx.lineWidth=1;ctx.strokeRect(xx,yy,42,31);ctx.fillStyle="#e2d0a9";ctx.fillRect(xx+5,yy+5,12,2);ctx.fillStyle="#9d8866";ctx.fillRect(xx+30,yy+20,5,2);}
   // Main square, cobbles and decorative border.
   ctx.fillStyle="#a98f68";ctx.fillRect(500-camera.x,380-camera.y,620,450);
   ctx.fillStyle="#d1bd91";ctx.fillRect(514-camera.x,394-camera.y,592,422);
-  for(let y=405;y<810;y+=34)for(let x=525;x<1090;x+=44){ctx.fillStyle=((x/44+y/34|0)%2)?"#c7b487":"#d9c69a";ctx.fillRect(x-camera.x,y-camera.y,39,28);ctx.strokeStyle="#b5a078";ctx.lineWidth=1;ctx.strokeRect(x-camera.x,y-camera.y,39,28);}
+  for(let y=405;y<810;y+=34)for(let x=525;x<1090;x+=44){const xx=x-camera.x,yy=y-camera.y;ctx.fillStyle=((x/44+y/34|0)%2)?"#c7b487":"#d9c69a";ctx.fillRect(xx,yy,39,28);ctx.strokeStyle="#b5a078";ctx.lineWidth=1;ctx.strokeRect(xx,yy,39,28);ctx.fillStyle="#e5d4ae";ctx.fillRect(xx+4,yy+4,10,2);ctx.fillStyle="#ad9871";ctx.fillRect(xx+27,yy+20,5,2);}
   // Small grass gardens around the town.
   [[70,160,260,150],[1260,150,260,180],[90,850,300,260],[1200,880,300,220],[470,90,650,150]].forEach(g=>{ctx.fillStyle="#73965a";ctx.fillRect(g[0]-camera.x,g[1]-camera.y,g[2],g[3]);ctx.fillStyle="#8daf6b";for(let i=0;i<18;i++){const px=g[0]+(i*47)%g[2],py=g[1]+(i*31)%g[3];ctx.fillRect(px-camera.x,py-camera.y,8,5);}});
   // Fountain with stone lip, water highlights and animated ripples.
@@ -682,7 +684,7 @@ function drawTownBuilding(x,y,label,roof,kind){
   // wooden door with frame and handle
   ctx.fillStyle="#75472f";ctx.fillRect(sx-17,sy+42,34,54);ctx.fillStyle="#9b6841";ctx.fillRect(sx-13,sy+46,26,48);ctx.fillStyle="#e7c98a";ctx.fillRect(sx+7,sy+68,3,4);
   // blue glass windows, frames and crossbars
-  [-57,35].forEach(wx=>{ctx.fillStyle="#80583c";ctx.fillRect(sx+wx-15,sy+27,30,30);ctx.fillStyle="#80b8bb";ctx.fillRect(sx+wx-11,sy+31,22,22);ctx.fillStyle="#c7e2d7";ctx.fillRect(sx+wx-9,sy+33,7,7);ctx.fillStyle="#f1dfb5";ctx.fillRect(sx+wx-1,sy+31,3,22);ctx.fillRect(sx+wx-11,sy+41,22,3);});
+  [-57,35].forEach(wx=>{ctx.fillStyle="#80583c";ctx.fillRect(sx+wx-15,sy+27,30,30);ctx.fillStyle=(worldClock>=1080||worldClock<360)?"#e6b86e":"#80b8bb";ctx.fillRect(sx+wx-11,sy+31,22,22);ctx.fillStyle=(worldClock>=1080||worldClock<360)?"#fff0b6":"#c7e2d7";ctx.fillRect(sx+wx-9,sy+33,7,7);ctx.fillStyle="#f1dfb5";ctx.fillRect(sx+wx-1,sy+31,3,22);ctx.fillRect(sx+wx-11,sy+41,22,3);});
   // shop awning and signage
   if(kind==="shop"||kind==="bakery"){
     ctx.fillStyle=kind==="shop"?"#d85f4c":"#e6bd68";ctx.fillRect(sx-78,sy+4,156,17);
@@ -694,7 +696,7 @@ function drawTownBuilding(x,y,label,roof,kind){
     ctx.fillStyle="#754b34";ctx.fillRect(sx-52,sy-17,104,21);ctx.strokeStyle="#e5c995";ctx.lineWidth=2;ctx.strokeRect(sx-52,sy-17,104,21);ctx.fillStyle="#fff0cf";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText(label,sx,sy-2);ctx.textAlign="start";
   }
   // small clay pots and step
-  ctx.fillStyle="#b96d4b";ctx.fillRect(sx-30,sy+94,12,10);ctx.fillRect(sx+20,sy+94,12,10);ctx.fillStyle="#4d884b";ctx.fillRect(sx-27,sy+87,6,9);ctx.fillRect(sx+23,sy+87,6,9);
+  ctx.fillStyle="#70412f";ctx.fillRect(sx-31,sy+95,14,10);ctx.fillRect(sx+19,sy+95,14,10);ctx.fillStyle="#c17a53";ctx.fillRect(sx-30,sy+93,12,8);ctx.fillRect(sx+20,sy+93,12,8);ctx.fillStyle="#356c40";ctx.fillRect(sx-27,sy+83,3,12);ctx.fillRect(sx-23,sy+86,4,9);ctx.fillRect(sx+23,sy+83,3,12);ctx.fillRect(sx+27,sy+86,4,9);ctx.fillStyle="#80a85b";ctx.fillRect(sx-28,sy+82,4,3);ctx.fillRect(sx+24,sy+82,4,3);
 }
 const townSpriteCache = {};
 function makePixelTownSprite(id, frame) {
