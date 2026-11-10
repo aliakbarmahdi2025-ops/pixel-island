@@ -111,6 +111,7 @@ button:active{transform:translateY(2px)}
 #inventory .slots div{font-size:12px;padding:9px}
 
 /* Stage 27 — ancient bridge and temple route. */
+/* Stage 29 — the first ancient temple hall is rendered directly on the canvas. */
 #bridgeBtn{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);pointer-events:auto;white-space:nowrap;background:linear-gradient(180deg,#80613b,#58412c);border:2px solid #e8cc8f;color:#fff4d2;z-index:5;box-shadow:0 4px 0 #302317}
 #bridgeBtn:active{transform:translateX(-50%) translateY(2px)}
 .bridge-story,.bridge-warning{font-size:12px;line-height:1.9;padding:10px;border-radius:9px;background:#294532;color:#e5f1ce;margin:10px 0}
