@@ -594,14 +594,16 @@ function drawTown(){
     ctx.fillStyle=n<3?"#c7b487":n<7?"#d1bd91":"#cbb78b";
     ctx.fillRect(gx*tile-camera.x,gy*tile-camera.y,tile+1,tile+1);
     if(n===2||n===8){ctx.fillStyle="#b39d73";ctx.fillRect(gx*tile+8-camera.x,gy*tile+13-camera.y,3,2);ctx.fillRect(gx*tile+27-camera.x,gy*tile+30-camera.y,2,3);}
+    if(n===1||n===6){ctx.fillStyle="#b09a72";ctx.fillRect(gx*tile+5-camera.x,gy*tile+6-camera.y,8,1);ctx.fillRect(gx*tile+26-camera.x,gy*tile+27-camera.y,6,1);}
+    if(n===4){ctx.fillStyle="#e0cea5";ctx.fillRect(gx*tile+17-camera.x,gy*tile+9-camera.y,2,2);ctx.fillRect(gx*tile+31-camera.x,gy*tile+33-camera.y,3,2);}
   }
   // A winding, worn stone road connects the gate to the square.
   ctx.fillStyle="#a58c65";ctx.beginPath();ctx.moveTo(680-camera.x,1200-camera.y);ctx.lineTo(920-camera.x,1200-camera.y);ctx.lineTo(900-camera.x,810-camera.y);ctx.lineTo(880-camera.x,700-camera.y);ctx.lineTo(720-camera.x,700-camera.y);ctx.lineTo(700-camera.x,820-camera.y);ctx.closePath();ctx.fill();
-  for(let y=730;y<1190;y+=42)for(let x=710;x<900;x+=48){const xx=x-camera.x,yy=y-camera.y;ctx.fillStyle=((x+y)%3)?"#c8b58d":"#bca77f";ctx.fillRect(xx,yy,42,31);ctx.strokeStyle="#a58e69";ctx.lineWidth=1;ctx.strokeRect(xx,yy,42,31);}
+  for(let y=730;y<1190;y+=42)for(let x=710;x<900;x+=48){const xx=x-camera.x,yy=y-camera.y;ctx.fillStyle=((x+y)%3)?"#c8b58d":"#bca77f";ctx.fillRect(xx,yy,42,31);ctx.strokeStyle="#a58e69";ctx.lineWidth=1;ctx.strokeRect(xx,yy,42,31);ctx.fillStyle="#e2d0a9";ctx.fillRect(xx+5,yy+5,12,2);ctx.fillStyle="#9d8866";ctx.fillRect(xx+30,yy+20,5,2);}
   // Main square, cobbles and decorative border.
   ctx.fillStyle="#a98f68";ctx.fillRect(500-camera.x,380-camera.y,620,450);
   ctx.fillStyle="#d1bd91";ctx.fillRect(514-camera.x,394-camera.y,592,422);
-  for(let y=405;y<810;y+=34)for(let x=525;x<1090;x+=44){ctx.fillStyle=((x/44+y/34|0)%2)?"#c7b487":"#d9c69a";ctx.fillRect(x-camera.x,y-camera.y,39,28);ctx.strokeStyle="#b5a078";ctx.lineWidth=1;ctx.strokeRect(x-camera.x,y-camera.y,39,28);}
+  for(let y=405;y<810;y+=34)for(let x=525;x<1090;x+=44){const xx=x-camera.x,yy=y-camera.y;ctx.fillStyle=((x/44+y/34|0)%2)?"#c7b487":"#d9c69a";ctx.fillRect(xx,yy,39,28);ctx.strokeStyle="#b5a078";ctx.lineWidth=1;ctx.strokeRect(xx,yy,39,28);ctx.fillStyle="#e5d4ae";ctx.fillRect(xx+4,yy+4,10,2);ctx.fillStyle="#ad9871";ctx.fillRect(xx+27,yy+20,5,2);}
   // Small grass gardens around the town.
   [[70,160,260,150],[1260,150,260,180],[90,850,300,260],[1200,880,300,220],[470,90,650,150]].forEach(g=>{ctx.fillStyle="#73965a";ctx.fillRect(g[0]-camera.x,g[1]-camera.y,g[2],g[3]);ctx.fillStyle="#8daf6b";for(let i=0;i<18;i++){const px=g[0]+(i*47)%g[2],py=g[1]+(i*31)%g[3];ctx.fillRect(px-camera.x,py-camera.y,8,5);}});
   // Fountain with stone lip, water highlights and animated ripples.
@@ -637,7 +639,13 @@ function drawTown(){
   ctx.textAlign="start";
 }
 function drawTownTree(x,y,i){
-  ctx.fillStyle="#715039";ctx.fillRect(x-7,y-3,14,42);ctx.fillStyle="#244e34";ctx.beginPath();ctx.arc(x,y-16,34,0,Math.PI*2);ctx.fill();ctx.fillStyle=i%2?"#397747":"#46864b";ctx.beginPath();ctx.arc(x-5,y-26,27,0,Math.PI*2);ctx.fill();ctx.fillStyle="#72a95c";ctx.beginPath();ctx.arc(x-12,y-35,12,0,Math.PI*2);ctx.fill();ctx.fillStyle="#8bbd69";ctx.fillRect(x+7,y-25,6,5);
+ ctx.fillStyle="rgba(32,37,24,.28)";ctx.beginPath();ctx.ellipse(x+3,y+12,29,8,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#5a3b2b";ctx.fillRect(x-6,y-6,12,43);ctx.fillStyle="#8b6140";ctx.fillRect(x-2,y-3,3,32);
+ ctx.fillStyle="#214c32";ctx.beginPath();ctx.moveTo(x-34,y-7);ctx.lineTo(x-30,y-32);ctx.lineTo(x-15,y-48);ctx.lineTo(x+4,y-55);ctx.lineTo(x+27,y-39);ctx.lineTo(x+35,y-16);ctx.lineTo(x+22,y+1);ctx.lineTo(x-23,y+2);ctx.closePath();ctx.fill();
+ ctx.fillStyle=i%2?"#347344":"#3f8149";ctx.beginPath();ctx.moveTo(x-27,y-13);ctx.lineTo(x-23,y-35);ctx.lineTo(x-7,y-49);ctx.lineTo(x+13,y-46);ctx.lineTo(x+28,y-26);ctx.lineTo(x+21,y-7);ctx.lineTo(x-19,y-5);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#5a9850";ctx.fillRect(x-19,y-34,9,5);ctx.fillRect(x-3,y-47,9,4);ctx.fillRect(x+13,y-36,8,5);ctx.fillRect(x+1,y-20,11,4);
+ ctx.fillStyle="#91b96a";ctx.fillRect(x-12,y-42,5,3);ctx.fillRect(x+7,y-31,4,3);ctx.fillRect(x+20,y-22,4,3);
+ ctx.fillStyle="#d3b96d";if(i%3===0){ctx.fillRect(x-19,y-18,4,4);ctx.fillRect(x+17,y-42,4,4);}
 }
 function drawFlowerPot(x,y,i){
   ctx.fillStyle="#9c583e";ctx.fillRect(x-8,y-2,16,10);ctx.fillStyle="#c57b51";ctx.fillRect(x-10,y-5,20,4);
@@ -647,8 +655,17 @@ function drawBench(x,y){
   ctx.fillStyle="#61452f";ctx.fillRect(x-25,y-3,50,7);ctx.fillStyle="#a16b42";ctx.fillRect(x-25,y-12,50,9);ctx.fillRect(x-20,y+4,5,10);ctx.fillRect(x+15,y+4,5,10);
 }
 function drawTownLamp(x,y){
-  ctx.fillStyle="#4d493e";ctx.fillRect(x-3,y-32,6,42);ctx.fillStyle="#6d5941";ctx.fillRect(x-10,y-38,20,8);ctx.fillStyle="#ffe5a0";ctx.fillRect(x-6,y-35,12,11);ctx.fillStyle="#fff5cf";ctx.fillRect(x-3,y-32,6,5);
-  if(worldClock>=1080||worldClock<360){ctx.fillStyle="#ffe8a0";ctx.globalAlpha=.12;ctx.beginPath();ctx.arc(x,y-28,34,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
+ const night=worldClock>=1080||worldClock<360;
+ if(night){
+  const glow=ctx.createRadialGradient(x,y-28,3,x,y-28,58);
+  glow.addColorStop(0,"rgba(255,226,151,.32)");glow.addColorStop(1,"rgba(255,207,112,0)");
+  ctx.fillStyle=glow;ctx.fillRect(x-60,y-88,120,120);
+ }
+ ctx.fillStyle="#393b36";ctx.fillRect(x-3,y-32,6,43);ctx.fillStyle="#766047";ctx.fillRect(x-5,y-33,10,3);
+ ctx.fillStyle="#4a4237";ctx.fillRect(x-13,y-44,26,7);ctx.fillRect(x-10,y-48,20,5);
+ ctx.fillStyle=night?"#ffe39a":"#b8a57b";ctx.fillRect(x-7,y-39,14,13);
+ ctx.fillStyle=night?"#fff4c8":"#d4c6a1";ctx.fillRect(x-4,y-37,8,9);
+ ctx.fillStyle="#5b4b38";ctx.fillRect(x-15,y-46,30,3);ctx.fillRect(x-2,y-51,4,5);
 }
 function drawTownBuilding(x,y,label,roof,kind){
   const sx=x-camera.x,sy=y-camera.y;
@@ -667,7 +684,7 @@ function drawTownBuilding(x,y,label,roof,kind){
   // wooden door with frame and handle
   ctx.fillStyle="#75472f";ctx.fillRect(sx-17,sy+42,34,54);ctx.fillStyle="#9b6841";ctx.fillRect(sx-13,sy+46,26,48);ctx.fillStyle="#e7c98a";ctx.fillRect(sx+7,sy+68,3,4);
   // blue glass windows, frames and crossbars
-  [-57,35].forEach(wx=>{ctx.fillStyle="#80583c";ctx.fillRect(sx+wx-15,sy+27,30,30);ctx.fillStyle="#80b8bb";ctx.fillRect(sx+wx-11,sy+31,22,22);ctx.fillStyle="#c7e2d7";ctx.fillRect(sx+wx-9,sy+33,7,7);ctx.fillStyle="#f1dfb5";ctx.fillRect(sx+wx-1,sy+31,3,22);ctx.fillRect(sx+wx-11,sy+41,22,3);});
+  [-57,35].forEach(wx=>{ctx.fillStyle="#80583c";ctx.fillRect(sx+wx-15,sy+27,30,30);ctx.fillStyle=(worldClock>=1080||worldClock<360)?"#e6b86e":"#80b8bb";ctx.fillRect(sx+wx-11,sy+31,22,22);ctx.fillStyle=(worldClock>=1080||worldClock<360)?"#fff0b6":"#c7e2d7";ctx.fillRect(sx+wx-9,sy+33,7,7);ctx.fillStyle="#f1dfb5";ctx.fillRect(sx+wx-1,sy+31,3,22);ctx.fillRect(sx+wx-11,sy+41,22,3);});
   // shop awning and signage
   if(kind==="shop"||kind==="bakery"){
     ctx.fillStyle=kind==="shop"?"#d85f4c":"#e6bd68";ctx.fillRect(sx-78,sy+4,156,17);
@@ -679,7 +696,7 @@ function drawTownBuilding(x,y,label,roof,kind){
     ctx.fillStyle="#754b34";ctx.fillRect(sx-52,sy-17,104,21);ctx.strokeStyle="#e5c995";ctx.lineWidth=2;ctx.strokeRect(sx-52,sy-17,104,21);ctx.fillStyle="#fff0cf";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText(label,sx,sy-2);ctx.textAlign="start";
   }
   // small clay pots and step
-  ctx.fillStyle="#b96d4b";ctx.fillRect(sx-30,sy+94,12,10);ctx.fillRect(sx+20,sy+94,12,10);ctx.fillStyle="#4d884b";ctx.fillRect(sx-27,sy+87,6,9);ctx.fillRect(sx+23,sy+87,6,9);
+  ctx.fillStyle="#70412f";ctx.fillRect(sx-31,sy+95,14,10);ctx.fillRect(sx+19,sy+95,14,10);ctx.fillStyle="#c17a53";ctx.fillRect(sx-30,sy+93,12,8);ctx.fillRect(sx+20,sy+93,12,8);ctx.fillStyle="#356c40";ctx.fillRect(sx-27,sy+83,3,12);ctx.fillRect(sx-23,sy+86,4,9);ctx.fillRect(sx+23,sy+83,3,12);ctx.fillRect(sx+27,sy+86,4,9);ctx.fillStyle="#80a85b";ctx.fillRect(sx-28,sy+82,4,3);ctx.fillRect(sx+24,sy+82,4,3);
 }
 const townSpriteCache = {};
 function makePixelTownSprite(id, frame) {
@@ -763,6 +780,28 @@ function makePixelTownSprite(id, frame) {
  if(saeed){px(34,48,4,5,"#d7d4c9");px(42,48,4,5,"#d7d4c9");}
  // Crisp outer silhouette accents.
  g.strokeStyle="#352b2d";g.lineWidth=1;g.strokeRect(18.5,42.5,43,37);
+ // Extra pixel-art finish: fabric seams, hair strands, face lighting and grounded shoe shine.
+ // Fine folds make the clothes read as fabric rather than flat blocks.
+ px(25,54,2,12,topShade);px(53,55,2,10,topShade);
+ px(28,62,3,2,topHi);px(48,66,4,2,topHi);
+ px(24,77,4,2,topHi);px(51,80,4,2,topShade);
+ // Hair strands frame the cheeks while keeping both faces clearly visible.
+ if(!saeed){
+  px(18,48,3,12,hairHi);px(59,45,2,14,hairHi);
+  px(22,27,3,7,hairHi);px(55,28,2,6,hairHi);
+ }else{
+  px(23,22,4,2,hairHi);px(48,20,5,2,hairHi);
+ }
+ // Small warm facial planes and crisp eye highlights.
+ px(27,26,2,5,skinHi);px(53,27,2,5,skinShade);
+ px(33,33,2,2,"#fffdf2");px(49,33,2,2,"#fffdf2");
+ px(35,44,8,1,"#f4c4ae");
+ // Shoes, cuffs and tiny fabric highlights.
+ px(26,99,5,2,"#9b9584");px(47,99,5,2,"#9b9584");
+ px(22,70,3,3,topHi);px(56,70,3,3,topShade);
+ if(mina){px(31,50,3,2,"#ffd1df");px(44,58,4,2,"#f6a4c5");}
+ if(hana){px(31,55,3,2,"#9bc9e5");px(45,58,4,2,"#a9d2e7");}
+ if(saeed){px(37,57,2,3,"#e8dfc9");px(42,64,3,2,"#b7c0c2");}
  return c;
 }
 function getTownSpriteFrames(id){
@@ -906,37 +945,80 @@ function drawGround() {
  for(let y=sy;y<=ey;y++)for(let x=sx;x<=ex;x++){
   const h=terrainHash(x,y),px=x*t-camera.x,py=y*t-camera.y;
   const ridge=terrainHash(Math.floor(x/5),Math.floor(y/4));
-  ctx.fillStyle=h<.18?"#477a43":h<.55?"#4d8247":"#54894b";ctx.fillRect(px,py,t+1,t+1);
-  if(ridge>.77){ctx.fillStyle="#426f3e";ctx.beginPath();ctx.ellipse(px+24,py+23,29,19,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#68965a";ctx.beginPath();ctx.ellipse(px+20,py+15,21,11,0,0,Math.PI*2);ctx.fill();}
-  if(h>.58&&h<.67){ctx.fillStyle="#b39a68";ctx.fillRect(px+5,py+9,35,25);ctx.fillStyle="#d0b47d";ctx.fillRect(px+10,py+12,22,14);}
-  if(h>.91){ctx.fillStyle="#347e91";ctx.beginPath();ctx.ellipse(px+24,py+24,25,16,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#70b8bd";ctx.fillRect(px+11,py+20,15,3);}
-  if(h>.32&&h<.39){ctx.fillStyle="#6a9c52";for(let k=0;k<4;k++){ctx.fillRect(px+8+k*8,py+15+(k%2)*9,3,9);}}
-  if((x*7+y*11)%23===0){ctx.fillStyle="#e8d68b";ctx.fillRect(px+34,py+10,4,4);ctx.fillStyle="#fff0c2";ctx.fillRect(px+35,py+8,2,2);}
+  ctx.fillStyle=h<.18?"#426f3e":h<.55?"#4b7d43":"#568a4a";ctx.fillRect(px,py,t+1,t+1);
+  // Tiny ground grain keeps the grass from reading as a flat repeating grid.
+  for(let k=0;k<5;k++){
+   const gx=px+4+((x*13+y*7+k*17)%39),gy=py+5+((x*5+y*19+k*11)%37);
+   ctx.fillStyle=k%2?"rgba(27,61,35,.22)":"rgba(190,205,119,.18)";
+   ctx.fillRect(gx,gy,k%3===0?4:2,1);
+  }
+  if(ridge>.77){
+   ctx.fillStyle="#315b37";ctx.beginPath();ctx.moveTo(px+1,py+35);ctx.lineTo(px+7,py+13);ctx.lineTo(px+25,py+5);ctx.lineTo(px+46,py+17);ctx.lineTo(px+48,py+39);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#5f914f";ctx.beginPath();ctx.moveTo(px+5,py+29);ctx.lineTo(px+13,py+12);ctx.lineTo(px+27,py+9);ctx.lineTo(px+42,py+19);ctx.lineTo(px+39,py+35);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#8ab66a";ctx.fillRect(px+15,py+13,8,3);ctx.fillRect(px+29,py+19,7,2);
+  }
+  if(h>.58&&h<.67){
+   ctx.fillStyle="#927b55";ctx.fillRect(px+5,py+11,35,24);ctx.fillStyle="#c1a779";ctx.fillRect(px+9,py+10,25,17);
+   ctx.fillStyle="#dfc99a";ctx.fillRect(px+13,py+13,11,3);ctx.fillStyle="#6d6248";ctx.fillRect(px+8,py+31,27,3);
+  }
+  if(h>.91){
+   ctx.fillStyle="#285f70";ctx.beginPath();ctx.ellipse(px+24,py+25,25,16,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#4a98a4";ctx.beginPath();ctx.ellipse(px+21,py+21,18,10,-.1,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#a0d5c8";ctx.fillRect(px+11,py+18,13,2);ctx.fillRect(px+29,py+26,7,2);
+  }
+  // Tufts, clover and little wildflowers are seeded by tile coordinates.
+  if(h>.27&&h<.47){
+   ctx.fillStyle="#315f38";ctx.fillRect(px+9,py+23,2,8);ctx.fillRect(px+14,py+19,2,12);ctx.fillRect(px+19,py+24,2,7);
+   ctx.fillStyle="#83aa59";ctx.fillRect(px+8,py+21,3,2);ctx.fillRect(px+14,py+17,3,2);ctx.fillRect(px+19,py+22,3,2);
+  }
+  if((x*7+y*11)%23===0){
+   const fx=px+34,fy=py+10;
+   ctx.fillStyle="#3d7041";ctx.fillRect(fx+1,fy+3,2,8);
+   ctx.fillStyle=(x+y)%2?"#e8d68b":"#df9ba0";ctx.fillRect(fx-2,fy,3,3);ctx.fillRect(fx+2,fy-1,3,3);ctx.fillRect(fx,fy-3,3,3);
+   ctx.fillStyle="#fff0c2";ctx.fillRect(fx,fy,2,2);
+  }
+  if((x*3-y*5)%31===0){ctx.fillStyle="#b9a57c";ctx.fillRect(px+7,py+39,5,3);ctx.fillStyle="#e1d0a9";ctx.fillRect(px+8,py+39,2,1);}
+  if((x*11+y*3)%47===0){ctx.fillStyle="#6e4937";ctx.fillRect(px+28,py+34,8,3);ctx.fillStyle="#a17a4c";ctx.fillRect(px+30,py+32,5,2);}
  }
- // winding raised-looking forest ridges with shaded edges
- for(let i=0;i<7;i++){const wx=360+i*390,wy=300+(i%3)*610,sx=wx-camera.x,sy=wy-camera.y;if(sx>-260&&sx<viewW+260&&sy>-160&&sy<viewH+160){ctx.fillStyle="#355d38";ctx.beginPath();ctx.ellipse(sx,sy,150,58,.22,0,Math.PI*2);ctx.fill();ctx.fillStyle="#6a9b55";ctx.beginPath();ctx.ellipse(sx-8,sy-13,133,43,.22,0,Math.PI*2);ctx.fill();ctx.fillStyle="#8ab56a";ctx.beginPath();ctx.ellipse(sx-30,sy-25,75,17,.22,0,Math.PI*2);ctx.fill();}}
+ // Broad, soft-edged forest mounds create depth without blocking movement.
+ for(let i=0;i<7;i++){
+  const wx=360+i*390,wy=300+(i%3)*610,sx=wx-camera.x,sy=wy-camera.y;
+  if(sx>-260&&sx<viewW+260&&sy>-160&&sy<viewH+160){
+   ctx.fillStyle="#294f34";ctx.beginPath();ctx.ellipse(sx,sy+8,154,58,.22,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#4c8046";ctx.beginPath();ctx.ellipse(sx-8,sy-5,143,48,.22,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#78a85c";ctx.beginPath();ctx.ellipse(sx-30,sy-20,83,19,.22,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#a0c276";ctx.fillRect(sx-53,sy-25,13,3);ctx.fillRect(sx+19,sy-13,10,2);
+  }
+ }
 }
 function drawTree(r) {
  const x=r.x-camera.x,y=r.y-camera.y;
- ctx.fillStyle="rgba(20,35,23,.34)";ctx.beginPath();ctx.ellipse(x+5,y+17,34,10,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#493728";ctx.fillRect(x-7,y-1,14,28);ctx.fillStyle="#795337";ctx.fillRect(x-4,y+3,4,20);
- const clusters=[[-17,-25,24,"#244b32"],[8,-31,25,"#2e6139"],[-2,-48,22,"#397447"],[-25,-42,18,"#2b5936"],[24,-18,17,"#285735"],[2,-15,22,"#347044"]];
- clusters.forEach(([ox,oy,rad,col],i)=>{ctx.fillStyle=col;ctx.beginPath();ctx.arc(x+ox,y+oy,rad,0,Math.PI*2);ctx.fill();});
- ctx.fillStyle="#4b8a4d";ctx.beginPath();ctx.arc(x-4,y-49,13,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#78a95a";ctx.fillRect(x-17,y-49,7,5);ctx.fillRect(x+5,y-39,6,4);ctx.fillRect(x-27,y-28,5,4);ctx.fillRect(x+13,y-20,5,4);
- ctx.fillStyle="#1d472d";ctx.fillRect(x-25,y-35,5,10);ctx.fillRect(x+19,y-42,4,9);
- ctx.fillStyle="#a2c16a";ctx.fillRect(x-10,y-57,5,3);ctx.fillRect(x+3,y-51,4,3);
+ // A grounded trunk and roots, with a layered, pixel-cut canopy.
+ ctx.fillStyle="rgba(16,31,19,.36)";ctx.beginPath();ctx.ellipse(x+4,y+18,37,11,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#382c22";ctx.beginPath();ctx.moveTo(x-8,y+12);ctx.lineTo(x-6,y-17);ctx.lineTo(x-3,y-30);ctx.lineTo(x+7,y-30);ctx.lineTo(x+9,y+12);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#795238";ctx.fillRect(x-4,y-22,5,36);ctx.fillStyle="#a17a4d";ctx.fillRect(x+2,y-18,2,27);
+ ctx.fillStyle="#4b3526";ctx.fillRect(x-15,y+9,11,4);ctx.fillRect(x+5,y+10,13,4);
+ // Deep silhouette.
+ ctx.fillStyle="#1e492f";ctx.beginPath();ctx.moveTo(x-38,y-14);ctx.lineTo(x-34,y-39);ctx.lineTo(x-20,y-56);ctx.lineTo(x-5,y-65);ctx.lineTo(x+17,y-59);ctx.lineTo(x+34,y-43);ctx.lineTo(x+39,y-20);ctx.lineTo(x+28,y-4);ctx.lineTo(x-29,y-3);ctx.closePath();ctx.fill();
+ // Mid foliage planes.
+ ctx.fillStyle="#2b6139";ctx.beginPath();ctx.moveTo(x-32,y-20);ctx.lineTo(x-29,y-42);ctx.lineTo(x-12,y-57);ctx.lineTo(x+5,y-60);ctx.lineTo(x+27,y-44);ctx.lineTo(x+32,y-22);ctx.lineTo(x+19,y-8);ctx.lineTo(x-24,y-8);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#397a45";ctx.beginPath();ctx.moveTo(x-20,y-35);ctx.lineTo(x-15,y-54);ctx.lineTo(x+1,y-65);ctx.lineTo(x+19,y-54);ctx.lineTo(x+27,y-36);ctx.lineTo(x+14,y-20);ctx.lineTo(x-13,y-19);ctx.closePath();ctx.fill();
+ // Pixel highlights and leaf clusters.
+ const leaves=[[-22,-43,8,5,"#5b944e"],[-7,-55,9,4,"#78a95b"],[10,-48,8,5,"#6ca052"],[22,-34,7,4,"#8ab965"],[-27,-23,7,4,"#4f8948"],[1,-30,9,4,"#75a957"],[16,-17,7,4,"#5e984d"],[-10,-16,8,3,"#80ad5b"]];
+ for(const a of leaves){ctx.fillStyle=a[4];ctx.fillRect(x+a[0],y+a[1],a[2],a[3]);}
+ ctx.fillStyle="#b2c978";ctx.fillRect(x-11,y-60,4,2);ctx.fillRect(x+5,y-52,5,2);ctx.fillRect(x+25,y-38,3,2);
+ ctx.fillStyle="#244f32";ctx.fillRect(x-32,y-35,4,9);ctx.fillRect(x+29,y-29,4,8);
 }
-
 function drawRock(r) {
  const x=r.x-camera.x,y=r.y-camera.y;
- ctx.fillStyle="rgba(18,24,25,.28)";ctx.beginPath();ctx.ellipse(x+3,y+12,23,7,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#48514f";ctx.beginPath();ctx.moveTo(x-20,y+8);ctx.lineTo(x-17,y-5);ctx.lineTo(x-7,y-17);ctx.lineTo(x+9,y-18);ctx.lineTo(x+21,y-5);ctx.lineTo(x+18,y+9);ctx.closePath();ctx.fill();
- ctx.fillStyle="#7d8982";ctx.beginPath();ctx.moveTo(x-15,y-4);ctx.lineTo(x-6,y-15);ctx.lineTo(x+7,y-15);ctx.lineTo(x+1,y-4);ctx.lineTo(x-9,y+2);ctx.closePath();ctx.fill();
- ctx.fillStyle="#aeb8aa";ctx.fillRect(x-6,y-13,7,3);ctx.fillRect(x-13,y-5,4,3);
- ctx.fillStyle="#303b39";ctx.fillRect(x+9,y-3,7,8);ctx.fillRect(x-17,y+5,8,3);
+ ctx.fillStyle="rgba(15,22,22,.32)";ctx.beginPath();ctx.ellipse(x+3,y+13,25,8,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#333d3b";ctx.beginPath();ctx.moveTo(x-23,y+9);ctx.lineTo(x-20,y-5);ctx.lineTo(x-10,y-17);ctx.lineTo(x+4,y-22);ctx.lineTo(x+18,y-13);ctx.lineTo(x+24,y+1);ctx.lineTo(x+17,y+11);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#69756d";ctx.beginPath();ctx.moveTo(x-17,y-5);ctx.lineTo(x-9,y-16);ctx.lineTo(x+3,y-19);ctx.lineTo(x+1,y-7);ctx.lineTo(x-8,y+1);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#a2aa94";ctx.beginPath();ctx.moveTo(x-7,y-15);ctx.lineTo(x+4,y-19);ctx.lineTo(x+14,y-11);ctx.lineTo(x+5,y-7);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#c2c6a9";ctx.fillRect(x-5,y-15,6,2);ctx.fillRect(x-14,y-5,4,2);
+ ctx.fillStyle="#252f2e";ctx.fillRect(x+10,y-2,8,8);ctx.fillRect(x-18,y+5,8,3);
+ ctx.fillStyle="#477b48";ctx.fillRect(x-18,y-9,5,3);ctx.fillRect(x+9,y-17,5,2);
 }
-
 function drawIron(r) {
  drawRock(r);const x=r.x-camera.x,y=r.y-camera.y;
  ctx.fillStyle="#9b593e";ctx.fillRect(x-7,y-6,6,5);ctx.fillRect(x+5,y+1,7,5);
