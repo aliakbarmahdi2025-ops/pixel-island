@@ -366,7 +366,7 @@ $("saveBtn").addEventListener("click", save);
 $("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); syncXpPanel(); });
 $("closeBag").addEventListener("click", () => { $("inventory").hidden = true; syncXpPanel(); });
 $("caveBtn").addEventListener("click",toggleCave);
-$("bridgeBtn").addEventListener("click",()=>{if(bridgeStage>=3){showToast("دروازه معبد باستانی در مرحله بعد باز می‌شود 🏛️");}else openBridgePanel();});
+$("bridgeBtn").addEventListener("click",()=>{if(templeMode||bridgeStage>=3)toggleTemple();else openBridgePanel();});
 $("bridgeBuildBtn").addEventListener("click",buildBridgeStage);
 $("bridgeClose").addEventListener("click",()=>{$("bridgePanel").hidden=true;syncXpPanel();});
 $("craftBtn").addEventListener("click", () => { $("craftPanel").hidden = false; updateCraftUI(); syncXpPanel(); });
