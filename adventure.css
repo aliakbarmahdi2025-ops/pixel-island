@@ -119,3 +119,6 @@ button:active{transform:translateY(2px)}
 #bridgeBuildBtn{background:#80603a;border-color:#e8cc8f;min-height:46px;width:100%;margin:5px 0}
 #bridgeBuildBtn:disabled{opacity:.4;filter:grayscale(1)}
 #bridgeClose{width:100%;margin-top:7px}
+
+/* Stage 29 — carpenter and seed merchant panels. */
+#carpenterPanel .upgrade-list button{background:#79572f;border-color:#e6c77c;min-height:44px}#backpackUpgrade{background:#356b55;border-color:#a8d7a4;min-height:46px;width:100%}#carpenterStatus,#furnitureStatus,#naderiStatus{line-height:1.9}
