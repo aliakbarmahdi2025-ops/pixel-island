@@ -8,7 +8,7 @@ const CAVE = { w: 1600, h: 1200 };
 const SAVE_KEY = "pixelIsland_adventure_save_v1";
 let viewW = innerWidth, viewH = innerHeight, dpr = 1;
 const camera = { x: 0, y: 0 };
-const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, maxHealth: 5, level: 1, xp: 0, skillPoints: 0, attackPower: 1, coins: 0 };
+const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, maxHealth: 5, level: 1, xp: 0, skillPoints: 0, attackPower: 1, armorLevel: 0, coins: 0 };
 const bag = { wood: 0, stone: 0, iron: 0, crystal: 0, potion: 0, seeds: 0, wheat: 0, carrot: 0, strawberry: 0 };
 let harvested = new Set(), caveHarvested = new Set();
 let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
@@ -80,6 +80,7 @@ function load() {
     const data = JSON.parse(raw);
     if (data.player) {
       Object.assign(player, data.player);
+      player.armorLevel = Math.max(0, Math.min(2, Number(data.player.armorLevel) || 0));
       if (!Object.prototype.hasOwnProperty.call(data.player, "skillPoints")) player.skillPoints = Math.max(0, player.level - 1);
     }
     if (data.bag) Object.assign(bag, data.bag);
@@ -98,7 +99,7 @@ function load() {
 function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
-      player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, coins: player.coins },
+      player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
       bag, harvested: [...harvested], caveHarvested: [...caveHarvested], caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
     }));
     showToast("پیشرفتت ذخیره شد 💾");
@@ -129,6 +130,7 @@ function updateUI() {
   $("wood").textContent = bag.wood;
   $("stone").textContent = bag.stone;
   $("iron").textContent = bag.iron;
+  if ($("armorStatus")) $("armorStatus").textContent = ["بدون زره","زره آهنی","زره کریستالی"][Math.max(0,Math.min(2,player.armorLevel||0))];
   $("crystal").textContent = bag.crystal || 0;
   $("potion").textContent = bag.potion || 0;
   if($("seeds"))$("seeds").textContent=bag.seeds||0;
@@ -276,6 +278,8 @@ $("closeCraft").addEventListener("click", () => { $("craftPanel").hidden = true;
 $("craftSword").addEventListener("click", () => craft("sword"));
 $("craftBoots").addEventListener("click", () => craft("boots"));
 $("craftPotion").addEventListener("click", () => craft("potion"));
+  $("craftIronArmor").addEventListener("click", () => craft("ironArmor"));
+  $("craftCrystalArmor").addEventListener("click", () => craft("crystalArmor"));
 $("usePotion").addEventListener("click", usePotion);
 $("questBtn").addEventListener("click", () => { $("questPanel").hidden = false; updateQuestUI(); syncXpPanel(); });
 $("closeQuests").addEventListener("click", () => { $("questPanel").hidden = true; syncXpPanel(); });
@@ -393,9 +397,13 @@ function updateCraftUI() {
   $("craftSword").disabled = player.attackPower >= 5 || bag.iron < 5 || bag.wood < 3;
   $("craftBoots").disabled = player.speed >= 320 || bag.iron < 4 || bag.wood < 6;
   $("craftPotion").disabled = bag.crystal < 2 || bag.iron < 1;
+  $("craftIronArmor").disabled = (player.armorLevel||0) >= 1 || bag.iron < 8 || bag.wood < 10;
+  $("craftCrystalArmor").disabled = (player.armorLevel||0) >= 2 || (player.armorLevel||0) < 1 || bag.crystal < 5 || bag.iron < 10;
   $("craftSword").textContent = player.attackPower >= 5 ? "⚔️ شمشیر فولادی (حداکثر)" : "⚔️ شمشیر فولادی — ۵ آهن + ۳ چوب";
   $("craftBoots").textContent = player.speed >= 320 ? "👟 چکمه تندرو (حداکثر)" : "👟 چکمه تندرو — ۴ آهن + ۶ چوب";
   $("craftPotion").textContent = "🧪 معجون سلامتی — ۲ کریستال + ۱ آهن";
+  $("craftIronArmor").textContent = (player.armorLevel||0) >= 1 ? "🛡️ زره آهنی (ساخته شده)" : "🛡️ زره آهنی — ۸ آهن + ۱۰ چوب";
+  $("craftCrystalArmor").textContent = (player.armorLevel||0) >= 2 ? "💎 زره کریستالی (حداکثر)" : "💎 زره کریستالی — ۵ کریستال + ۱۰ آهن";
   $("usePotion").disabled = (bag.potion || 0) < 1 || player.health >= player.maxHealth;
   $("usePotion").textContent = "نوشیدن معجون (" + (bag.potion || 0) + ")";
 }
@@ -406,6 +414,10 @@ function craft(type) {
     bag.iron -= 4; bag.wood -= 6; player.speed = Math.min(320, player.speed + 20);
   } else if (type === "potion" && bag.crystal >= 2 && bag.iron >= 1) {
     bag.crystal -= 2; bag.iron -= 1; bag.potion = (bag.potion || 0) + 1;
+  } else if (type === "ironArmor" && (player.armorLevel||0) < 1 && bag.iron >= 8 && bag.wood >= 10) {
+    bag.iron -= 8; bag.wood -= 10; player.armorLevel = 1;
+  } else if (type === "crystalArmor" && (player.armorLevel||0) === 1 && bag.crystal >= 5 && bag.iron >= 10) {
+    bag.crystal -= 5; bag.iron -= 10; player.armorLevel = 2;
   } else { showToast("مواد کافی نداری یا این وسیله به حداکثر رسیده"); return; }
   updateUI(); updateCraftUI(); saveQuietly(); showToast("ساخت وسیله با موفقیت انجام شد! 🛠️");
 }
@@ -451,7 +463,7 @@ function update(dt) {
     const chaseSpeed = caveMode ? 48 : 72;
     if(distance<300&&distance>30){enemy.x+=ex/distance*chaseSpeed*dt;enemy.y+=ey/distance*chaseSpeed*dt;}
     else if(distance<=30&&damageCooldown<=0){
-      player.health=Math.max(0,player.health-1);damageCooldown=1;updateUI();saveQuietly();
+      player.health=Math.max(0,player.health-1);damageCooldown=1+(player.armorLevel||0)*0.7;updateUI();saveQuietly();
       if(player.health<=0){player.health=player.maxHealth;player.x=caveMode?800:1200;player.y=caveMode?1080:900;showToast("انرژیت تمام شد؛ جانت بازیابی شد");updateUI();}
       else showToast(caveMode?"نگهبان کریستالی بهت ضربه زد! 💎":"موجود بهت ضربه زد! ❤️");
     }
