@@ -206,7 +206,7 @@ function harvest() {
     if (nearest.type === "marble") bag.marble = (bag.marble||0) + 1;
     const leveled = addXP(10);
     if (leveled) showToast("سطح جدید! یک امتیاز مهارت گرفتی ⭐");
-    else showToast(nearest.type === "tree" ? "۳ چوب جمع کردی 🪵" : nearest.type === "stone" ? "۲ سنگ جمع کردی 🪨" : nearest.type === "iron" ? "۱ آهن جمع کردی ⛏️" : "۱ کریستال جمع کردی 💎");
+    else showToast(nearest.type === "tree" ? "۳ چوب جمع کردی 🪵" : nearest.type === "stone" ? "۲ سنگ جمع کردی 🪨" : nearest.type === "iron" ? "۱ آهن جمع کردی ⛏️" : nearest.type === "crystal" ? "۱ کریستال جمع کردی 💎" : nearest.type === "bush" ? "۲ الیاف جمع کردی 🧵" : nearest.type === "sand" ? "۲ شن جمع کردی 🏖️" : "۱ مرمر استخراج کردی ⬜");
     updateUI();
     saveQuietly();
   } else {
@@ -234,7 +234,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
+      bag, stations, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots
     }));
   } catch (e) {}
 }
