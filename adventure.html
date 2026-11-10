@@ -37,6 +37,12 @@
       <div>🛡️ زره مجهز: <b id="armorStatus">بدون زره</b></div>
       <div>🌱 بذر: <b id="seeds">0</b></div><div id="farmCrops">🌾 ۰ • 🥕 ۰ • 🍓 ۰</div>
       <div>🧪 معجون: <b id="potion">0</b></div>
+      <div>🧵 الیاف: <b id="fiber">0</b></div><div>🏖️ شن: <b id="sand">0</b></div><div>⬜ مرمر: <b id="marble">0</b></div>
+      <div>🪵 تخته: <b id="plank">0</b></div><div>🧱 آجر: <b id="brick">0</b></div><div>🪢 طناب: <b id="rope">0</b></div><div>🔩 میخ: <b id="nail">0</b></div>
+      <div>🪟 شیشه: <b id="glass">0</b></div><div>🧶 پارچه: <b id="cloth">0</b></div><div>🪨 تخته مرمر: <b id="marbleSlab">0</b></div><div>⚙️ قطعه آهنی: <b id="ironParts">0</b></div>
+      <div>🏛️ قطعات معبد: پایه <b id="templeFoundation">0</b> • ستون <b id="templeColumn">0</b> • تیر <b id="templeBeam">0</b></div>
+      <div>🎨 موزاییک <b id="templeMosaic">0</b> • پرچم <b id="templeBanner">0</b></div>
+
       <button id="usePotion">نوشیدن معجون</button>
     </div>
     <button id="closeBag">بستن</button>
@@ -89,7 +95,21 @@
       <button id="craftIronArmor">🛡️ زره آهنی — ۸ آهن + ۱۰ چوب</button>
       <button id="craftCrystalArmor">💎 زره کریستالی — ۵ کریستال + ۱۰ آهن</button>
     </div>
+    <h3>🏗️ ساخت ایستگاه‌ها</h3><div class="upgrade-list"><button id="buildWorkbench">🪚 میزکار — ۸ چوب + ۴ سنگ</button><button id="buildFurnace">🔥 کوره — ۸ سنگ + ۳ آهن</button><button id="buildSawmill">🪵 اره‌کاری — ۱۰ چوب + ۴ آهن</button><button id="openStations">باز کردن کارگاه نزدیک خانه</button></div>
     <button id="closeCraft">بستن</button>
+  </section>
+  <section id="stationPanel" class="panel" hidden>
+    <h2>🏗️ کارگاه ساخت‌وساز</h2><p class="station-note">برای استفاده از هر دستور، ایستگاه مربوط به آن را بساز.</p>
+    <h3>🪚 میزکار</h3><div class="upgrade-list">
+      <button id="make_rope">طناب — ۲ الیاف</button><button id="make_nails">میخ — ۱ آهن</button><button id="make_cloth">پارچه — ۳ الیاف</button><button id="make_ironParts">قطعه آهنی — ۲ آهن + ۲ میخ</button><button id="make_templeColumn">ستون معبد — ۲ تخته مرمر + ۲ قطعه آهنی</button><button id="make_templeBanner">پرچم معبد — ۲ پارچه + ۱ طناب</button>
+    </div>
+    <h3>🔥 کوره</h3><div class="upgrade-list">
+      <button id="make_bricks">آجر سنگی — ۲ سنگ</button><button id="make_glass">شیشه — ۲ شن</button><button id="make_templeFoundation">پایه معبد — ۴ آجر + ۱ تخته مرمر</button><button id="make_templeMosaic">کاشی موزاییک — ۱ شیشه + ۱ تخته مرمر</button>
+    </div>
+    <h3>🪵 اره‌کاری</h3><div class="upgrade-list">
+      <button id="make_planks">تخته چوب — ۲ چوب</button><button id="make_marbleSlabs">تخته مرمر — ۲ مرمر</button><button id="make_templeBeam">تیر سقف معبد — ۳ تخته + ۲ میخ</button>
+    </div>
+    <button id="closeStations">بستن کارگاه</button>
   </section>
   <section id="farmPanel" class="panel" hidden><h2>🌱 مزرعه کوچک من</h2><p id="farmSeeds">بذرهای تو: ۰</p><div id="farmPlotsGrid" class="farm-plots"></div><p id="farmPlotStatus">یک زمین را انتخاب کن.</p><label for="farmCrop">نوع محصول</label><select id="farmCrop"><option value="carrot">🥕 هویج • ۲ روز</option><option value="wheat">🌾 گندم • ۳ روز</option><option value="strawberry">🍓 توت‌فرنگی • ۴ روز</option></select><div class="upgrade-list"><button id="farmTill">🪴 شخم زدن زمین</button><button id="farmPlant">🌱 کاشت بذر</button><button id="farmWater">💧 آبیاری امروز</button><button id="farmHarvest">🧺 برداشت محصول</button></div><button id="farmClose">بستن</button></section>
   <section id="townNpcPanel" class="panel" hidden><h2 id="townNpcTitle">اهالی شهر سبز</h2><p id="townNpcDialogue"></p><p id="townNpcHeart"></p><div class="npc-actions"><button id="townNpcTalk">گفتگوی بعدی</button><button id="townNpcShop" hidden>🛍️ دیدن اجناس مغازه</button><button id="townNpcClose">خداحافظ</button></div></section><section id="townShopPanel" class="panel" hidden><h2>🛒 خواربارفروشی خانم رضایی</h2><p>هرچی لازم داری، با خیال راحت نگاه کن!</p><div class="upgrade-list"><button id="buyBread">🍞 نان تازه — ۸ سکه (۲ جان)</button><button id="buySeeds">🌱 بسته بذر — ۵ سکه</button><button id="buyApple">🍎 سیب محلی — ۶ سکه (۱ جان)</button><button id="sellCrops">🌾 فروش محصولات برداشت‌شده</button></div><p id="townShopHours">ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰</p><p id="townShopStock"></p><button id="eatBread">🍞 خوردن نان</button><button id="eatApple">🍎 خوردن سیب</button><button id="townShopClose">بستن مغازه</button></section><div id="townClock" hidden>☀️ ۰۹:۰۰</div><div id="townFade"></div><div id="toast" role="status"></div>
@@ -98,7 +118,7 @@
     <button id="actionBtn">⛏️<small>برداشت</small></button>
     <button id="attackBtn">⚔️<small>حمله</small></button>
     <button id="caveBtn" hidden>🕳️ ورود به غار</button>
-    <button id="homeBtn" hidden>🏡 خانه</button><button id="farmBtn" hidden>🌱 مزرعه</button>
+    <button id="homeBtn" hidden>🏡 خانه</button><button id="farmBtn" hidden>🌱 مزرعه</button><button id="workshopBtn" hidden>🏗️ کارگاه</button>
     <button id="npcBtn" hidden>💬 صحبت</button><button id="townBtn" hidden>🏘️ ورود به شهر</button><button id="townNpcBtn" hidden>💬 صحبت با اهالی</button><button id="townExitBtn" hidden>🌲 بازگشت به جنگل</button>
   </div>
   <div id="help">با جوی‌استیک حرکت کن؛ برای جمع‌آوری برداشت و برای دفاع حمله را بزن.</div>
