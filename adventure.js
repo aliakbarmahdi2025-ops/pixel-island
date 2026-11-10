@@ -65,6 +65,12 @@ const forestNpc = { x: 1320, y: 1010, name: "سامان", role: "پیر دانا
 let enemies = [], caveEnemies = [], lootDrops = [];
 let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
 let move = { x: 0, y: 0 };
+let moveTarget = null, selectedTool = "axe", interactionTimer = 0;
+const TOOL_INFO = {
+ axe:{icon:"🪓",label:"تبر"}, pickaxe:{icon:"⛏️",label:"کلنگ"},
+ shovel:{icon:"🪏",label:"بیل"}, watering:{icon:"💧",label:"آب‌پاش"},
+ sword:{icon:"⚔️",label:"شمشیر"}, seeds:{icon:"🌱",label:"بذر"}
+};
 let toastTimer = 0;
 let lastTime = 0;
 let animTime = 0, playerMoving = false, playerFacing = "down";
@@ -214,7 +220,7 @@ function makeCave(){
  {id:"cc2",x:300,y:680,type:"crystal",hp:4,max:4},{id:"cc3",x:1450,y:950,type:"crystal",hp:4,max:4},
  {id:"cm1",x:560,y:560,type:"marble",hp:5,max:5},{id:"cm2",x:980,y:860,type:"marble",hp:5,max:5},{id:"cm3",x:1450,y:300,type:"marble",hp:5,max:5},
  {id:"cm4",x:180,y:560,type:"marble",hp:5,max:5},{id:"cm5",x:880,y:170,type:"marble",hp:5,max:5},{id:"cm6",x:1180,y:180,type:"marble",hp:5,max:5},{id:"cm7",x:250,y:1040,type:"marble",hp:5,max:5},{id:"cm8",x:520,y:1080,type:"marble",hp:5,max:5},{id:"cm9",x:960,y:520,type:"marble",hp:5,max:5},{id:"cm10",x:1240,y:760,type:"marble",hp:5,max:5},{id:"cm11",x:1480,y:1080,type:"marble",hp:5,max:5},{id:"cm12",x:760,y:680,type:"marble",hp:5,max:5},{id:"cm13",x:1120,y:1040,type:"marble",hp:5,max:5},{id:"cm14",x:180,y:820,type:"marble",hp:5,max:5},{id:"cm15",x:1380,y:160,type:"marble",hp:5,max:5},{id:"cm16",x:1040,y:240,type:"marble",hp:5,max:5},{id:"cm17",x:400,y:180,type:"marble",hp:5,max:5},{id:"cm18",x:900,y:1120,type:"marble",hp:5,max:5}];
- caveChests=[{x:590,y:230,opened:!!openedChests[0]},{x:1370,y:420,opened:!!openedChests[1]},{x:790,y:790,opened:!!openedChests[2]}];
+ caveChests=[{id:"cave-chest-0",x:590,y:230,opened:!!openedChests[0]},{id:"cave-chest-1",x:1370,y:420,opened:!!openedChests[1]},{id:"cave-chest-2",x:790,y:790,opened:!!openedChests[2]}];
  const slimeSpots=[[300,430],[920,330],[1450,570],[600,850],[1190,930]];
  caveEnemies=slimeSpots.map((p,i)=>({id:"cave-slime-"+i,kind:"slime",x:p[0],y:p[1],spawnX:p[0],spawnY:p[1],hp:3,max:3,alive:true,respawnTimer:0}));
  caveEnemies.push({id:"crystal-guardian",kind:"guardian",x:1120,y:570,spawnX:1120,spawnY:570,hp:5,max:5,alive:true,respawnTimer:0});
@@ -323,21 +329,24 @@ function drawTempleEnemy(e){
  if(boss){ctx.fillStyle="#17191c";ctx.fillRect(x-34,y-57,68,6);ctx.fillStyle="#d85f59";ctx.fillRect(x-33,y-56,66*Math.max(0,e.hp/e.max),4);}
 }
 
-function harvest() {
+function harvest(targetId=null) {
   if(templeMode){templeInteract();return;}
-  if(caveMode){const chest=caveChests.find(c=>!c.opened&&Math.hypot(player.x-c.x,player.y-c.y)<76);if(chest){if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;const leveled=addXP(25);bag.crystal=(bag.crystal||0)+1;progressNpcCrystal(1);updateUI();saveQuietly();showToast(leveled?"سطح جدید! یک امتیاز مهارت گرفتی ⭐":"صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
-  const dropIndex=lootDrops.findIndex(d=>Math.hypot(player.x-d.x,player.y-d.y)<62);
+  if(caveMode){const chest=caveChests.find(c=>!c.opened&&(targetId?c.id===targetId:Math.hypot(player.x-c.x,player.y-c.y)<76));if(chest){if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;const leveled=addXP(25);bag.crystal=(bag.crystal||0)+1;progressNpcCrystal(1);updateUI();saveQuietly();showToast(leveled?"سطح جدید! یک امتیاز مهارت گرفتی ⭐":"صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
+  const dropIndex=lootDrops.findIndex(d=>targetId?d.id===targetId:Math.hypot(player.x-d.x,player.y-d.y)<62);
   if(dropIndex>=0){const preview=lootDrops[dropIndex];if(preview.type!=="coin"&&!bagCanAdd(preview.qty)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}const drop=lootDrops.splice(dropIndex,1)[0];if(drop.type==="coin")player.coins+=drop.qty;else if(drop.type==="stone")bag.stone=(bag.stone||0)+drop.qty;else if(drop.type==="iron")bag.iron=(bag.iron||0)+drop.qty;else if(drop.type==="crystal"){bag.crystal=(bag.crystal||0)+drop.qty;progressNpcCrystal(drop.qty);}else if(drop.type==="potion")bag.potion=(bag.potion||0)+drop.qty;updateUI();saveQuietly();showToast(({coin:"🪙 سکه",stone:"🪨 سنگ",iron:"⛏️ آهن",crystal:"💎 کریستال",potion:"🧪 معجون"})[drop.type]+" ×"+drop.qty+" برداشتی!");return;}
   let nearest = null, best = 76;
   for (const r of activeNodes()) {
+    if(targetId&&r.id!==targetId)continue;
     const d = Math.hypot(player.x - r.x, player.y - r.y);
     if (d < best) { best = d; nearest = r; }
   }
-  if (!nearest) { showToast("به درخت یا سنگ نزدیک‌تر شو"); return; }
+  if (!nearest) { if(!targetId)showToast("به درخت یا سنگ نزدیک‌تر شو"); return; }
   const toolType = nearest.type === "tree" || nearest.type === "bush" ? "axe" : nearest.type === "sand" ? "shovel" : "pickaxe";
-  nearest.hp -= 1 + (toolLevels[toolType] || 0);
+  const damage=1+(toolLevels[toolType]||0);
+  const amount=nearest.type==="tree"?3:(nearest.type==="stone"||nearest.type==="bush"||nearest.type==="sand")?2:1;
+  if(nearest.hp-damage<=0&&!bagCanAdd(amount)){showToast("کوله‌پشتی پره! برای ظرفیت بیشتر برو پیش آقای نادری 🎒");return;}
+  nearest.hp -= damage;
   if (nearest.hp <= 0) {
-    const amount=nearest.type==="tree"?3:(nearest.type==="stone"||nearest.type==="bush"||nearest.type==="sand")?2:1;if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره! برای ظرفیت بیشتر برو پیش آقای نادری 🎒");return;}
     (caveMode ? caveHarvested : harvested).add(nearest.id);
     if (nearest.type === "tree") { bag.wood += 3; quests.wood = Math.min(10, quests.wood + 3); }
     if (nearest.type === "stone") bag.stone += 2;
@@ -355,12 +364,12 @@ function harvest() {
     showToast("در حال جمع‌آوری...");
   }
 }
-function attack() {
+function attack(targetId=null) {
   if (attackCooldown > 0) return;
   attackCooldown = 0.32; attackFlash = 0.18;
   let target = null, best = 104;
   const targets = templeMode ? templeEnemies : caveMode ? caveEnemies : enemies;
-  for (const e of targets) { if (!e.alive) continue; const d=Math.hypot(player.x-e.x,player.y-e.y); if(d<best){best=d;target=e;} }
+  for (const e of targets) { if (!e.alive || (targetId&&e.id!==targetId)) continue; const d=Math.hypot(player.x-e.x,player.y-e.y); if(d<best){best=d;target=e;} }
   if (!target) { showToast("برای حمله به موجود نزدیک‌تر شو"); return; }
   target.hp -= player.attackPower;
   if (target.hp <= 0) {
@@ -386,38 +395,124 @@ function saveQuietly() {
 const keys = new Set();
 addEventListener("keydown", e => {
   if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+  if(["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"].includes(e.key.toLowerCase()))moveTarget=null;
   keys.add(e.key.toLowerCase());
 });
 addEventListener("keyup", e => keys.delete(e.key.toLowerCase()));
 
-const joy = $("joystick"), stick = $("stick");
-let joyPointer = null;
-function setJoy(e) {
-  const rect = joy.getBoundingClientRect();
-  const dx = e.clientX - (rect.left + rect.width / 2);
-  const dy = e.clientY - (rect.top + rect.height / 2);
-  const max = 38, len = Math.hypot(dx, dy) || 1, scale = Math.min(1, max / len);
-  move.x = dx / max * scale;
-  move.y = dy / max * scale;
-  stick.style.transform = "translate(" + (move.x * max) + "px," + (move.y * max) + "px)";
+function updateHotbar(){
+  document.querySelectorAll("#toolHotbar [data-tool]").forEach(btn=>{
+    btn.classList.toggle("selected",btn.dataset.tool===selectedTool);
+    btn.setAttribute("aria-pressed",btn.dataset.tool===selectedTool?"true":"false");
+  });
 }
-joy.addEventListener("pointerdown", e => {
-  joyPointer = e.pointerId;
-  joy.setPointerCapture(e.pointerId);
-  setJoy(e);
+function chooseTool(tool){
+  if(!TOOL_INFO[tool])return;
+  selectedTool=tool;updateHotbar();
+  if(tool==="seeds")openFarmPanel();
+  else showToast(TOOL_INFO[tool].label+" انتخاب شد");
+}
+$("toolHotbar").addEventListener("click",e=>{
+  const btn=e.target.closest("[data-tool]");
+  if(btn)chooseTool(btn.dataset.tool);
 });
-joy.addEventListener("pointermove", e => { if (e.pointerId === joyPointer) setJoy(e); });
-function releaseJoy(e) {
-  if (e.pointerId !== joyPointer) return;
-  joyPointer = null; move.x = 0; move.y = 0; stick.style.transform = "translate(0,0)";
+function setWorldTarget(type,x,y,extra={}){
+  moveTarget={type,x,y,...extra};interactionTimer=0;
 }
-joy.addEventListener("pointerup", releaseJoy);
-joy.addEventListener("pointercancel", releaseJoy);
-$("actionBtn").addEventListener("pointerdown", e => { e.preventDefault(); templeMode?templeInteract():harvest(); });
+function canvasWorldTap(e){
+  if(document.querySelector(".panel:not([hidden])"))return;
+  e.preventDefault();
+  const wx=e.clientX+camera.x,wy=e.clientY+camera.y;
+  const near=(items,radius,fn)=>items.find(o=>Math.hypot(wx-o.x,wy-o.y)<radius&&(!fn||fn(o)));
+  if(templeMode){
+    const enemy=near(templeEnemies,48,o=>o.alive);
+    if(enemy){setWorldTarget("enemy",enemy.x,enemy.y,{id:enemy.id});return;}
+    setWorldTarget("temple",wx,wy);return;
+  }
+  const townPerson=townMode?near(townPeople,46):null;
+  if(townPerson){setWorldTarget("townNpc",townPerson.x,townPerson.y,{id:townPerson.id});return;}
+  if(!townMode&&!caveMode&&!homeInterior){
+    const saman=near([forestNpc],52);
+    if(saman){setWorldTarget("forestNpc",saman.x,saman.y);return;}
+  }
+  const enemiesHere=caveMode?caveEnemies:enemies;
+  const enemy=near(enemiesHere,48,o=>o.alive);
+  if(enemy){setWorldTarget("enemy",enemy.x,enemy.y,{id:enemy.id});return;}
+  const drop=near(lootDrops,34);
+  if(drop){setWorldTarget("loot",drop.x,drop.y,{id:drop.id});return;}
+  if(caveMode){
+    const chest=near(caveChests,40,o=>!o.opened);
+    if(chest){setWorldTarget("chest",chest.x,chest.y,{id:chest.id});return;}
+  }
+  if(!caveMode&&!townMode&&!homeInterior){
+    const node=near(activeNodes(),48);
+    if(node){setWorldTarget("resource",node.x,node.y,{id:node.id});return;}
+    const plot=near(farmPlots,38);
+    if(plot){
+      selectedFarmPlot=farmPlots.indexOf(plot);
+      if(selectedTool==="watering")setWorldTarget("farmWater",plot.x,plot.y,{id:plot.id});
+      else if(selectedTool==="seeds")setWorldTarget("farmPlant",plot.x,plot.y,{id:plot.id});
+      else if(plot.state==="growing"&&plot.crop){
+        const crop=FARM_CROPS[plot.crop],goal=plot.harvests>0&&crop.regrow?crop.regrow:crop.days;
+        if(plot.growth>=goal)setWorldTarget("farmHarvest",plot.x,plot.y,{id:plot.id});
+        else if(selectedTool==="shovel")setWorldTarget("farmTill",plot.x,plot.y,{id:plot.id});
+        else setWorldTarget("ground",wx,wy);
+      }else if(selectedTool==="shovel")setWorldTarget("farmTill",plot.x,plot.y,{id:plot.id});
+      else setWorldTarget("ground",wx,wy);
+      return;
+    }
+    if(selectedTool==="shovel"){setWorldTarget("farmTill",wx,wy);return;}
+    if(selectedTool==="watering"||selectedTool==="seeds"){showToast("روی یکی از زمین‌های مزرعه بزن 🌱");return;}
+  }
+  setWorldTarget("ground",wx,wy);
+}
+canvas.addEventListener("pointerdown",canvasWorldTap);
+function tickWorldInteraction(dt){
+  if(!moveTarget)return;
+  const t=moveTarget;
+  if(t.type==="enemy"){
+    const live=(templeMode?templeEnemies:caveMode?caveEnemies:enemies).find(e=>e.id===t.id&&e.alive);
+    if(live){t.x=live.x;t.y=live.y;}
+  }else if(t.type==="townNpc"){
+    const person=townPeople.find(p=>p.id===t.id);
+    if(person){t.x=person.x;t.y=person.y;}
+  }else if(t.type==="forestNpc"){t.x=forestNpc.x;t.y=forestNpc.y;}
+  const d=Math.hypot(player.x-t.x,player.y-t.y);
+  const stops={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12};
+  if(d>(stops[t.type]??10))return;
+  playerMoving=false;
+  if(t.type==="ground"){moveTarget=null;return;}
+  if(t.type==="resource"){
+    const node=activeNodes().find(r=>r.id===t.id);
+    if(!node){moveTarget=null;return;}
+    if(interactionTimer<=0){
+      const amount=node.type==="tree"?3:(node.type==="stone"||node.type==="bush"||node.type==="sand")?2:1;
+      if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره؛ اول ظرفیتش رو بیشتر کن 🎒");moveTarget=null;return;}
+      harvest(t.id);interactionTimer=.48;
+    }
+    if(!activeNodes().some(r=>r.id===t.id))moveTarget=null;
+  }else if(t.type==="enemy"){
+    const target=(templeMode?templeEnemies:caveMode?caveEnemies:enemies).find(e=>e.id===t.id&&e.alive);
+    if(!target){moveTarget=null;return;}
+    if(interactionTimer<=0){attack(t.id);interactionTimer=.12;}
+  }else if(t.type==="loot"||t.type==="chest"){
+    harvest(t.id);moveTarget=null;
+  }else if(t.type==="forestNpc"){
+    openNpcDialogue();moveTarget=null;
+  }else if(t.type==="townNpc"){
+    const idx=townPeople.findIndex(p=>p.id===t.id);
+    if(idx>=0){townNpcIndex=idx;openTownNpc();}
+    moveTarget=null;
+  }else if(t.type==="farmWater"){farmWater();moveTarget=null;}
+  else if(t.type==="farmPlant"){farmPlant();moveTarget=null;}
+  else if(t.type==="farmHarvest"){farmHarvest();moveTarget=null;}
+  else if(t.type==="farmTill"){farmTill(t.x,t.y);moveTarget=null;}
+  else if(t.type==="temple"){templeInteract();moveTarget=null;}
+}
+
 $("farmBtn").addEventListener("click",openFarmPanel);$("farmClose").addEventListener("click",()=>{$("farmPanel").hidden=true;syncXpPanel();});$("farmPlotsGrid").addEventListener("click",e=>{const b=e.target.closest("[data-plot]");if(!b)return;selectedFarmPlot=Number(b.dataset.plot);updateFarmUI();});
 $("farmTill").addEventListener("click",farmTill);$("farmPlant").addEventListener("click",farmPlant);$("farmWater").addEventListener("click",farmWater);$("farmHarvest").addEventListener("click",farmHarvest);
 $("farmCrop").addEventListener("change",e=>{selectedCrop=e.target.value;updateFarmUI();});$("sellCrops").addEventListener("click",sellFarmCrops);
-$("attackBtn").addEventListener("pointerdown", e => { e.preventDefault(); attack(); });
 $("npcBtn").addEventListener("click", openNpcDialogue);
 $("townBtn").addEventListener("click",()=>transitionTown(true));$("townExitBtn").addEventListener("click",()=>transitionTown(false));$("townNpcBtn").addEventListener("click",openTownNpc);$("townNpcTalk").addEventListener("click",nextTownDialogue);$("townNpcShop").addEventListener("click",openTownShop);$("carpenterClose").addEventListener("click",()=>{$("carpenterPanel").hidden=true;syncXpPanel();});$("carpenterBuild").addEventListener("click",carpenterBuild);$("carpenterUpgrade").addEventListener("click",carpenterUpgrade);$("furnitureBed").addEventListener("click",()=>buildFurniture("bed"));$("furnitureTable").addEventListener("click",()=>buildFurniture("table"));$("furnitureChair").addEventListener("click",()=>buildFurniture("chair"));$("backpackUpgrade").addEventListener("click",upgradeBackpack);$("townNpcClose").addEventListener("click",()=>{$("townNpcPanel").hidden=true;syncXpPanel();});$("townShopClose").addEventListener("click",()=>{$("townShopPanel").hidden=true;syncXpPanel();});$("buyBread").addEventListener("click",()=>buyTownItem("bread"));$("buySeeds").addEventListener("click",()=>buyCropSeed(selectedCrop));$("seedShopList").addEventListener("click",e=>{const b=e.target.closest("[data-seed]");if(b)buyCropSeed(b.dataset.seed);});$("buyApple").addEventListener("click",()=>buyTownItem("apple"));
 $("eatBread").addEventListener("click",()=>consumeTownFood("bread"));
@@ -747,6 +842,11 @@ function update(dt) {
   if (keys.has("d") || keys.has("arrowright")) dx += 1;
   if (keys.has("w") || keys.has("arrowup")) dy -= 1;
   if (keys.has("s") || keys.has("arrowdown")) dy += 1;
+  if(moveTarget){
+    const tx=moveTarget.x-player.x,ty=moveTarget.y-player.y,dist=Math.hypot(tx,ty);
+    const stop={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12}[moveTarget.type]??10;
+    if(dist>stop){dx=tx/dist;dy=ty/dist;}else{dx=0;dy=0;}
+  }
   const oldX=player.x,oldY=player.y;
   const len = Math.hypot(dx, dy);
   playerMoving = len > 0.08;
@@ -759,6 +859,8 @@ function update(dt) {
     const crossedRiver=(oldX<2700&&player.x>=2700)||(oldX>2700&&player.x<=2700);
     if(!townMode&&!caveMode&&!homeInterior&&crossedRiver&&!(bridgeStage>=3&&player.y>=1620&&player.y<=1800)) player.x=oldX<2700?2648:2752;
   }
+  if(interactionTimer>0)interactionTimer=Math.max(0,interactionTimer-dt);
+  tickWorldInteraction(dt);
   animTime += dt;
   const mw = templeMode ? TEMPLE.w : caveMode ? CAVE.w : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
   const mh = templeMode ? TEMPLE.h : caveMode ? CAVE.h : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h;
@@ -774,15 +876,14 @@ function update(dt) {
   $("townExitBtn").hidden=!townMode || Math.hypot(player.x-800,player.y-1110)>105;
   $("townClock").hidden=templeMode||homeInterior||caveMode;
   {const hh=Math.floor(worldClock/60),mm=Math.floor(worldClock%60),night=hh>=20||hh<6;$("townClock").textContent=(night?"🌙 ":"☀️ ")+String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0")+" • روز "+worldDay;}
-  $("farmBtn").hidden=templeMode||townMode||caveMode||homeInterior;
+  $("farmBtn").hidden=true;
   const nearTownPerson=townMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
-  $("townNpcBtn").hidden=!nearTownPerson;
+  $("townNpcBtn").hidden=true;
   $("townNpcBtn").textContent=nearTownPerson?"💬 صحبت با "+nearTownPerson.name:"💬 صحبت با اهالی";
   $("caveBtn").textContent=caveMode?"🚪 خروج از غار":"🕳️ ورود به غار";
-  $("npcBtn").hidden = templeMode || caveMode || homeInterior || Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y) > 145;
+  $("npcBtn").hidden = true;
   $("homeBtn").hidden = templeMode || townMode || caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
   $("homeBtn").textContent = homeInterior ? "🚪 خروج از خانه" : "🏡 خانه";
-  $("actionBtn").innerHTML=templeMode?"🔮<small>تعامل</small>":"⛏️<small>برداشت</small>";
   const nearWorkshop=!templeMode&&!townMode&&!caveMode&&!homeInterior&&Math.hypot(player.x-playerHome.x,player.y-playerHome.y)<235&&Object.values(stations).some(Boolean);
   $("workshopBtn").hidden=!nearWorkshop;
 }
@@ -854,9 +955,10 @@ function updateFarmUI(){
  $("farmHarvest").disabled=!p||p.state!=="growing"||p.growth<(p.harvests>0&&FARM_CROPS[p.crop].regrow?FARM_CROPS[p.crop].regrow:FARM_CROPS[p.crop].days);
  $("farmPlant").textContent=crop.season===season?"🌱 کاشت "+crop.name:"🔒 مخصوص "+FARM_SEASONS[crop.season];
 }
-function farmTill(){
+function farmTill(targetX=null,targetY=null){
  const offsets={up:[0,-64],down:[0,64],left:[-64,0],right:[64,0]},o=offsets[playerFacing]||offsets.down;
- const x=Math.max(64,Math.min(WORLD.w-64,Math.round((player.x+o[0])/64)*64)),y=Math.max(64,Math.min(WORLD.h-64,Math.round((player.y+o[1])/64)*64));
+ const rawX=Number.isFinite(targetX)?targetX:player.x+o[0],rawY=Number.isFinite(targetY)?targetY:player.y+o[1];
+ const x=Math.max(64,Math.min(WORLD.w-64,Math.round(rawX/64)*64)),y=Math.max(64,Math.min(WORLD.h-64,Math.round(rawY/64)*64));
  if(Math.abs(x-2700)<115||Math.hypot(x-playerHome.x,y-playerHome.y)<145||Math.hypot(x-samanHome.x,y-samanHome.y)<105||resources.some(r=>Math.hypot(r.x-x,r.y-y)<48)){showToast("اینجا برای کشاورزی مناسب نیست؛ کمی دورتر زمین بزن 🌿");return;}
  const existing=getFarmTileAt(x,y);
  if(existing>=0){if(farmPlots[existing].state==="empty"){selectedFarmPlot=existing;farmPlots[existing].state="tilled";}else{showToast("این زمین قبلاً آماده شده!");return;}}
@@ -1493,6 +1595,8 @@ function drawPlayer(){
    }
    ctx.restore();
  }
+ const tool=TOOL_INFO[selectedTool];
+ if(tool){ctx.save();ctx.font="16px Tahoma";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(tool.icon,x+(playerFacing==="left"?-17:17),y+3);ctx.restore();}
  if(attackFlash>0){ctx.save();ctx.translate(x,y);ctx.scale(.82,.82);ctx.strokeStyle="#fff0a8";ctx.lineWidth=3;ctx.beginPath();const a=playerFacing==="left"?Math.PI:playerFacing==="up"?-Math.PI/2:playerFacing==="down"?Math.PI/2:0;ctx.arc(0,0,39,a-.75,a+.75);ctx.stroke();ctx.restore();}
 }
 
@@ -1566,8 +1670,9 @@ function loop(time) {
   requestAnimationFrame(loop);
 }
 updateUI();
+updateHotbar();
 syncXpPanel();
-showToast("به جنگل خوش آمدی! 🌲");
+showToast("روی زمین بزن تا حرکت کنی؛ روی منابع بزن تا خودکار جمع‌آوری کنی 🌿");
 requestAnimationFrame(loop);
 addEventListener("pagehide", saveQuietly);
 })();
