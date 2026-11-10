@@ -176,6 +176,10 @@ function makeEnemies() {
   enemies = [];
 }
 makeEnemies();
+// Preview-only shortcut for testing the temple without replaying the bridge quest.
+if(typeof location!=="undefined"&&location.hostname.startsWith("deploy-preview-")&&new URLSearchParams(location.search).get("templePreview")==="1"){
+ bridgeStage=3;templeMode=false;caveMode=false;homeInterior=false;townMode=false;player.x=3000;player.y=1710;saveQuietly();
+}
 function makeCave(){
  caveResources=[
  {id:"cs1",x:250,y:250,type:"stone",hp:4,max:4},{id:"cs2",x:1320,y:250,type:"stone",hp:4,max:4},
