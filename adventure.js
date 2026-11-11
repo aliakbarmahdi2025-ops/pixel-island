@@ -14,7 +14,8 @@ const stations = { workbench: false, furnace: false, sawmill: false };
 const toolLevels = { axe: 0, pickaxe: 0, shovel: 0 };
 let bridgeStage = 0; // 0 broken, 1 stone piers, 2 timber deck, 3 ancient seal complete
 const TEMPLE={w:2200,h:1500,floors:5};
-let templeMode=false,templeFloor=1,templeUnlocked=1,templePuzzleSolved={},templeBosses={},templeRuneProgress={},templeRuneSolved={},templeSecrets={},templeEnemies=[],templeReturn={x:3040,y:1710};
+const TEMPLE_TRAPS=[{x:520,y:740,r:78,phase:0},{x:1450,y:740,r:78,phase:1.7},{x:1080,y:350,r:72,phase:3.1},{x:1080,y:1130,r:72,phase:4.6}];
+let templeMode=false,templeFloor=1,templeUnlocked=1,templePuzzleSolved={},templeBosses={},templeRuneProgress={},templeRuneSolved={},templeSecrets={},templeEnemies=[],templeReturn={x:3040,y:1710},templeTrapCooldown=0;
 let harvested = new Set(), caveHarvested = new Set();
 let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
 let caveResources = [], caveChests = [];
@@ -278,8 +279,12 @@ function templeRuneClue(){return (TEMPLE_RUNES[templeFloor]||TEMPLE_RUNES[1]).ma
 function templeCanSolve(){return Object.entries(templePuzzleCost(templeFloor)).every(([k,v])=>(bag[k]||0)>=v);}
 function createTempleEnemies(){
  templeEnemies=[];const f=templeFloor;
- [[650,370],[850,1030],[1220,360]].forEach((p,i)=>templeEnemies.push({id:"temple-sentinel-"+f+"-"+i,kind:"templeSentinel",x:p[0],y:p[1],spawnX:p[0],spawnY:p[1],hp:2+f,max:2+f,alive:true,respawnTimer:0}));
- if(!templeBosses[f])templeEnemies.push({id:"temple-warden-"+f,kind:"templeBoss",x:1660,y:750,spawnX:1660,spawnY:750,hp:8+f*3,max:8+f*3,alive:true,respawnTimer:0});
+ [[650,370],[850,1030],[1220,360],[1510,1080]].forEach((p,i)=>{const hp=3+f*2;templeEnemies.push({id:"temple-sentinel-"+f+"-"+i,kind:"templeSentinel",x:p[0],y:p[1],spawnX:p[0],spawnY:p[1],hp,max:hp,alive:true,respawnTimer:0});});
+ if(!templeBosses[f]){const hp=14+f*5;templeEnemies.push({id:"temple-warden-"+f,kind:"templeBoss",x:1660,y:750,spawnX:1660,spawnY:750,hp,max:hp,alive:true,respawnTimer:0});}
+}
+function templeTrapActive(trap){return Math.sin(animTime*1.45+trap.phase+templeFloor*.38)>.12;}
+function templeDefeatPlayer(){
+ const lost=Math.min(60,Math.floor(Math.max(0,player.coins)*.1));player.coins=Math.max(0,player.coins-lost);player.health=player.maxHealth;player.x=160;player.y=750;moveTarget=null;damageCooldown=1.2;templeTrapCooldown=1.2;updateUI();saveQuietly();showToast("در معبد از پا افتادی؛ "+lost+" سکه از دست رفت. پیشرفت طبقه حفظ شد.");
 }
 function openTemplePanel(){
  $("templePanel").hidden=false;
@@ -355,12 +360,13 @@ function drawTempleGround(){
   for(let i=0;i<3;i++){const p=TEMPLE_RUNE_POINTS[i],x=p.x,y=p.y,lit=templeRuneSolved[f]||(Number(templeRuneProgress[f])||0)>TEMPLE_RUNES[f].indexOf(i);ctx.fillStyle="rgba(0,0,0,.35)";ctx.beginPath();ctx.ellipse(x,y+20,42,15,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#343b3b";ctx.fillRect(x-27,y-26,54,48);ctx.fillStyle=lit?accent:"#82745e";ctx.fillRect(x-21,y-22,42,38);ctx.fillStyle=lit?"#e4f5d5":"#d7c69c";ctx.font="bold 18px Tahoma";ctx.textAlign="center";ctx.fillText(["☾","☼","✦"][i],x,y+4);ctx.font="bold 12px Tahoma";ctx.fillStyle="#e9dfc4";ctx.fillText(TEMPLE_RUNE_NAMES[i],x,y-42);}
   if(templeRuneSolved[f]&&!templeSecrets[f]){const x=1780,y=1080;ctx.fillStyle="rgba(0,0,0,.35)";ctx.beginPath();ctx.ellipse(x,y+18,44,13,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#5a3825";ctx.fillRect(x-32,y-24,64,42);ctx.fillStyle="#b88b4c";ctx.fillRect(x-36,y-30,72,12);ctx.fillStyle="#e4c777";ctx.fillRect(x-5,y-25,10,28);ctx.fillStyle="#f4d98c";ctx.fillRect(x-8,y-39,16,9);ctx.fillStyle="#f1d18b";ctx.font="bold 12px Tahoma";ctx.fillText("گنج پنهان",x,y-48);}
   ctx.fillStyle="#e8d5a5";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("ترتیب نقش‌ها: "+templeRuneClue(),1100,145);ctx.textAlign="start";
+ for(const trap of TEMPLE_TRAPS){const active=templeTrapActive(trap),x=trap.x,y=trap.y;ctx.fillStyle=active?"rgba(190,48,52,.23)":"rgba(190,145,76,.12)";ctx.beginPath();ctx.arc(x,y,trap.r,0,Math.PI*2);ctx.fill();ctx.strokeStyle=active?"rgba(242,91,78,.85)":"rgba(205,177,118,.45)";ctx.lineWidth=active?5:3;ctx.setLineDash(active?[]:[9,8]);ctx.beginPath();ctx.arc(x,y,trap.r*.78,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=active?"#e77a68":"#c7a66b";ctx.font="bold 22px Tahoma";ctx.textAlign="center";ctx.fillText(active?"✹":"◇",x,y+8);}
  ctx.restore();
 }
 function drawTempleEnemy(e){
- const x=e.x-camera.x,y=e.y-camera.y,boss=e.kind==="templeBoss",sc=boss?1.7:1;ctx.save();ctx.translate(x,y);ctx.scale(sc,sc);
- ctx.fillStyle="rgba(0,0,0,.32)";ctx.beginPath();ctx.ellipse(0,18,27,9,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=boss?"#5d3c68":"#566b63";ctx.fillRect(-19,-30,38,43);ctx.fillStyle=boss?"#9a6aa6":"#8ba18a";ctx.fillRect(-15,-27,30,29);ctx.fillStyle="#d9c69a";ctx.fillRect(-23,-36,46,9);ctx.fillStyle="#f5c86c";ctx.fillRect(-9,-19,5,5);ctx.fillRect(4,-19,5,5);ctx.fillStyle="#33383b";ctx.fillRect(-13,8,10,15);ctx.fillRect(3,8,10,15);if(boss){ctx.fillStyle="#77e6dc";ctx.fillRect(-5,-10,10,11);}ctx.restore();
- if(boss){ctx.fillStyle="#17191c";ctx.fillRect(x-34,y-57,68,6);ctx.fillStyle="#d85f59";ctx.fillRect(x-33,y-56,66*Math.max(0,e.hp/e.max),4);}
+ const x=e.x-camera.x,y=e.y-camera.y,boss=e.kind==="templeBoss",ratio=e.hp/e.max,phase=ratio<=.34?3:ratio<=.68?2:1,sc=boss?(phase===3?1.9:1.7):1;ctx.save();ctx.translate(x,y);ctx.scale(sc,sc);
+ ctx.fillStyle="rgba(0,0,0,.32)";ctx.beginPath();ctx.ellipse(0,18,27,9,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=boss?(phase===3?"#9c3f53":phase===2?"#765080":"#5d3c68"):"#566b63";ctx.fillRect(-19,-30,38,43);ctx.fillStyle=boss?(phase===3?"#e06a65":phase===2?"#ad7ac0":"#9a6aa6"):"#8ba18a";ctx.fillRect(-15,-27,30,29);ctx.fillStyle="#d9c69a";ctx.fillRect(-23,-36,46,9);ctx.fillStyle="#f5c86c";ctx.fillRect(-9,-19,5,5);ctx.fillRect(4,-19,5,5);ctx.fillStyle="#33383b";ctx.fillRect(-13,8,10,15);ctx.fillRect(3,8,10,15);if(boss){ctx.fillStyle="#77e6dc";ctx.fillRect(-5,-10,10,11);}ctx.restore();
+ if(boss){ctx.fillStyle="#17191c";ctx.fillRect(x-42,y-62,84,8);ctx.fillStyle="#d85f59";ctx.fillRect(x-41,y-61,82*Math.max(0,e.hp/e.max),6);ctx.fillStyle="#f1d7aa";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText("فاز "+phase,x,y-70);}
 }
 
 function harvest(targetId=null) {
@@ -862,7 +868,7 @@ function update(dt) {
   worldClock += dt * 8;
   if(worldClock >= 1440){worldClock -= 1440;worldDay++;onNewFarmDay();saveQuietly();}
   if(townMode)townSchedule(dt);
-  attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt);
+  attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt); templeTrapCooldown=Math.max(0,templeTrapCooldown-dt);
   const activeEnemies = templeMode ? templeEnemies : (caveMode || homeInterior || townMode) ? (caveMode ? caveEnemies : []) : enemies;
   for(const enemy of activeEnemies){
     if(!enemy.alive){
@@ -871,16 +877,21 @@ function update(dt) {
       continue;
     }
     const ex=player.x-enemy.x,ey=player.y-enemy.y,distance=Math.hypot(ex,ey)||1;
-    const chaseSpeed = templeMode ? 56 : caveMode ? 48 : 72;
+    const chaseSpeed = templeMode ? 56+templeFloor*6+(enemy.kind==="templeBoss"?12:0) : caveMode ? 48 : 72;
     if(distance<300&&distance>30){enemy.x+=ex/distance*chaseSpeed*dt;enemy.y+=ey/distance*chaseSpeed*dt;}
     else if(distance<=30&&damageCooldown<=0){
       const armorLevel=Math.max(0,Math.min(2,player.armorLevel||0));
-      const incomingDamage=armorLevel===0?1:armorLevel===1?0.7:0.4;
+      const baseDamage=templeMode?(enemy.kind==="templeBoss"?1.15+templeFloor*.24:.8+templeFloor*.13):1;
+      const incomingDamage=baseDamage*(armorLevel===0?1:armorLevel===1?0.7:0.4);
       player.health=Math.max(0,Math.round((player.health-incomingDamage)*10)/10);
       damageCooldown=1;updateUI();saveQuietly();
-      if(player.health<=0){player.health=player.maxHealth;if(templeMode){player.x=160;player.y=750;}else{player.x=caveMode?800:1200;player.y=caveMode?1080:900;}showToast("انرژیت تمام شد؛ جانت بازیابی شد");updateUI();}
+      if(player.health<=0){if(templeMode)templeDefeatPlayer();else{player.health=player.maxHealth;player.x=caveMode?800:1200;player.y=caveMode?1080:900;showToast("انرژیت تمام شد؛ جانت بازیابی شد");updateUI();}}
       else showToast(caveMode?"نگهبان کریستالی بهت ضربه زد! 💎":"موجود بهت ضربه زد! ❤️");
     }
+  }
+  if(templeMode&&templeTrapCooldown<=0){
+    const trap=TEMPLE_TRAPS.find(t=>templeTrapActive(t)&&Math.hypot(player.x-t.x,player.y-t.y)<t.r*.62);
+    if(trap){const armorLevel=Math.max(0,Math.min(2,player.armorLevel||0)),damage=(.85+templeFloor*.12)*(armorLevel===0?1:armorLevel===1?.7:.4);player.health=Math.max(0,Math.round((player.health-damage)*10)/10);templeTrapCooldown=1.35;updateUI();saveQuietly();if(player.health<=0)templeDefeatPlayer();else showToast("تله‌ی باستانی فعال شد! از نشان‌های سرخ دور شو ⚠️");}
   }
   if (!templeMode && !caveMode && !homeInterior && !townMode) {
     const night = worldClock >= 20 * 60 || worldClock < 6 * 60;
