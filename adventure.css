@@ -182,3 +182,6 @@ button:disabled{opacity:.38;filter:grayscale(.65)}
 #townShopHours{background:#d8ccb0;color:#40372b;border:1px solid #a38d62;border-radius:7px}
 #xpPanel{background:#17211feF;border:1px solid #87744f;border-radius:7px}
 #toast{background:#202a27f5;border:1px solid #b49b69;border-radius:8px;color:#f2e8d0}
+
+/* Stage 34 — temple rune puzzles and hidden chambers. */
+.temple-rune-hint{padding:10px 12px;margin:10px 0;background:linear-gradient(135deg,#243a38,#1a2928);border:1px solid #78a99a;border-radius:8px;color:#d5eadb;font-size:12px;line-height:1.9;text-align:center}
