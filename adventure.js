@@ -77,6 +77,89 @@ let toastTimer = 0;
 let lastTime = 0;
 let animTime = 0, playerMoving = false, playerFacing = "down";
 let playerActionTimer = 0, playerActionDuration = 0.32, playerActionType = "";
+
+/* Stage 38 — lightweight Web Audio soundscape. Audio starts only after a user gesture. */
+const gameAudio = {ctx:null,master:null,ambience:null,noise:null,enabled:false,unlocked:false,stepTimer:0,birdTimer:4,musicTimer:0,lastZone:"",lastNight:false};
+function audioReady(){
+  if(!gameAudio.ctx){
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return false;
+    const ctx=new AC(),master=ctx.createGain();master.gain.value=.42;master.connect(ctx.destination);
+    const ambience=ctx.createGain();ambience.gain.value=0;ambience.connect(master);
+    const low=ctx.createOscillator(),mid=ctx.createOscillator(),filter=ctx.createBiquadFilter(),toneGain=ctx.createGain();
+    low.type="sine";low.frequency.value=72;mid.type="triangle";mid.frequency.value=108;
+    filter.type="lowpass";filter.frequency.value=420;toneGain.gain.value=.11;
+    low.connect(toneGain);mid.connect(toneGain);toneGain.connect(filter);filter.connect(ambience);
+    low.start();mid.start();
+    const buffer=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate),data=buffer.getChannelData(0);
+    for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*.22;
+    const noise=ctx.createBufferSource(),noiseFilter=ctx.createBiquadFilter(),noiseGain=ctx.createGain();
+    noise.buffer=buffer;noise.loop=true;noiseFilter.type="lowpass";noiseFilter.frequency.value=650;noiseGain.gain.value=.14;
+    noise.connect(noiseFilter);noiseFilter.connect(noiseGain);noiseGain.connect(ambience);noise.start();
+    gameAudio.ctx=ctx;gameAudio.master=master;gameAudio.ambience=ambience;gameAudio.noise=noiseGain;
+  }
+  if(gameAudio.ctx.state==="suspended")gameAudio.ctx.resume();
+  gameAudio.unlocked=true;return true;
+}
+function setGameSound(on){
+  if(on&&!audioReady()){showToast("مرورگرت از صدای بازی پشتیبانی نمی‌کند");return;}
+  gameAudio.enabled=!!on;
+  if(gameAudio.master)gameAudio.master.gain.setTargetAtTime(on ? 0.42 : 0,gameAudio.ctx.currentTime,.08);
+  $("soundBtn").textContent=on?"🔊 صدا روشن":"🔇 صدا خاموش";
+  $("soundBtn").setAttribute("aria-pressed",String(!!on));
+  try{localStorage.setItem("pixelIsland_sound_enabled",on?"1":"0");}catch(e){}
+  if(on)showToast("صدای طبیعت و موسیقی بازی فعال شد 🎵");
+}
+function soundTone(freq,duration,type="sine",volume=.12,slide=0){
+  if(!gameAudio.enabled||!audioReady())return;
+  const ctx=gameAudio.ctx,osc=ctx.createOscillator(),gain=ctx.createGain();
+  osc.type=type;osc.frequency.setValueAtTime(freq,ctx.currentTime);
+  if(slide)osc.frequency.exponentialRampToValueAtTime(Math.max(35,freq+slide),ctx.currentTime+duration);
+  gain.gain.setValueAtTime(.0001,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(Math.max(.001,volume),ctx.currentTime+.012);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+duration);
+  osc.connect(gain);gain.connect(gameAudio.master);osc.start();osc.stop(ctx.currentTime+duration+.03);
+}
+function playGameSound(kind){
+  if(!gameAudio.enabled)return;
+  if(kind==="step"){soundTone(caveMode?105:155,.075,"triangle",.045,-35);}
+  else if(kind==="gather"){soundTone(520,.09,"triangle",.10,-170);soundTone(760,.07,"sine",.045,-260);}
+  else if(kind==="attack"){soundTone(180,.13,"sawtooth",.10,95);soundTone(90,.12,"triangle",.055,-35);}
+  else if(kind==="pickup"){soundTone(660,.12,"sine",.09,210);}
+  else if(kind==="water"){soundTone(900,.16,"sine",.055,-480);}
+}
+function audioEnvironment(dt){
+  if(!gameAudio.enabled||!gameAudio.ctx)return;
+  const cave=caveMode||templeMode,night=!cave&&!townMode&&!homeInterior&&(worldClock>=20*60||worldClock<6*60);
+  const zone=cave?"cave":townMode?"town":homeInterior?"home":night?"night":"forest";
+  if(zone!==gameAudio.lastZone||night!==gameAudio.lastNight){
+    gameAudio.lastZone=zone;gameAudio.lastNight=night;
+    const ctx=gameAudio.ctx;
+    const level=cave ? 0.20 : night ? 0.09 : townMode ? 0.07 : homeInterior ? 0.045 : 0.12;
+    gameAudio.ambience.gain.setTargetAtTime(level,ctx.currentTime,1.1);
+    gameAudio.noise.gain.setTargetAtTime(cave ? 0.045 : night ? 0.055 : 0.14,ctx.currentTime,1.2);
+  }
+  if(playerMoving){
+    gameAudio.stepTimer-=dt;
+    if(gameAudio.stepTimer<=0){playGameSound("step");gameAudio.stepTimer=caveMode ? 0.48 : 0.38;}
+  }else gameAudio.stepTimer=0;
+  if(zone==="forest"||zone==="town"){
+    gameAudio.birdTimer-=dt;
+    if(gameAudio.birdTimer<=0){
+      const f=zone==="town"?1100:1450;
+      soundTone(f+Math.random()*650,.16,"sine",.025,Math.random()<.5?-400:350);
+      gameAudio.birdTimer=5+Math.random()*9;
+    }
+  }else if(zone==="cave"&&Math.random()<dt*.12){
+    soundTone(380+Math.random()*260,.28,"sine",.018,-180);
+  }
+  gameAudio.musicTimer-=dt;
+  if(gameAudio.musicTimer<=0){
+    if(!cave&&!night){soundTone(220,.9,"sine",.018,55);soundTone(330,1.1,"sine",.012,40);}
+    else if(night){soundTone(164,.95,"sine",.018,24);}
+    else if(cave){soundTone(82,.8,"sine",.022,-12);}
+    gameAudio.musicTimer=zone==="cave"?7:10;
+  }
+}
+
 function triggerPlayerAction(type, duration = 0.32) {
   playerActionType = type; playerActionDuration = duration; playerActionTimer = duration;
 }
@@ -376,9 +459,10 @@ function drawTempleEnemy(e){
 function harvest(targetId=null) {
   if(templeMode){templeInteract();return;}
   triggerPlayerAction("gather",0.36);
+  playGameSound("gather");
   if(caveMode){const chest=caveChests.find(c=>!c.opened&&(targetId?c.id===targetId:Math.hypot(player.x-c.x,player.y-c.y)<76));if(chest){if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;const leveled=addXP(25);bag.crystal=(bag.crystal||0)+1;progressNpcCrystal(1);updateUI();saveQuietly();showToast(leveled?"سطح جدید! یک امتیاز مهارت گرفتی ⭐":"صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
   const dropIndex=lootDrops.findIndex(d=>targetId?d.id===targetId:Math.hypot(player.x-d.x,player.y-d.y)<62);
-  if(dropIndex>=0){const preview=lootDrops[dropIndex];if(preview.type!=="coin"&&!bagCanAdd(preview.qty)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}const drop=lootDrops.splice(dropIndex,1)[0];if(drop.type==="coin")player.coins+=drop.qty;else if(drop.type==="stone")bag.stone=(bag.stone||0)+drop.qty;else if(drop.type==="iron")bag.iron=(bag.iron||0)+drop.qty;else if(drop.type==="crystal"){bag.crystal=(bag.crystal||0)+drop.qty;progressNpcCrystal(drop.qty);}else if(drop.type==="potion")bag.potion=(bag.potion||0)+drop.qty;updateUI();saveQuietly();showToast(({coin:"🪙 سکه",stone:"🪨 سنگ",iron:"⛏️ آهن",crystal:"💎 کریستال",potion:"🧪 معجون"})[drop.type]+" ×"+drop.qty+" برداشتی!");return;}
+  if(dropIndex>=0){const preview=lootDrops[dropIndex];if(preview.type!=="coin"&&!bagCanAdd(preview.qty)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}const drop=lootDrops.splice(dropIndex,1)[0];if(drop.type==="coin")player.coins+=drop.qty;else if(drop.type==="stone")bag.stone=(bag.stone||0)+drop.qty;else if(drop.type==="iron")bag.iron=(bag.iron||0)+drop.qty;else if(drop.type==="crystal"){bag.crystal=(bag.crystal||0)+drop.qty;progressNpcCrystal(drop.qty);}else if(drop.type==="potion")bag.potion=(bag.potion||0)+drop.qty;updateUI();saveQuietly();playGameSound("pickup");showToast(({coin:"🪙 سکه",stone:"🪨 سنگ",iron:"⛏️ آهن",crystal:"💎 کریستال",potion:"🧪 معجون"})[drop.type]+" ×"+drop.qty+" برداشتی!");return;}
   let nearest = null, best = 76;
   for (const r of activeNodes()) {
     if(targetId&&r.id!==targetId)continue;
@@ -405,6 +489,7 @@ function harvest(targetId=null) {
     else showToast(nearest.type === "tree" ? "۳ چوب جمع کردی 🪵" : nearest.type === "stone" ? "۲ سنگ جمع کردی 🪨" : nearest.type === "iron" ? "۱ آهن جمع کردی ⛏️" : nearest.type === "crystal" ? "۱ کریستال جمع کردی 💎" : nearest.type === "bush" ? "۲ الیاف جمع کردی 🧵" : nearest.type === "sand" ? "۲ شن جمع کردی 🏖️" : "۱ مرمر استخراج کردی ⬜");
     updateUI();
     saveQuietly();
+    playGameSound("pickup");
   } else {
     showToast("در حال جمع‌آوری...");
   }
@@ -412,6 +497,7 @@ function harvest(targetId=null) {
 function attack(targetId=null) {
   if (attackCooldown > 0) return;
   triggerPlayerAction("attack",0.34);
+  playGameSound("attack");
   attackCooldown = 0.32; attackFlash = 0.18;
   let target = null, best = 104;
   const targets = templeMode ? templeEnemies : caveMode ? caveEnemies : enemies;
@@ -458,6 +544,13 @@ function chooseTool(tool){
   if(tool==="seeds")openFarmPanel();
   else showToast(TOOL_INFO[tool].label+" انتخاب شد");
 }
+
+$("soundBtn").addEventListener("click",()=>{
+  const next=!gameAudio.enabled;
+  setGameSound(next);
+});
+try{if(localStorage.getItem("pixelIsland_sound_enabled")==="1")$("soundBtn").textContent="🔈 برای فعال‌سازی صدا لمس کن";}catch(e){}
+
 $("toolHotbar").addEventListener("click",e=>{
   const btn=e.target.closest("[data-tool]");
   if(btn)chooseTool(btn.dataset.tool);
@@ -567,7 +660,7 @@ function tickWorldInteraction(dt){
     const idx=townPeople.findIndex(p=>p.id===t.id);
     if(idx>=0){townNpcIndex=idx;openTownNpc();}
     moveTarget=null;
-  }else if(t.type==="farmWater"){farmWater();moveTarget=null;}
+  }else if(t.type==="farmWater"){farmWater();playGameSound("water");moveTarget=null;}
   else if(t.type==="farmPlant"){farmPlant();moveTarget=null;}
   else if(t.type==="farmHarvest"){farmHarvest();moveTarget=null;}
   else if(t.type==="farmTill"){farmTill(t.x,t.y);moveTarget=null;}
@@ -932,6 +1025,7 @@ function update(dt) {
   if(interactionTimer>0)interactionTimer=Math.max(0,interactionTimer-dt);
   if(playerActionTimer>0)playerActionTimer=Math.max(0,playerActionTimer-dt);
   tickWorldInteraction(dt);
+  audioEnvironment(dt);
   animTime += dt;
   const mw = templeMode ? TEMPLE.w : caveMode ? CAVE.w : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
   const mh = templeMode ? TEMPLE.h : caveMode ? CAVE.h : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h;

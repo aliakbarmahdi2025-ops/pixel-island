@@ -185,3 +185,8 @@ button:disabled{opacity:.38;filter:grayscale(.65)}
 
 /* Stage 34 — temple rune puzzles and hidden chambers. */
 .temple-rune-hint{padding:10px 12px;margin:10px 0;background:linear-gradient(135deg,#243a38,#1a2928);border:1px solid #78a99a;border-radius:8px;color:#d5eadb;font-size:12px;line-height:1.9;text-align:center}
+
+
+/* Stage 38 — compact sound toggle for the mobile HUD. */
+#soundBtn{background:linear-gradient(180deg,#3d554b,#24372f);border-color:#9cb88b}
+#soundBtn[aria-pressed="true"]{background:linear-gradient(180deg,#78623b,#493a27);border-color:#e4c887}
