@@ -84,7 +84,7 @@ function audioReady(){
   if(!gameAudio.ctx){
     const AC=window.AudioContext||window.webkitAudioContext;
     if(!AC)return false;
-    const ctx=new AC(),master=ctx.createGain();master.gain.value=.68;master.connect(ctx.destination);
+    const ctx=new AC(),master=ctx.createGain();master.gain.value=.92;master.connect(ctx.destination);
     const ambience=ctx.createGain();ambience.gain.value=0;ambience.connect(master);
     const low=ctx.createOscillator(),mid=ctx.createOscillator(),filter=ctx.createBiquadFilter(),toneGain=ctx.createGain();
     low.type="sine";low.frequency.value=72;mid.type="triangle";mid.frequency.value=108;
@@ -104,7 +104,7 @@ function audioReady(){
 function setGameSound(on){
   if(on&&!audioReady()){showToast("مرورگرت از صدای بازی پشتیبانی نمی‌کند");return;}
   gameAudio.enabled=!!on;
-  if(gameAudio.master)gameAudio.master.gain.setTargetAtTime(on ? 0.68 : 0,gameAudio.ctx.currentTime,.08);
+  if(gameAudio.master)gameAudio.master.gain.setTargetAtTime(on ? 0.92 : 0,gameAudio.ctx.currentTime,.08);
   $("soundBtn").textContent=on?"🔊 صدا روشن":"🔇 صدا خاموش";
   $("soundBtn").setAttribute("aria-pressed",String(!!on));
   try{localStorage.setItem("pixelIsland_sound_enabled",on?"1":"0");}catch(e){}
@@ -115,7 +115,7 @@ function soundTone(freq,duration,type="sine",volume=.12,slide=0){
   const ctx=gameAudio.ctx,osc=ctx.createOscillator(),gain=ctx.createGain();
   osc.type=type;osc.frequency.setValueAtTime(freq,ctx.currentTime);
   if(slide)osc.frequency.exponentialRampToValueAtTime(Math.max(35,freq+slide),ctx.currentTime+duration);
-  gain.gain.setValueAtTime(.0001,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(Math.max(.001,Math.min(.30,volume*1.6)),ctx.currentTime+.012);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+duration);
+  gain.gain.setValueAtTime(.0001,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(Math.max(.001,Math.min(.42,volume*2.2)),ctx.currentTime+.012);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+duration);
   osc.connect(gain);gain.connect(gameAudio.master);osc.start();osc.stop(ctx.currentTime+duration+.03);
 }
 function playGameSound(kind){
@@ -133,9 +133,9 @@ function audioEnvironment(dt){
   if(zone!==gameAudio.lastZone||night!==gameAudio.lastNight){
     gameAudio.lastZone=zone;gameAudio.lastNight=night;
     const ctx=gameAudio.ctx;
-    const level=cave ? 0.26 : night ? 0.12 : townMode ? 0.095 : homeInterior ? 0.06 : 0.16;
+    const level=cave ? 0.34 : night ? 0.17 : townMode ? 0.14 : homeInterior ? 0.09 : 0.25;
     gameAudio.ambience.gain.setTargetAtTime(level,ctx.currentTime,1.1);
-    gameAudio.noise.gain.setTargetAtTime(cave ? 0.06 : night ? 0.075 : 0.18,ctx.currentTime,1.2);
+    gameAudio.noise.gain.setTargetAtTime(cave ? 0.10 : night ? 0.11 : 0.24,ctx.currentTime,1.2);
   }
   if(playerMoving){
     gameAudio.stepTimer-=dt;
@@ -297,6 +297,7 @@ function updateUI() {
   if ($("stationPanel")) updateToolUI();
 }
 load();
+if(caveMode&&Math.hypot(player.x-800,player.y-1080)<8){player.x=800;player.y=650;}
 makeWorld();
 makeCave();
 function makeEnemies() {
@@ -315,15 +316,33 @@ function makeCave(){
  {id:"cm1",x:560,y:560,type:"marble",hp:5,max:5},{id:"cm2",x:980,y:860,type:"marble",hp:5,max:5},{id:"cm3",x:1450,y:300,type:"marble",hp:5,max:5},
  {id:"cm4",x:180,y:560,type:"marble",hp:5,max:5},{id:"cm5",x:880,y:170,type:"marble",hp:5,max:5},{id:"cm6",x:1180,y:180,type:"marble",hp:5,max:5},{id:"cm7",x:250,y:1040,type:"marble",hp:5,max:5},{id:"cm8",x:520,y:1080,type:"marble",hp:5,max:5},{id:"cm9",x:960,y:520,type:"marble",hp:5,max:5},{id:"cm10",x:1240,y:760,type:"marble",hp:5,max:5},{id:"cm11",x:1480,y:1080,type:"marble",hp:5,max:5},{id:"cm12",x:760,y:680,type:"marble",hp:5,max:5},{id:"cm13",x:1120,y:1040,type:"marble",hp:5,max:5},{id:"cm14",x:180,y:820,type:"marble",hp:5,max:5},{id:"cm15",x:1380,y:160,type:"marble",hp:5,max:5},{id:"cm16",x:1040,y:240,type:"marble",hp:5,max:5},{id:"cm17",x:400,y:180,type:"marble",hp:5,max:5},{id:"cm18",x:900,y:1120,type:"marble",hp:5,max:5}];
  caveChests=[{id:"cave-chest-0",x:590,y:230,opened:!!openedChests[0]},{id:"cave-chest-1",x:1370,y:420,opened:!!openedChests[1]},{id:"cave-chest-2",x:790,y:790,opened:!!openedChests[2]}];
- const slimeSpots=[[300,430],[920,330],[1450,570],[600,850],[1190,930]];
+ const slimeSpots=[[650,470],[960,470],[640,820],[980,820],[800,930]];
  caveEnemies=slimeSpots.map((p,i)=>({id:"cave-slime-"+i,kind:"slime",x:p[0],y:p[1],spawnX:p[0],spawnY:p[1],hp:3,max:3,alive:true,respawnTimer:0}));
- caveEnemies.push({id:"crystal-guardian",kind:"guardian",x:1120,y:570,spawnX:1120,spawnY:570,hp:5,max:5,alive:true,respawnTimer:0});
+ caveEnemies.push({id:"crystal-guardian",kind:"guardian",x:960,y:650,spawnX:960,spawnY:650,hp:5,max:5,alive:true,respawnTimer:0});
 }
 function activeNodes(){return caveMode?caveResources.filter(r=>!caveHarvested.has(r.id)):resources.filter(r=>!harvested.has(r.id));}
+function syncCameraToPlayer(){
+ const mw=caveMode?CAVE.w:WORLD.w,mh=caveMode?CAVE.h:WORLD.h;
+ camera.x=Math.max(0,Math.min(Math.max(0,mw-viewW),player.x-viewW/2));
+ camera.y=Math.max(0,Math.min(Math.max(0,mh-viewH),player.y-viewH/2));
+}
+function resetCaveMotion(){
+ move.x=0;move.y=0;moveTarget=null;playerMoving=false;playerActionTimer=0;playerActionType="";
+ if(typeof keys!=="undefined"&&keys&&typeof keys.clear==="function")keys.clear();
+}
 function toggleCave(){
  if(templeMode||townMode||homeInterior)return;
- if(!caveMode){caveReturn={x:player.x,y:player.y};caveMode=true;player.x=800;player.y=1080;moveTarget=null;showToast("وارد غار جنگلی شدی 🕯️");}
- else{caveMode=false;player.x=caveReturn.x;player.y=caveReturn.y;moveTarget=null;showToast("به جنگل برگشتی 🌲");}
+ if(!caveMode){
+  caveReturn={x:player.x,y:player.y};caveMode=true;player.x=800;player.y=650;
+  showToast("وارد غار جنگلی شدی 🕯️");
+ }else{
+  caveMode=false;player.x=caveReturn.x;player.y=caveReturn.y;
+  showToast("به جنگل برگشتی 🌲");
+ }
+ resetCaveMotion();
+ syncCameraToPlayer();
+ $("caveBtn").textContent=caveMode?"🚪 خروج از غار":"🕳️ ورود به غار";
+ $("caveBtn").hidden=false;
  saveQuietly();updateUI();
 }
 
@@ -1069,7 +1088,7 @@ function update(dt) {
       const incomingDamage=baseDamage*(armorLevel===0?1:armorLevel===1?0.7:0.4);
       player.health=Math.max(0,Math.round((player.health-incomingDamage)*10)/10);
       damageCooldown=1;updateUI();saveQuietly();
-      if(player.health<=0){if(templeMode)templeDefeatPlayer();else{player.health=player.maxHealth;player.x=caveMode?800:1200;player.y=caveMode?1080:900;showToast("انرژیت تمام شد؛ جانت بازیابی شد");updateUI();}}
+      if(player.health<=0){if(templeMode)templeDefeatPlayer();else{player.health=player.maxHealth;player.x=caveMode?800:1200;player.y=caveMode?650:900;showToast("انرژیت تمام شد؛ جانت بازیابی شد");updateUI();}}
       else showToast(caveMode?"نگهبان کریستالی بهت ضربه زد! 💎":"موجود بهت ضربه زد! ❤️");
     }
   }
