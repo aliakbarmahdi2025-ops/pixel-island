@@ -1472,6 +1472,50 @@ function drawCaveGround(){
  ctx.fillStyle="#17191b";ctx.fillRect(-camera.x,-camera.y,CAVE.w,38);ctx.fillRect(-camera.x,CAVE.h-38-camera.y,CAVE.w,38);ctx.fillRect(-camera.x,-camera.y,38,CAVE.h);ctx.fillRect(CAVE.w-38-camera.x,-camera.y,38,CAVE.h);
  ctx.fillStyle="#e0c58a";ctx.font="bold 15px Tahoma";ctx.fillText("غار جنگلی • تالار کریستال",CAVE.w/2-camera.x,75-camera.y);
 }
+function drawCaveDetails(){
+ const tile=96,sx=Math.floor(camera.x/tile),sy=Math.floor(camera.y/tile),ex=Math.ceil((camera.x+viewW)/tile),ey=Math.ceil((camera.y+viewH)/tile);
+ // Mineral seams, floor cracks and small stones are deterministic, so they never flicker.
+ for(let gy=sy;gy<=ey;gy++)for(let gx=sx;gx<=ex;gx++){
+  const h=terrainHash(gx+191,gy+73),x=gx*tile-camera.x,y=gy*tile-camera.y;
+  if(h>.18&&h<.27){
+   ctx.strokeStyle="rgba(116,139,142,.34)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+17,y+18);ctx.lineTo(x+29,y+29);ctx.lineTo(x+25,y+43);ctx.lineTo(x+42,y+58);ctx.stroke();
+   ctx.strokeStyle="rgba(17,25,30,.42)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+29,y+29);ctx.lineTo(x+39,y+23);ctx.stroke();
+  }
+  if(h>.48&&h<.55){
+   ctx.fillStyle="#252d32";ctx.fillRect(x+12,y+68,13,5);ctx.fillRect(x+56,y+23,8,4);
+   ctx.fillStyle="#687276";ctx.fillRect(x+14,y+66,7,2);ctx.fillRect(x+58,y+21,4,2);
+  }
+  if(h>.83){
+   ctx.fillStyle="rgba(17,28,33,.34)";ctx.beginPath();ctx.ellipse(x+48,y+52,25,8,.08,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#52646a";ctx.fillRect(x+34,y+43,19,8);ctx.fillRect(x+42,y+38,12,7);
+   ctx.fillStyle="#87999a";ctx.fillRect(x+39,y+42,7,2);
+  }
+  if(h<.075){
+   const cx=x+24,cy=y+25;
+   ctx.save();ctx.globalAlpha=.22;ctx.fillStyle="#54d8df";ctx.beginPath();ctx.arc(cx,cy,32,0,Math.PI*2);ctx.fill();ctx.restore();
+   ctx.fillStyle="#286b78";ctx.fillRect(cx-4,cy-12,8,19);ctx.fillRect(cx-10,cy-5,6,12);ctx.fillRect(cx+5,cy-7,6,10);
+   ctx.fillStyle="#a4f3e9";ctx.fillRect(cx-2,cy-10,3,12);ctx.fillRect(cx-8,cy-3,2,7);
+  }
+ }
+ // Jagged ceiling formations frame the room without covering its playable floor.
+ for(let i=0;i<Math.ceil((viewW+100)/118);i++){
+  const wx=Math.floor(camera.x/118)*118+i*118,screenX=wx-camera.x;
+  const h=terrainHash(Math.floor(wx/118)+31,9);
+  if(h>.24){
+   const len=15+Math.floor(h*30);
+   ctx.fillStyle="#252b30";ctx.beginPath();ctx.moveTo(screenX-10,38-camera.y);ctx.lineTo(screenX-5,38-camera.y);ctx.lineTo(screenX+2,38+len-camera.y);ctx.lineTo(screenX+8,38-camera.y);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#687176";ctx.fillRect(screenX-4,42-camera.y,2,Math.max(5,len-12));
+  }
+ }
+ // Gentle crystal pools add depth while keeping the cave readable on mobile screens.
+ const glows=[[330,390,105,"#3ab9c6"],[1130,720,125,"#56d9d0"],[1450,1030,95,"#5c9ec7"],[650,120,"#4b9da9"]];
+ for(const g of glows){
+  const x=g[0]-camera.x,y=g[1]-camera.y;
+  if(x<-g[2]||x>viewW+g[2]||y<-g[2]||y>viewH+g[2])continue;
+  const grad=ctx.createRadialGradient(x,y,4,x,y,g[2]);grad.addColorStop(0,g[3]+"30");grad.addColorStop(1,g[3]+"00");
+  ctx.fillStyle=grad;ctx.fillRect(x-g[2],y-g[2],g[2]*2,g[2]*2);
+ }
+}
 function drawCaveObjects(){for(const c of caveChests){let x=c.x-camera.x,y=c.y-camera.y;ctx.fillStyle=c.opened?"#59452d":"#a66a32";ctx.fillRect(x-17,y-12,34,24);ctx.fillStyle=c.opened?"#76634b":"#e5b75b";ctx.fillRect(x-17,y-12,34,7);}}
 function drawHouse(x,y,level,isSaman){
  const sx=x-camera.x,sy=y-camera.y;
@@ -1577,6 +1621,35 @@ function drawGround() {
    ctx.fillStyle="#4c8046";ctx.beginPath();ctx.ellipse(sx-8,sy-5,143,48,.22,0,Math.PI*2);ctx.fill();
    ctx.fillStyle="#78a85c";ctx.beginPath();ctx.ellipse(sx-30,sy-20,83,19,.22,0,Math.PI*2);ctx.fill();
    ctx.fillStyle="#a0c276";ctx.fillRect(sx-53,sy-25,13,3);ctx.fillRect(sx+19,sy-13,10,2);
+  }
+ }
+}
+function drawForestDetails(){
+ const tile=96,sx=Math.floor(camera.x/tile),sy=Math.floor(camera.y/tile),ex=Math.ceil((camera.x+viewW)/tile),ey=Math.ceil((camera.y+viewH)/tile);
+ // Small natural props are tied to world coordinates: the forest stays stable while the camera moves.
+ for(let gy=sy;gy<=ey;gy++)for(let gx=sx;gx<=ex;gx++){
+  const h=terrainHash(gx+517,gy+239),x=gx*tile-camera.x,y=gy*tile-camera.y;
+  if(h>.12&&h<.19){
+   ctx.fillStyle="rgba(19,39,25,.25)";ctx.beginPath();ctx.ellipse(x+49,y+66,23,7,-.2,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#315f3b";ctx.beginPath();ctx.moveTo(x+27,y+65);ctx.lineTo(x+34,y+43);ctx.lineTo(x+42,y+57);ctx.lineTo(x+49,y+36);ctx.lineTo(x+56,y+58);ctx.lineTo(x+67,y+46);ctx.lineTo(x+72,y+67);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#79a95e";ctx.fillRect(x+39,y+53,3,8);ctx.fillRect(x+52,y+48,3,10);ctx.fillRect(x+63,y+57,3,7);
+  }else if(h>.31&&h<.36){
+   ctx.fillStyle="rgba(27,37,24,.24)";ctx.beginPath();ctx.ellipse(x+48,y+70,28,6,-.15,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#563c2b";ctx.fillRect(x+25,y+58,47,9);ctx.fillStyle="#80583a";ctx.fillRect(x+29,y+56,39,5);
+   ctx.fillStyle="#a17a50";ctx.fillRect(x+35,y+57,5,3);ctx.fillRect(x+56,y+57,4,3);
+   ctx.fillStyle="#355d37";ctx.fillRect(x+28,y+52,9,5);ctx.fillRect(x+61,y+51,8,6);
+  }else if(h>.57&&h<.63){
+   ctx.fillStyle="#315f39";ctx.fillRect(x+47,y+55,2,11);ctx.fillRect(x+42,y+60,3,5);ctx.fillRect(x+52,y+60,3,5);
+   ctx.fillStyle=h>.6?"#e6c7d1":"#e8d58b";ctx.fillRect(x+44,y+51,4,4);ctx.fillRect(x+49,y+49,4,4);ctx.fillRect(x+48,y+55,3,3);
+   ctx.fillStyle="#fff0c1";ctx.fillRect(x+48,y+53,2,2);
+  }else if(h>.91){
+   ctx.fillStyle="rgba(23,34,21,.24)";ctx.beginPath();ctx.ellipse(x+52,y+69,13,4,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#ead9ad";ctx.fillRect(x+43,y+56,17,12);ctx.fillStyle="#b85f53";ctx.fillRect(x+42,y+53,19,6);
+   ctx.fillStyle="#f3d9a4";ctx.fillRect(x+49,y+55,4,3);ctx.fillStyle="#6c4935";ctx.fillRect(x+46,y+66,2,3);
+  }
+  if((gx*7+gy*13)%17===0){
+   ctx.fillStyle="rgba(37,74,42,.38)";ctx.fillRect(x+12,y+77,2,5);ctx.fillRect(x+18,y+73,2,9);ctx.fillRect(x+23,y+78,2,5);
+   ctx.fillStyle="#9bb86b";ctx.fillRect(x+11,y+75,3,2);ctx.fillRect(x+17,y+71,3,2);ctx.fillRect(x+22,y+76,3,2);
   }
  }
 }
@@ -1775,7 +1848,7 @@ function draw() {
   if (templeMode) { drawTempleGround(); for(const e of templeEnemies){if(e.alive)drawTempleEnemy(e);} drawPlayer(); return; }
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
   if(townMode){drawTown();drawTownPeople();drawPlayer();drawNightOverlay();return;}
-  if(caveMode){drawCaveGround();drawCaveObjects();}else {drawGround();drawAncientBridge();}
+  if(caveMode){drawCaveGround();drawCaveDetails();drawCaveObjects();}else {drawGround();drawForestDetails();drawAncientBridge();}
   if (!caveMode) { drawHouse(playerHome.x, playerHome.y, homeLevel, false); drawHouse(samanHome.x, samanHome.y, 1, true); drawFarmPlots(); drawStations(); }
   for (const r of activeNodes()) {
     if (r.x < camera.x - 60 || r.x > camera.x + viewW + 60 || r.y < camera.y - 60 || r.y > camera.y + viewH + 60) continue;
