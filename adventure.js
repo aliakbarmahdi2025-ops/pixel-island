@@ -104,7 +104,7 @@ function audioReady(){
 function setGameSound(on){
   if(on&&!audioReady()){showToast("مرورگرت از صدای بازی پشتیبانی نمی‌کند");return;}
   gameAudio.enabled=!!on;
-  if(gameAudio.master)gameAudio.master.gain.setTargetAtTime(on?.42:0,gameAudio.ctx.currentTime,.08);
+  if(gameAudio.master)gameAudio.master.gain.setTargetAtTime(on ? 0.42 : 0,gameAudio.ctx.currentTime,.08);
   $("soundBtn").textContent=on?"🔊 صدا روشن":"🔇 صدا خاموش";
   $("soundBtn").setAttribute("aria-pressed",String(!!on));
   try{localStorage.setItem("pixelIsland_sound_enabled",on?"1":"0");}catch(e){}
@@ -133,13 +133,13 @@ function audioEnvironment(dt){
   if(zone!==gameAudio.lastZone||night!==gameAudio.lastNight){
     gameAudio.lastZone=zone;gameAudio.lastNight=night;
     const ctx=gameAudio.ctx;
-    const level=cave?.20:night?.09:townMode?.07:homeInterior?.045:.12;
+    const level=cave ? 0.20 : night ? 0.09 : townMode ? 0.07 : homeInterior ? 0.045 : 0.12;
     gameAudio.ambience.gain.setTargetAtTime(level,ctx.currentTime,1.1);
-    gameAudio.noise.gain.setTargetAtTime(cave?.045:night?.055:.14,ctx.currentTime,1.2);
+    gameAudio.noise.gain.setTargetAtTime(cave ? 0.045 : night ? 0.055 : 0.14,ctx.currentTime,1.2);
   }
   if(playerMoving){
     gameAudio.stepTimer-=dt;
-    if(gameAudio.stepTimer<=0){playGameSound("step");gameAudio.stepTimer=caveMode?.48:.38;}
+    if(gameAudio.stepTimer<=0){playGameSound("step");gameAudio.stepTimer=caveMode ? 0.48 : 0.38;}
   }else gameAudio.stepTimer=0;
   if(zone==="forest"||zone==="town"){
     gameAudio.birdTimer-=dt;
