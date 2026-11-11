@@ -76,6 +76,10 @@ const TOOL_INFO = {
 let toastTimer = 0;
 let lastTime = 0;
 let animTime = 0, playerMoving = false, playerFacing = "down";
+let playerActionTimer = 0, playerActionDuration = 0.32, playerActionType = "";
+function triggerPlayerAction(type, duration = 0.32) {
+  playerActionType = type; playerActionDuration = duration; playerActionTimer = duration;
+}
 
 function resize() {
   dpr = Math.min(devicePixelRatio || 1, 2);
@@ -371,6 +375,7 @@ function drawTempleEnemy(e){
 
 function harvest(targetId=null) {
   if(templeMode){templeInteract();return;}
+  triggerPlayerAction("gather",0.36);
   if(caveMode){const chest=caveChests.find(c=>!c.opened&&(targetId?c.id===targetId:Math.hypot(player.x-c.x,player.y-c.y)<76));if(chest){if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;const leveled=addXP(25);bag.crystal=(bag.crystal||0)+1;progressNpcCrystal(1);updateUI();saveQuietly();showToast(leveled?"سطح جدید! یک امتیاز مهارت گرفتی ⭐":"صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
   const dropIndex=lootDrops.findIndex(d=>targetId?d.id===targetId:Math.hypot(player.x-d.x,player.y-d.y)<62);
   if(dropIndex>=0){const preview=lootDrops[dropIndex];if(preview.type!=="coin"&&!bagCanAdd(preview.qty)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}const drop=lootDrops.splice(dropIndex,1)[0];if(drop.type==="coin")player.coins+=drop.qty;else if(drop.type==="stone")bag.stone=(bag.stone||0)+drop.qty;else if(drop.type==="iron")bag.iron=(bag.iron||0)+drop.qty;else if(drop.type==="crystal"){bag.crystal=(bag.crystal||0)+drop.qty;progressNpcCrystal(drop.qty);}else if(drop.type==="potion")bag.potion=(bag.potion||0)+drop.qty;updateUI();saveQuietly();showToast(({coin:"🪙 سکه",stone:"🪨 سنگ",iron:"⛏️ آهن",crystal:"💎 کریستال",potion:"🧪 معجون"})[drop.type]+" ×"+drop.qty+" برداشتی!");return;}
@@ -406,6 +411,7 @@ function harvest(targetId=null) {
 }
 function attack(targetId=null) {
   if (attackCooldown > 0) return;
+  triggerPlayerAction("attack",0.34);
   attackCooldown = 0.32; attackFlash = 0.18;
   let target = null, best = 104;
   const targets = templeMode ? templeEnemies : caveMode ? caveEnemies : enemies;
@@ -898,7 +904,8 @@ function update(dt) {
     const targetX = night ? samanHome.x : 1690;
     const targetY = night ? samanHome.y + 72 : 650;
     const sx = targetX - forestNpc.x, sy = targetY - forestNpc.y, sd = Math.hypot(sx, sy);
-    if (sd > 8) { forestNpc.x += sx / sd * Math.min(sd, 42 * dt); forestNpc.y += sy / sd * Math.min(sd, 42 * dt); }
+    forestNpc.walking=sd>8;
+    if(forestNpc.walking){forestNpc.facing=Math.abs(sx)>Math.abs(sy)?(sx>0?"right":"left"):(sy>0?"down":"up");forestNpc.x += sx / sd * Math.min(sd, 42 * dt); forestNpc.y += sy / sd * Math.min(sd, 42 * dt);}
   }
   let dx = move.x, dy = move.y;
   if (keys.has("a") || keys.has("arrowleft")) dx -= 1;
@@ -923,6 +930,7 @@ function update(dt) {
     if(!townMode&&!caveMode&&!homeInterior&&crossedRiver&&!(bridgeStage>=3&&player.y>=1620&&player.y<=1800)) player.x=oldX<2700?2648:2752;
   }
   if(interactionTimer>0)interactionTimer=Math.max(0,interactionTimer-dt);
+  if(playerActionTimer>0)playerActionTimer=Math.max(0,playerActionTimer-dt);
   tickWorldInteraction(dt);
   animTime += dt;
   const mw = templeMode ? TEMPLE.w : caveMode ? CAVE.w : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
@@ -1323,9 +1331,9 @@ function makePixelTownSprite(id, frame) {
   px(28,78,3,2,"#666a6d");px(45,78,3,2,"#666a6d");
  }
  // Arms, hands, neck.
- px(17,56,7,18,topShade);px(56,56,7,18,topShade);
- px(18,58,5,12,top);px(57,58,5,12,top);
- px(18,72,6,7,skin);px(56,72,6,7,skin);
+ px(17,56+walk,7,18,topShade);px(56,56-walk,7,18,topShade);
+ px(18,58+walk,5,12,top);px(57,58-walk,5,12,top);
+ px(18,72+walk,6,7,skin);px(56,72-walk,6,7,skin);
  px(33,36,14,11,skinShade);px(34,36,12,9,skin);
  // Face, ears and light planes.
  px(25,21,30,25,skinShade);px(27,19,26,27,skin);
@@ -1728,7 +1736,7 @@ function drawForestNpc() {
  const x=forestNpc.x-camera.x,y=forestNpc.y-camera.y;
  const near=Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y)<145;
  if(x< -70||x>viewW+70||y< -90||y>viewH+70)return;
- drawPixelPerson(x,y+39,{hair:"#d8d4c9",hairHi:"#fff3d6",skin:"#c99475",skinLight:"#edc2a2",top:"#687653",topHi:"#aab78a",bottom:"#514a3b",boots:"#302d29",accent:"#d1b77e"},{step:Math.sin(animTime*2.2)*.5,bob:Math.sin(animTime*2.4)*.6,scale:.82,beard:true,beardColor:"#eee9dc",old:true});
+ drawPixelPerson(x,y+39,{hair:"#d8d4c9",hairHi:"#fff3d6",skin:"#c99475",skinLight:"#edc2a2",top:"#687653",topHi:"#aab78a",bottom:"#514a3b",boots:"#302d29",accent:"#d1b77e"},{step:forestNpc.walking?Math.sin(animTime*11)*2.1:Math.sin(animTime*2.2)*.35,armSwing:forestNpc.walking?Math.sin(animTime*11)*.34:Math.sin(animTime*1.7)*.025,bob:forestNpc.walking?Math.abs(Math.sin(animTime*11))*.8:Math.sin(animTime*2.4)*.6,facing:forestNpc.facing||"down",scale:.82,beard:true,beardColor:"#eee9dc",old:true});
  if(!npcQuest.claimed){ctx.fillStyle="#ffe58a";ctx.font="bold 17px Tahoma";ctx.textAlign="center";ctx.fillText("!",x,y-57);}
  ctx.fillStyle="#fff2c7";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#34432e";ctx.strokeText(forestNpc.name+" • "+forestNpc.role,x,y-47);ctx.fillText(forestNpc.name+" • "+forestNpc.role,x,y-47);ctx.textAlign="start";
 }
@@ -1744,8 +1752,11 @@ function drawPixelPerson(x,base,p,opts={}){
  // torso silhouette and sleeves
  ctx.fillStyle=p.top;ctx.beginPath();ctx.moveTo(x-8,base-46+bob);ctx.lineTo(x+8,base-46+bob);ctx.lineTo(x+12,base-21+bob);ctx.lineTo(x+8,base-17+bob);ctx.lineTo(x-8,base-17+bob);ctx.lineTo(x-12,base-21+bob);ctx.closePath();ctx.fill();
  ctx.fillStyle=p.topHi;ctx.fillRect(x-7,base-44+bob,14,3);ctx.fillRect(x-10,base-38+bob,3,13);ctx.fillRect(x+7,base-38+bob,3,13);
- ctx.fillStyle=p.top;ctx.fillRect(x-13,base-38+bob,4,14);ctx.fillRect(x+9,base-38+bob,4,14);
- ctx.fillStyle=p.skin;ctx.fillRect(x-14,base-25+bob,5,6);ctx.fillRect(x+9,base-25+bob,5,6);
+ const armSwing=opts.armSwing||0;
+ ctx.save();ctx.translate(x-10,base-37+bob);ctx.rotate(armSwing);
+ ctx.fillStyle=p.top;ctx.fillRect(-3,0,5,14);ctx.fillStyle=p.skin;ctx.fillRect(-3,12,5,7);ctx.restore();
+ ctx.save();ctx.translate(x+10,base-37+bob);ctx.rotate(-armSwing);
+ ctx.fillStyle=p.top;ctx.fillRect(-2,0,5,14);ctx.fillStyle=p.skin;ctx.fillRect(-2,12,5,7);ctx.restore();
  // seams, belt and small fabric highlights
  ctx.fillStyle=p.accent;ctx.fillRect(x-1,base-42+bob,2,12);ctx.fillRect(x-8,base-20+bob,16,2);
  ctx.fillStyle="rgba(20,27,25,.28)";ctx.fillRect(x-7,base-31+bob,2,8);ctx.fillRect(x+5,base-31+bob,2,8);
@@ -1778,7 +1789,11 @@ function drawPixelPerson(x,base,p,opts={}){
 function drawPlayer(){
  const x=player.x-camera.x,y=player.y-camera.y;
  const leg=playerMoving?Math.sin(animTime*13)*3.2:0;
- drawPixelPerson(x,y+36,{hair:"#50382a",hairHi:"#98704f",skin:"#d7a17e",skinLight:"#f0c5a2",top:"#294967",topHi:"#5e8caf",bottom:"#393c46",boots:"#252b34",accent:"#d8c49a"},{step:leg,bob:playerMoving?Math.abs(Math.sin(animTime*13))*1.2:Math.sin(animTime*2.4)*.35,facing:playerFacing,scale:.82});
+ const actionPhase=playerActionTimer>0?1-playerActionTimer/playerActionDuration:0;
+ const actionSwing=playerActionTimer>0?Math.sin(actionPhase*Math.PI):0;
+ const idleBreath=Math.sin(animTime*1.8)*.45;
+ const armSwing=playerActionTimer>0?actionSwing*(playerActionType==="attack"?1.12:.82):playerMoving?Math.sin(animTime*13)*.48:idleBreath*.08;
+ drawPixelPerson(x,y+36,{hair:"#50382a",hairHi:"#98704f",skin:"#d7a17e",skinLight:"#f0c5a2",top:"#294967",topHi:"#5e8caf",bottom:"#393c46",boots:"#252b34",accent:"#d8c49a"},{step:leg,armSwing,bob:playerMoving?Math.abs(Math.sin(animTime*13))*1.2:idleBreath,facing:playerFacing,scale:.82});
  // Visible armor is drawn over the base outfit and follows the player animation.
  const armor=player.armorLevel||0;
  if(armor>0){
