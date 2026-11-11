@@ -108,7 +108,7 @@ function setGameSound(on){
   $("soundBtn").textContent=on?"🔊 صدا روشن":"🔇 صدا خاموش";
   $("soundBtn").setAttribute("aria-pressed",String(!!on));
   try{localStorage.setItem("pixelIsland_sound_enabled",on?"1":"0");}catch(e){}
-  if(on)showToast("صدای طبیعت و موسیقی بازی فعال شد 🎵");
+  if(on){soundTone(660,.18,"sine",.12,180);showToast("صدای بازی فعاله؛ صدای شروع رو باید بشنوی 🎵");}
 }
 function soundTone(freq,duration,type="sine",volume=.12,slide=0){
   if(!gameAudio.enabled||!audioReady())return;
@@ -1033,7 +1033,7 @@ function update(dt) {
   player.y=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mh-((caveMode || homeInterior || townMode)?55:24),player.y));
   camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
-  $("caveBtn").hidden = townMode || homeInterior || (caveMode ? false : Math.hypot(player.x-2080,player.y-1450)>115);
+  $("caveBtn").hidden = caveMode ? false : (templeMode || townMode || homeInterior || Math.hypot(player.x-2080,player.y-1450)>115);
   const bridgeDistance=Math.hypot(player.x-2525,player.y-1710),gateDistance=Math.hypot(player.x-3000,player.y-1710);
   $("bridgeBtn").hidden=templeMode||townMode||caveMode||homeInterior||(bridgeStage>=3?gateDistance>125:bridgeDistance>145);
   $("bridgeBtn").textContent=bridgeStage>=3?"🏛️ دروازه معبد":"🌉 پل باستانی";
