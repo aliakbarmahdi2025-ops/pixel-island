@@ -199,5 +199,5 @@ button:disabled{opacity:.38;filter:grayscale(.65)}
 #soundBtn[aria-pressed="true"]{background:linear-gradient(180deg,#78623b,#493a27);border-color:#e4c887}
 
 /* Stage 40 — keep cave entry/exit above the mobile hotbar and other controls. */
-#caveBtn{position:fixed!important;z-index:8;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 88px)!important;transform:translateX(-50%);min-height:44px;padding:9px 16px;background:linear-gradient(180deg,#80633d,#59442d);border:2px solid #e2c58f;color:#fff4d9;pointer-events:auto;touch-action:manipulation;white-space:nowrap;box-shadow:0 4px 0 #211a13,0 6px 16px #0008}
+#caveBtn{position:fixed!important;z-index:24;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 88px)!important;transform:translateX(-50%);min-height:44px;padding:9px 16px;background:linear-gradient(180deg,#80633d,#59442d);border:2px solid #e2c58f;color:#fff4d9;pointer-events:auto;touch-action:manipulation;white-space:nowrap;box-shadow:0 4px 0 #211a13,0 6px 16px #0008}
 #caveBtn:active{transform:translateX(-50%) translateY(2px)}
