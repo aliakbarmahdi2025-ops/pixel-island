@@ -74,6 +74,52 @@ const TOOL_INFO = {
  sword:{icon:"⚔️",label:"شمشیر"}, seeds:{icon:"🌱",label:"بذر"}
 };
 let toastTimer = 0;
+/* Stage 42 — opt-in cave diagnostics. Enable with ?caveDebug=1; no gameplay/save changes. */
+const caveDebug = {
+  enabled: new URLSearchParams(location.search).get("caveDebug") === "1",
+  panel: null,
+  lastPointer: "هنوز لمسی ثبت نشده",
+  lastError: "خطایی ثبت نشده",
+  frames: 0
+};
+function initCaveDebug() {
+  if (!caveDebug.enabled) return;
+  const panel = document.createElement("pre");
+  panel.id = "caveDebugPanel";
+  panel.style.cssText = "position:fixed;z-index:99999;top:150px;left:6px;right:6px;max-height:34vh;overflow:hidden;white-space:pre-wrap;direction:ltr;text-align:left;padding:8px;margin:0;border:1px solid #f0d38b;border-radius:8px;background:rgba(8,14,13,.92);color:#e8f1df;font:11px/1.45 monospace;pointer-events:none;";
+  panel.textContent = "CAVE DEBUG: starting…";
+  document.body.appendChild(panel);
+  caveDebug.panel = panel;
+  document.addEventListener("pointerdown", e => {
+    const r = canvas.getBoundingClientRect();
+    const target = e.target === canvas ? "canvas" : (e.target?.id || e.target?.tagName || "unknown");
+    caveDebug.lastPointer = target + " @ " + Math.round(e.clientX) + "," + Math.round(e.clientY) +
+      " | canvas " + Math.round(r.width) + "x" + Math.round(r.height) +
+      " | inside=" + (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom);
+  }, true);
+  window.addEventListener("error", e => {
+    caveDebug.lastError = String(e.message || "window error") + " @ " + (e.filename || "") + ":" + (e.lineno || 0);
+  });
+  window.addEventListener("unhandledrejection", e => {
+    caveDebug.lastError = "Promise rejection: " + String(e.reason?.message || e.reason || "unknown");
+  });
+}
+function renderCaveDebug() {
+  if (!caveDebug.enabled || !caveDebug.panel) return;
+  caveDebug.frames++;
+  const alive = caveEnemies.filter(e => e.alive).length;
+  const target = moveTarget ? moveTarget.type + " (" + Math.round(moveTarget.x) + "," + Math.round(moveTarget.y) + ")" : "none";
+  caveDebug.panel.textContent =
+    "CAVE DEBUG  |  frames: " + caveDebug.frames + "\n" +
+    "mode: cave=" + caveMode + " temple=" + templeMode + " town=" + townMode + " home=" + homeInterior + "\n" +
+    "player: " + Math.round(player.x) + "," + Math.round(player.y) + " | moving=" + playerMoving + "\n" +
+    "camera: " + Math.round(camera.x) + "," + Math.round(camera.y) + " | viewport: " + Math.round(viewW) + "x" + Math.round(viewH) + "\n" +
+    "target: " + target + "\n" +
+    "cave enemies: " + caveEnemies.length + " | alive: " + alive + " | resources: " + caveResources.length + "\n" +
+    "last pointer: " + caveDebug.lastPointer + "\n" +
+    "last error: " + caveDebug.lastError;
+}
+initCaveDebug();
 let lastTime = 0;
 let animTime = 0, playerMoving = false, playerFacing = "down";
 let playerActionTimer = 0, playerActionDuration = 0.32, playerActionType = "";
