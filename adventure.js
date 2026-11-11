@@ -302,6 +302,7 @@ function templeInteract(runeIndex=null){
  if(runeIndex==="secret"){
   if(!templeRuneSolved[templeFloor]){showToast("اتاقک هنوز قفل است؛ اول سه نقش را درست فعال کن.");return;}
   if(templeSecrets[templeFloor]){showToast("این صندوق باستانی قبلاً گشوده شده است.");return;}
+  if(!bagCanAdd(templeFloor+2)){showToast("برای برداشتن گنج، کمی جای خالی در کوله‌پشتی باز کن 🎒");return;}
   templeSecrets[templeFloor]=true;const coins=30+templeFloor*15,crystals=1+templeFloor;player.coins+=coins;bag.crystal=(bag.crystal||0)+crystals;bag.templeMosaic=(bag.templeMosaic||0)+1;addXP(20+templeFloor*10);updateUI();saveQuietly();showToast("گنج پنهان طبقه "+templeFloor+"! +"+coins+" سکه، "+crystals+" کریستال و یک موزاییک ✨");return;
  }
  if(Number.isInteger(runeIndex)&&runeIndex>=0&&runeIndex<3){
