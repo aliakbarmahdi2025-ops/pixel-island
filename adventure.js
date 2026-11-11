@@ -1714,7 +1714,7 @@ function drawCaveDetails(){
   }
  }
  // Gentle crystal pools add depth while keeping the cave readable on mobile screens.
- const glows=[[330,390,105,"#3ab9c6"],[1130,720,125,"#56d9d0"],[1450,1030,95,"#5c9ec7"],[650,120,"#4b9da9"]];
+ const glows=[[330,390,105,"#3ab9c6"],[1130,720,125,"#56d9d0"],[1450,1030,95,"#5c9ec7"],[650,120,85,"#4b9da9"]];
  for(const g of glows){
   const x=g[0]-camera.x,y=g[1]-camera.y;
   if(x<-g[2]||x>viewW+g[2]||y<-g[2]||y>viewH+g[2])continue;
