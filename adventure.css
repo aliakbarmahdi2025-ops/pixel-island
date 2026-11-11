@@ -18,6 +18,13 @@ button:active{transform:translateY(2px)}
 .xp-label{display:flex;justify-content:space-between;gap:8px;font-size:10px;margin-bottom:5px;color:#e5f1ce}
 .xp-track{height:8px;background:#0b150f;border:1px solid #66805a;border-radius:8px;overflow:hidden}
 #xpFill{height:100%;width:0;background:linear-gradient(90deg,#8bc75c,#d8ed8d);transition:width .2s}
+.map-panel{width:min(94vw,620px);text-align:center}
+.map-location{margin:0 0 9px!important;padding:7px 10px;background:#17231f;border:1px solid #66785d;border-radius:7px;color:#e6d6ad!important;font-size:12px}
+.map-frame{padding:5px;background:#111916;border:1px solid #8e805e;border-radius:9px;box-shadow:inset 0 0 0 1px #ffffff0a}
+#mapCanvas{display:block;width:100%;height:auto;aspect-ratio:8/5;border-radius:5px;image-rendering:pixelated;touch-action:pan-y}
+.map-legend{margin:9px 0 5px!important;color:#e7d8b6!important;font-size:11px;line-height:1.8}
+.map-note{margin:4px 0 12px!important;color:#aeb9a6!important;font-size:10px}
+#closeMap{width:100%;min-height:42px}
 #toast{position:fixed;z-index:4;top:105px;left:50%;transform:translateX(-50%);background:#17251deF;border:1px solid #a5c77c;border-radius:20px;padding:9px 15px;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;font-size:13px}
 #toast.show{opacity:1}
 #controls{position:fixed;z-index:2;left:0;right:0;bottom:env(safe-area-inset-bottom,12px);height:150px;pointer-events:none}

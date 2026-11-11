@@ -722,9 +722,93 @@ $("closeUpgrades").addEventListener("click", () => { $("upgradePanel").hidden = 
 $("upgradeHealth").addEventListener("click", () => buyUpgrade("health"));
 $("upgradeSpeed").addEventListener("click", () => buyUpgrade("speed"));
 $("upgradeAttack").addEventListener("click", () => buyUpgrade("attack"));
+$("mapBtn").addEventListener("click", () => { $("mapPanel").hidden = false; drawWorldMap(); syncXpPanel(); });
+$("closeMap").addEventListener("click", () => { $("mapPanel").hidden = true; syncXpPanel(); });
+
+
+function getWorldMapState(){
+  if(templeMode){
+    const points=[
+      {x:145,y:750,label:"ورودی",color:"#d8c18c",kind:"exit"},
+      {x:1040,y:520,label:"مهر مرکزی",color:"#7bd6c9"},
+      {x:2020,y:750,label:"دروازه",color:"#d8c18c"},
+      {x:1780,y:1080,label:"گنج پنهان",color:"#e9c66f",kind:"treasure"},
+      ...templeEnemies.filter(e=>e.alive).map(e=>({x:e.x,y:e.y,label:e.kind==="templeBoss"?"باس":"نگهبان",color:e.kind==="templeBoss"?"#f06c63":"#dc9b79",kind:e.kind==="templeBoss"?"boss":"enemy"}))
+    ];
+    return {key:"temple",title:"معبد باستانی • طبقه "+templeFloor,w:TEMPLE.w,h:TEMPLE.h,points,legend:"🟡 تو • 🔴 دشمن‌ها • 🟨 گنج • 🚪 ورودی و دروازه"};
+  }
+  if(homeInterior){
+    return {key:"home",title:"داخل خانه",w:760,h:520,points:[],legend:"🟡 موقعیت تو داخل خانه"};
+  }
+  if(townMode){
+    const points=townPeople.map(p=>({x:p.x,y:p.y,label:p.name,color:p.id==="naderi"?"#e6c477":p.id==="rezaei"?"#8ed08d":"#9dc7d7",kind:"npc"}));
+    points.push({x:800,y:1110,label:"خروج جنگل",color:"#d8c18c",kind:"exit"});
+    return {key:"town",title:"شهر سبز",w:TOWN.w,h:TOWN.h,points,legend:"🟡 تو • 🔵 اهالی شهر • 🟨 فروشگاه‌ها و خروجی"};
+  }
+  if(caveMode){
+    const points=[
+      {x:800,y:1080,label:"خروج",color:"#d8c18c",kind:"exit"},
+      ...caveChests.map(ch=>({x:ch.x,y:ch.y,label:ch.opened?"صندوق باز":"صندوق",color:ch.opened?"#8f9b86":"#e6c477",kind:"treasure"})),
+      ...caveResources.filter(r=>r.type==="crystal"&&r.hp>0).map(r=>({x:r.x,y:r.y,label:"کریستال",color:"#78d9df",kind:"crystal"})),
+      ...caveEnemies.filter(e=>e.alive).map(e=>({x:e.x,y:e.y,label:"موجود",color:"#ee7770",kind:"enemy"}))
+    ];
+    return {key:"cave",title:"غار جنگلی",w:CAVE.w,h:CAVE.h,points,legend:"🟡 تو • 🔴 دشمن • 🟦 کریستال • 🟨 صندوق • 🚪 خروج"};
+  }
+  const points=[
+    {x:700,y:520,label:"خانه",color:"#e5c77f",kind:"home"},
+    {x:1900,y:450,label:"سامان",color:"#91c99b",kind:"npc"},
+    {x:2310,y:900,label:"شهر سبز",color:"#8fc5d4",kind:"town"},
+    {x:2080,y:1450,label:"غار",color:"#80cbd4",kind:"cave"},
+    {x:bridgeStage>=3?3000:2525,y:1710,label:bridgeStage>=3?"دروازه معبد":"پل باستانی",color:"#e2bd78",kind:"temple"}
+  ];
+  return {key:"forest",title:"جنگل بزرگ",w:WORLD.w,h:WORLD.h,points,riverX:2700,legend:"🟡 تو • 🏡 خانه • 🧙 سامان • 🏘️ شهر • 🕳️ غار • 🌉 پل و معبد"};
+}
+function drawWorldMap(){
+  const canvas=$("mapCanvas"),mapCtx=canvas.getContext("2d");
+  if(!mapCtx)return;
+  const w=canvas.width,h=canvas.height,state=getWorldMapState(),pad=24;
+  const scale=Math.min((w-pad*2)/state.w,(h-pad*2)/state.h);
+  const rw=state.w*scale,rh=state.h*scale,ox=(w-rw)/2,oy=(h-rh)/2;
+  const colors={forest:"#355b3d",cave:"#343a40",town:"#b8a276",temple:"#383536",home:"#765238"};
+  mapCtx.clearRect(0,0,w,h);
+  mapCtx.fillStyle="#111916";mapCtx.fillRect(0,0,w,h);
+  mapCtx.fillStyle=colors[state.key]||colors.forest;mapCtx.fillRect(ox,oy,rw,rh);
+  mapCtx.save();
+  mapCtx.beginPath();mapCtx.rect(ox,oy,rw,rh);mapCtx.clip();
+  mapCtx.strokeStyle="rgba(235,226,194,.13)";mapCtx.lineWidth=1;
+  for(let i=1;i<8;i++){const gx=ox+rw*i/8,gy=oy+rh*i/6;mapCtx.beginPath();mapCtx.moveTo(gx,oy);mapCtx.lineTo(gx,oy+rh);mapCtx.stroke();mapCtx.beginPath();mapCtx.moveTo(ox,gy);mapCtx.lineTo(ox+rw,gy);mapCtx.stroke();}
+  if(state.key==="forest"){
+    const rx=ox+state.riverX*scale;mapCtx.fillStyle="#245b68";mapCtx.fillRect(rx-3,oy,6,rh);
+    const bridgeY=oy+1710*scale;mapCtx.fillStyle="#b99a66";mapCtx.fillRect(rx-8,bridgeY-3,16,6);
+  }else if(state.key==="town"){
+    mapCtx.strokeStyle="rgba(244,226,184,.55)";mapCtx.lineWidth=Math.max(3,rw*.018);
+    mapCtx.beginPath();mapCtx.moveTo(ox+rw*.5,oy+rh);mapCtx.lineTo(ox+rw*.5,oy+rh*.55);mapCtx.lineTo(ox+rw*.82,oy+rh*.45);mapCtx.stroke();
+  }else if(state.key==="temple"){
+    mapCtx.strokeStyle="rgba(220,196,150,.35)";mapCtx.lineWidth=2;mapCtx.strokeRect(ox+rw*.08,oy+rh*.08,rw*.84,rh*.84);
+    mapCtx.fillStyle="rgba(119,164,153,.16)";mapCtx.fillRect(ox+rw*.35,oy+rh*.22,rw*.3,rh*.56);
+  }else if(state.key==="home"){
+    mapCtx.strokeStyle="#d7b37a";mapCtx.lineWidth=5;mapCtx.strokeRect(ox+8,oy+8,rw-16,rh-16);
+    mapCtx.fillStyle="#9a7048";mapCtx.fillRect(ox+rw*.28,oy+rh*.25,rw*.44,rh*.48);
+  }
+  const pos=p=>({x:ox+p.x*scale,y:oy+p.y*scale});
+  for(const p of state.points){
+    const q=pos(p),r=p.kind==="boss"?6:p.kind==="treasure"?5:4;
+    mapCtx.fillStyle=p.color;mapCtx.beginPath();
+    if(p.kind==="treasure"){mapCtx.rect(q.x-r,q.y-r,r*2,r*2);}else mapCtx.arc(q.x,q.y,r,0,Math.PI*2);
+    mapCtx.fill();
+    if(p.label){mapCtx.font="bold 11px Tahoma";mapCtx.textAlign="center";mapCtx.textBaseline="bottom";mapCtx.direction="rtl";mapCtx.fillStyle="#fff4d7";mapCtx.shadowColor="#111";mapCtx.shadowBlur=3;mapCtx.fillText(p.label,q.x,q.y-r-3);mapCtx.shadowBlur=0;}
+  }
+  const playerPos=pos(player);
+  mapCtx.fillStyle="#ffe56b";mapCtx.beginPath();mapCtx.arc(playerPos.x,playerPos.y,6,0,Math.PI*2);mapCtx.fill();
+  mapCtx.strokeStyle="#fff7c8";mapCtx.lineWidth=2;mapCtx.beginPath();mapCtx.arc(playerPos.x,playerPos.y,10,0,Math.PI*2);mapCtx.stroke();
+  mapCtx.restore();
+  mapCtx.strokeStyle="#b7a273";mapCtx.lineWidth=2;mapCtx.strokeRect(ox,oy,rw,rh);
+  $("mapLocation").textContent=state.title+" • "+Math.round(player.x)+", "+Math.round(player.y);
+  $("mapLegend").textContent=state.legend;
+}
 
 function syncXpPanel() {
-  const panelIds = ["inventory", "upgradePanel", "craftPanel", "stationPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel", "bridgePanel", "templePanel"];
+  const panelIds = ["inventory", "upgradePanel", "craftPanel", "stationPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel", "bridgePanel", "templePanel", "mapPanel"];
   const hud = $("hud");
   const xp = $("xpPanel");
   xp.hidden = panelIds.some(id => !$(id).hidden);
@@ -1985,6 +2069,7 @@ function loop(time) {
   lastTime = time;
   update(dt);
   draw();
+  if (!$("mapPanel").hidden) drawWorldMap();
   requestAnimationFrame(loop);
 }
 updateUI();

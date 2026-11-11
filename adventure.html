@@ -20,6 +20,7 @@
       <button id="upgradeBtn">⭐ مهارت‌ها</button>
       <button id="craftBtn">🛠️ ساخت</button>
       <button id="questBtn">📜 مأموریت</button>
+      <button id="mapBtn" type="button">🗺️ نقشه</button>
       <button id="saveBtn">💾 ذخیره</button>
       <button id="soundBtn" type="button" aria-label="فعال‌سازی صدای بازی" aria-pressed="false">🔈 فعال‌سازی صدا</button>
     </div>
@@ -27,6 +28,14 @@
   <section id="xpPanel" aria-label="تجربه بازیکن">
     <div class="xp-label"><span>⭐ تجربه</span><b id="xpText">0 / 50 XP</b></div>
     <div class="xp-track"><div id="xpFill"></div></div>
+  </section>
+  <section id="mapPanel" class="panel map-panel" hidden>
+    <h2>🗺️ نقشه جهان</h2>
+    <p id="mapLocation" class="map-location">جنگل</p>
+    <div class="map-frame"><canvas id="mapCanvas" width="640" height="400" aria-label="نقشه منطقه فعلی"></canvas></div>
+    <p id="mapLegend" class="map-legend">🟡 موقعیت تو</p>
+    <p class="map-note">نقشه با حرکت تو به‌روزرسانی می‌شود. نشانگر زرد، موقعیت فعلی توست.</p>
+    <button id="closeMap" type="button">بستن نقشه</button>
   </section>
   <section id="inventory" class="panel inventory-panel" hidden>
     <div class="inventory-heading"><div><h2>🎒 کوله‌پشتی</h2><p>یک وسیله را انتخاب کن و بعد وسیله‌ی دوم را بزن تا جایشان عوض شود.</p></div><span class="inventory-mark">BAG</span></div>
