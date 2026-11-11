@@ -147,7 +147,7 @@ button:active{transform:translateY(2px)}
 #toolHotbar button span{font-size:21px;line-height:1.2}
 #toolHotbar button small{font-size:9px;color:#f0e6c9}
 #toolHotbar button.selected{background:#786037;border-color:#f0d38b;box-shadow:inset 0 0 0 1px #fff2,0 0 0 2px #d9b86a}
-#caveBtn,#homeBtn,#townBtn,#townExitBtn,#bridgeBtn,#workshopBtn{bottom:82px!important}
+#homeBtn,#townBtn,#townExitBtn,#bridgeBtn,#workshopBtn{bottom:82px!important}
 #help{display:none!important}
 @media(min-width:800px){#toolHotbar{bottom:18px;gap:6px}#toolHotbar button{flex-basis:54px;width:54px;height:62px}#caveBtn,#homeBtn,#townBtn,#townExitBtn,#bridgeBtn,#workshopBtn{bottom:96px!important}}
 
@@ -197,3 +197,7 @@ button:disabled{opacity:.38;filter:grayscale(.65)}
 /* Stage 38 — compact sound toggle for the mobile HUD. */
 #soundBtn{background:linear-gradient(180deg,#3d554b,#24372f);border-color:#9cb88b}
 #soundBtn[aria-pressed="true"]{background:linear-gradient(180deg,#78623b,#493a27);border-color:#e4c887}
+
+/* Stage 40 — keep cave entry/exit above the mobile hotbar and other controls. */
+#caveBtn{position:fixed!important;z-index:8;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 88px)!important;transform:translateX(-50%);min-height:44px;padding:9px 16px;background:linear-gradient(180deg,#80633d,#59442d);border:2px solid #e2c58f;color:#fff4d9;pointer-events:auto;touch-action:manipulation;white-space:nowrap;box-shadow:0 4px 0 #211a13,0 6px 16px #0008}
+#caveBtn:active{transform:translateX(-50%) translateY(2px)}
