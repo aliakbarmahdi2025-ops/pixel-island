@@ -84,11 +84,11 @@ function audioReady(){
   if(!gameAudio.ctx){
     const AC=window.AudioContext||window.webkitAudioContext;
     if(!AC)return false;
-    const ctx=new AC(),master=ctx.createGain();master.gain.value=.42;master.connect(ctx.destination);
+    const ctx=new AC(),master=ctx.createGain();master.gain.value=.68;master.connect(ctx.destination);
     const ambience=ctx.createGain();ambience.gain.value=0;ambience.connect(master);
     const low=ctx.createOscillator(),mid=ctx.createOscillator(),filter=ctx.createBiquadFilter(),toneGain=ctx.createGain();
     low.type="sine";low.frequency.value=72;mid.type="triangle";mid.frequency.value=108;
-    filter.type="lowpass";filter.frequency.value=420;toneGain.gain.value=.11;
+    filter.type="lowpass";filter.frequency.value=420;toneGain.gain.value=.14;
     low.connect(toneGain);mid.connect(toneGain);toneGain.connect(filter);filter.connect(ambience);
     low.start();mid.start();
     const buffer=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate),data=buffer.getChannelData(0);
@@ -104,18 +104,18 @@ function audioReady(){
 function setGameSound(on){
   if(on&&!audioReady()){showToast("مرورگرت از صدای بازی پشتیبانی نمی‌کند");return;}
   gameAudio.enabled=!!on;
-  if(gameAudio.master)gameAudio.master.gain.setTargetAtTime(on ? 0.42 : 0,gameAudio.ctx.currentTime,.08);
+  if(gameAudio.master)gameAudio.master.gain.setTargetAtTime(on ? 0.68 : 0,gameAudio.ctx.currentTime,.08);
   $("soundBtn").textContent=on?"🔊 صدا روشن":"🔇 صدا خاموش";
   $("soundBtn").setAttribute("aria-pressed",String(!!on));
   try{localStorage.setItem("pixelIsland_sound_enabled",on?"1":"0");}catch(e){}
-  if(on)showToast("صدای طبیعت و موسیقی بازی فعال شد 🎵");
+  if(on){soundTone(660,.18,"sine",.18,180);showToast("صدای بازی فعال شد 🎵");}
 }
 function soundTone(freq,duration,type="sine",volume=.12,slide=0){
   if(!gameAudio.enabled||!audioReady())return;
   const ctx=gameAudio.ctx,osc=ctx.createOscillator(),gain=ctx.createGain();
   osc.type=type;osc.frequency.setValueAtTime(freq,ctx.currentTime);
   if(slide)osc.frequency.exponentialRampToValueAtTime(Math.max(35,freq+slide),ctx.currentTime+duration);
-  gain.gain.setValueAtTime(.0001,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(Math.max(.001,volume),ctx.currentTime+.012);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+duration);
+  gain.gain.setValueAtTime(.0001,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(Math.max(.001,Math.min(.30,volume*1.6)),ctx.currentTime+.012);gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+duration);
   osc.connect(gain);gain.connect(gameAudio.master);osc.start();osc.stop(ctx.currentTime+duration+.03);
 }
 function playGameSound(kind){
@@ -133,9 +133,9 @@ function audioEnvironment(dt){
   if(zone!==gameAudio.lastZone||night!==gameAudio.lastNight){
     gameAudio.lastZone=zone;gameAudio.lastNight=night;
     const ctx=gameAudio.ctx;
-    const level=cave ? 0.20 : night ? 0.09 : townMode ? 0.07 : homeInterior ? 0.045 : 0.12;
+    const level=cave ? 0.26 : night ? 0.12 : townMode ? 0.095 : homeInterior ? 0.06 : 0.16;
     gameAudio.ambience.gain.setTargetAtTime(level,ctx.currentTime,1.1);
-    gameAudio.noise.gain.setTargetAtTime(cave ? 0.045 : night ? 0.055 : 0.14,ctx.currentTime,1.2);
+    gameAudio.noise.gain.setTargetAtTime(cave ? 0.06 : night ? 0.075 : 0.18,ctx.currentTime,1.2);
   }
   if(playerMoving){
     gameAudio.stepTimer-=dt;
@@ -321,9 +321,10 @@ function makeCave(){
 }
 function activeNodes(){return caveMode?caveResources.filter(r=>!caveHarvested.has(r.id)):resources.filter(r=>!harvested.has(r.id));}
 function toggleCave(){
- if(!caveMode){caveReturn={x:player.x,y:player.y};caveMode=true;player.x=800;player.y=1080;showToast("وارد غار جنگلی شدی 🕯️");}
- else{caveMode=false;player.x=caveReturn.x;player.y=caveReturn.y;showToast("به جنگل برگشتی 🌲");}
- saveQuietly();
+ if(templeMode||townMode||homeInterior)return;
+ if(!caveMode){caveReturn={x:player.x,y:player.y};caveMode=true;player.x=800;player.y=1080;moveTarget=null;showToast("وارد غار جنگلی شدی 🕯️");}
+ else{caveMode=false;player.x=caveReturn.x;player.y=caveReturn.y;moveTarget=null;showToast("به جنگل برگشتی 🌲");}
+ saveQuietly();updateUI();
 }
 
 
@@ -1117,7 +1118,7 @@ function update(dt) {
   player.y=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mh-((caveMode || homeInterior || townMode)?55:24),player.y));
   camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
-  $("caveBtn").hidden = townMode || homeInterior || (caveMode ? false : Math.hypot(player.x-2080,player.y-1450)>115);
+  $("caveBtn").hidden = templeMode || townMode || homeInterior || (!caveMode && Math.hypot(player.x-2080,player.y-1450)>115);
   const bridgeDistance=Math.hypot(player.x-2525,player.y-1710),gateDistance=Math.hypot(player.x-3000,player.y-1710);
   $("bridgeBtn").hidden=templeMode||townMode||caveMode||homeInterior||(bridgeStage>=3?gateDistance>125:bridgeDistance>145);
   $("bridgeBtn").textContent=bridgeStage>=3?"🏛️ دروازه معبد":"🌉 پل باستانی";
