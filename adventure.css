@@ -223,3 +223,12 @@ button:disabled{opacity:.38;filter:grayscale(.65)}
 .backup-actions button{min-height:48px;}
 .backup-warning{padding:9px 11px;border:1px solid #9a7654;border-radius:8px;background:#34291f;color:#f0d4a5!important;}
 #closeBackup{width:100%;min-height:42px;}
+
+
+/* Stage 47 — daily missions inside the quest journal. */
+.daily-missions-title{margin:18px 0 5px;padding-top:14px;border-top:1px solid #68745d;color:#e7cd91;font-size:15px;text-align:right}
+.daily-mission-day{margin:0 0 10px!important;color:#b9c6ad!important;font-size:11px!important}
+.daily-mission-list{display:grid;gap:9px;margin:10px 0 14px}
+.daily-mission-card{background:linear-gradient(145deg,#293e32,#1c2b25);border-color:#8a956c}
+.daily-mission-card button{min-height:40px;font-size:11px}
+.daily-mission-card button:disabled{opacity:.48}
