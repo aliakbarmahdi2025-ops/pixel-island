@@ -334,7 +334,7 @@ function resetCaveMotion(){
 function toggleCave(){
  if(templeMode||townMode||homeInterior)return;
  if(!caveMode){
-  caveReturn={x:player.x,y:player.y};caveMode=true;player.x=800;player.y=650;
+  caveReturn={x:player.x,y:player.y};caveMode=true;player.x=800;player.y=1015;
   showToast("وارد غار جنگلی شدی 🕯️");
  }else{
   caveMode=false;player.x=caveReturn.x;player.y=caveReturn.y;
@@ -343,7 +343,7 @@ function toggleCave(){
  resetCaveMotion();
  syncCameraToPlayer();
  $("caveBtn").textContent=caveMode?"🚪 خروج از غار":"🕳️ ورود به غار";
- $("caveBtn").hidden=false;
+ $("caveBtn").hidden=true;
  saveQuietly();updateUI();
 }
 
@@ -1145,12 +1145,10 @@ function update(dt) {
   player.y=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mh-((caveMode || homeInterior || townMode)?55:24),player.y));
   camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
-  $("caveBtn").hidden = templeMode || townMode || homeInterior || (!caveMode && Math.hypot(player.x-2080,player.y-1450)>115);
+  $("caveBtn").hidden=true;$("homeBtn").hidden=true;$("townBtn").hidden=true;$("townExitBtn").hidden=true;$("workshopBtn").hidden=true;
   const bridgeDistance=Math.hypot(player.x-2525,player.y-1710),gateDistance=Math.hypot(player.x-3000,player.y-1710);
   $("bridgeBtn").hidden=templeMode||townMode||caveMode||homeInterior||(bridgeStage>=3?gateDistance>125:bridgeDistance>145);
   $("bridgeBtn").textContent=bridgeStage>=3?"🏛️ دروازه معبد":"🌉 پل باستانی";
-  $("townBtn").hidden=templeMode||townMode||caveMode||homeInterior||Math.hypot(player.x-2310,player.y-900)>115;
-  $("townExitBtn").hidden=!townMode || Math.hypot(player.x-800,player.y-1110)>105;
   $("townClock").hidden=templeMode||homeInterior||caveMode;
   {const hh=Math.floor(worldClock/60),mm=Math.floor(worldClock%60),night=hh>=20||hh<6;$("townClock").textContent=(night?"🌙 ":"☀️ ")+String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0")+" • روز "+worldDay;}
   $("farmBtn").hidden=true;
@@ -1370,8 +1368,8 @@ function updateNaderiUI(){
  const costs=[{coins:40,plank:8},{coins:100,plank:18,cloth:8}],cost=costs[backpackTier],btn=$("backpackUpgrade");
  btn.hidden=backpackTier>=2;
  btn.disabled=!cost||player.coins<cost.coins||bag.plank<cost.plank||(cost.cloth&&bag.cloth<cost.cloth);
- btn.textContent=backpackTier===0?"🎒 ارتقای کوله • ۴۰ سکه + ۸ تخته":backpackTier===1?"🎒 ارتقای کوله • ۱۰۰ سکه + ۱۸ تخته + ۸ پارچه":"🎒 کوله‌پشتی در بالاترین سطح است";
- $("naderiStatus").textContent="ظرفیت: "+bagUsed()+" / "+backpackCaps[backpackTier]+" • سکه: "+player.coins+(cost?"\nهزینه ارتقای بعدی: "+cost.coins+" سکه، "+cost.plank+" تخته"+(cost.cloth?" و "+cost.cloth+" پارچه":""):"\nکوله‌پشتی به آخرین سطح رسیده است.");
+ btn.textContent=backpackTier===0?"🎒 ارتقا به ۴۵ خانه • ۴۰ سکه + ۸ تخته":backpackTier===1?"🎒 ارتقا به ۶۰ خانه • ۱۰۰ سکه + ۱۸ تخته + ۸ پارچه":"🎒 کوله‌پشتی در بالاترین سطح است";
+ $("naderiStatus").textContent="ظرفیت: "+bagUsed()+" / "+backpackCaps[backpackTier]+" • سکه: "+player.coins+(cost?"\nارتقای بعدی: "+backpackCaps[backpackTier+1]+" خانه • "+cost.coins+" سکه، "+cost.plank+" تخته"+(cost.cloth?" و "+cost.cloth+" پارچه":""):"\nکوله‌پشتی به آخرین سطح رسیده است.");
 }
 function openNaderiShop(){const p=townPeople[townNpcIndex];if(!p||p.id!=="naderi")return;openTownShop();updateNaderiUI();}
 function drawFarmPlots(){
