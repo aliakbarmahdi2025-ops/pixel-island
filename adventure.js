@@ -298,7 +298,7 @@ function updateUI() {
   if ($("stationPanel")) updateToolUI();
 }
 load();
-if(caveMode&&Math.hypot(player.x-800,player.y-1080)<8){player.x=800;player.y=650;}
+if(caveMode&&Math.hypot(player.x-800,player.y-1080)<8){player.x=800;player.y=1015;}
 makeWorld();
 makeCave();
 function makeEnemies() {
@@ -1116,7 +1116,7 @@ function update(dt) {
       const incomingDamage=baseDamage*(armorLevel===0?1:armorLevel===1?0.7:0.4);
       player.health=Math.max(0,Math.round((player.health-incomingDamage)*10)/10);
       damageCooldown=1;updateUI();saveQuietly();
-      if(player.health<=0){if(templeMode)templeDefeatPlayer();else{player.health=player.maxHealth;player.x=caveMode?800:1200;player.y=caveMode?650:900;showToast("انرژیت تمام شد؛ جانت بازیابی شد");updateUI();}}
+      if(player.health<=0){if(templeMode)templeDefeatPlayer();else{player.health=player.maxHealth;player.x=caveMode?800:1200;player.y=caveMode?1015:900;showToast("انرژیت تمام شد؛ جانت بازیابی شد");updateUI();}}
       else showToast(caveMode?"نگهبان کریستالی بهت ضربه زد! 💎":"موجود بهت ضربه زد! ❤️");
     }
   }
