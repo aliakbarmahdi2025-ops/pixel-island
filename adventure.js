@@ -611,7 +611,7 @@ function canvasWorldTap(e){
     if(Math.abs(e.clientX-viewW/2)<66&&Math.abs(e.clientY-doorY)<52)handleHomeButton();
     return;
   }
-  if(townMode&&Math.hypot(wx-800,wy-1030)<108){transitionTown(false);return;}
+  if(townMode&&Math.hypot(wx-800,wy-1110)<90){transitionTown(false);return;}
   if(caveMode&&Math.hypot(wx-800,wy-1080)<78){toggleCave();return;}
   if(!templeMode&&!townMode&&!caveMode&&!homeInterior){
     if(Math.hypot(wx-2080,wy-1450)<88){toggleCave();return;}
@@ -790,7 +790,7 @@ function getWorldMapState(){
   }
   if(townMode){
     const points=townPeople.map(p=>({x:p.x,y:p.y,label:p.name,color:p.id==="naderi"?"#e6c477":p.id==="rezaei"?"#8ed08d":"#9dc7d7",kind:"npc"}));
-    points.push({x:800,y:1030,label:"خروج جنگل",color:"#d8c18c",kind:"exit"});
+    points.push({x:800,y:1110,label:"خروج جنگل",color:"#d8c18c",kind:"exit"});
     return {key:"town",title:"شهر سبز",w:TOWN.w,h:TOWN.h,points,legend:"🟡 تو • 🔵 اهالی شهر • 🟨 فروشگاه‌ها و خروجی"};
   }
   if(caveMode){
