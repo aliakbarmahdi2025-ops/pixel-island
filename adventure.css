@@ -232,3 +232,12 @@ button:disabled{opacity:.38;filter:grayscale(.65)}
 .daily-mission-card{background:linear-gradient(145deg,#293e32,#1c2b25);border-color:#8a956c}
 .daily-mission-card button{min-height:40px;font-size:11px}
 .daily-mission-card button:disabled{opacity:.48}
+
+
+/* Stage 48 — compact livestock panel and pen. */
+.livestock-panel{width:min(93vw,520px)}
+.livestock-panel .quest-card{margin:10px 0;padding:12px;gap:8px}
+.livestock-panel .quest-card p{margin:0;font-size:12px;line-height:1.8;color:#e4e0d1}
+.livestock-panel button{min-height:42px}
+#openLivestock{width:100%;margin-top:9px;background:linear-gradient(180deg,#496b46,#2b4732);border-color:#b8d49a}
+#sellAnimalProducts{width:100%;margin:10px 0;background:linear-gradient(180deg,#79623c,#493a27);border-color:#e4c887}
