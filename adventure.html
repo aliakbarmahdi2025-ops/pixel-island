@@ -38,7 +38,7 @@
     <button id="closeMap" type="button">بستن نقشه</button>
   </section>
   <section id="inventory" class="panel inventory-panel" hidden>
-    <div class="inventory-heading"><div><h2>🎒 کوله‌پشتی</h2><p>یک وسیله را انتخاب کن و بعد وسیله‌ی دوم را بزن تا جایشان عوض شود.</p></div><span class="inventory-mark">BAG</span></div>
+    <div class="inventory-heading"><div><h2>🎒 کوله‌پشتی</h2><p>وسایل را انتخاب و جابه‌جا کن؛ برای حذف هر آیتم از دکمه‌ی سطل زباله استفاده کن.</p></div><span class="inventory-mark">BAG</span></div>
     <p id="inventorySummary" class="inventory-summary"></p>
     <div id="inventoryGrid" class="inventory-grid" aria-label="همه وسایل کوله‌پشتی"></div>
     <div class="inventory-actions"><button id="usePotion">🧪 نوشیدن معجون</button></div>
@@ -119,14 +119,7 @@
   <section id="farmPanel" class="panel" hidden><h2>🌱 مزرعه آزاد من</h2><p id="farmSeason" class="station-note"></p><p id="farmSeeds">بذرهای تو: ۰</p><div id="farmPlotsGrid" class="farm-plots"></div><p id="farmPlotStatus">برای ساخت مزرعه، کنار زمین دلخواهت بایست.</p><label for="farmCrop">انتخاب بذر</label><select id="farmCrop"><option value="wheat">🌾 گندم</option><option value="carrot">🥕 هویج</option><option value="potato">🥔 سیب‌زمینی</option><option value="cauliflower">🥦 گل‌کلم</option><option value="strawberry">🍓 توت‌فرنگی</option><option value="tomato">🍅 گوجه‌فرنگی</option><option value="corn">🌽 ذرت</option><option value="melon">🍈 خربزه</option><option value="pepper">🫑 فلفل</option><option value="pumpkin">🎃 کدوحلوایی</option><option value="grape">🍇 انگور</option><option value="eggplant">🍆 بادمجان</option><option value="snowturnip">❄️ شلغم برفی</option></select><p id="farmCropInfo" class="station-note"></p><div class="upgrade-list"><button id="farmTill">🪴 شخم زدن اینجا</button><button id="farmPlant">🌱 کاشت بذر</button><button id="farmWater">💧 آبیاری امروز</button><button id="farmHarvest">🧺 برداشت محصول</button></div><button id="farmClose">بستن</button></section>
   <section id="townNpcPanel" class="panel" hidden><h2 id="townNpcTitle">اهالی شهر سبز</h2><p id="townNpcDialogue"></p><p id="townNpcHeart"></p><div class="npc-actions"><button id="townNpcTalk">گفتگوی بعدی</button><button id="townNpcShop" hidden>🛍️ دیدن اجناس مغازه</button><button id="townNpcClose">خداحافظ</button></div></section><section id="townShopPanel" class="panel" hidden><h2>🛒 فروشگاه آقای نادری</h2><p>بذر تازه و لوازم مزرعه؛ کوله‌پشتی‌ات رو هم می‌تونیم ارتقا بدیم!</p><p id="naderiStatus" class="station-note"></p><div class="upgrade-list"><button id="backpackUpgrade">🎒 ارتقای کوله‌پشتی</button></div><div id="seedShopList" class="seed-shop-list"></div><div class="upgrade-list"><button id="buyBread" hidden>نان</button><button id="buyApple" hidden>سیب</button><button id="eatBread" hidden>خوردن نان</button><button id="eatApple" hidden>خوردن سیب</button><button id="buySeeds">🌱 خرید بذر انتخاب‌شده</button><button id="sellCrops">🌾 فروش محصولات برداشت‌شده</button></div><p id="townShopHours">ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰</p><p id="townShopStock"></p><button id="townShopClose">بستن مغازه</button></section><div id="townClock" hidden>☀️ ۰۹:۰۰</div><div id="townFade"></div><div id="toast" role="status"></div>
   <div id="controls">
-    <div id="toolHotbar" aria-label="نوار ابزار">
-      <button type="button" data-tool="axe" aria-label="تبر"><span>🪓</span><small>تبر</small></button>
-      <button type="button" data-tool="pickaxe" aria-label="کلنگ"><span>⛏️</span><small>کلنگ</small></button>
-      <button type="button" data-tool="shovel" aria-label="بیل"><span>🪏</span><small>بیل</small></button>
-      <button type="button" data-tool="watering" aria-label="آب‌پاش"><span>💧</span><small>آب‌پاش</small></button>
-      <button type="button" data-tool="sword" aria-label="شمشیر"><span>⚔️</span><small>شمشیر</small></button>
-      <button type="button" data-tool="seeds" aria-label="بذر"><span>🌱</span><small>بذر</small></button>
-    </div>
+    <div id="toolHotbar" aria-label="نوار ابزار و آیتم‌های کوله"></div>
     <button id="homeBtn" hidden>🏡 خانه</button><button id="farmBtn" hidden>🌱 مزرعه</button><button id="workshopBtn" hidden>🏗️ کارگاه</button>
     <button id="npcBtn" hidden>💬 صحبت</button><button id="townBtn" hidden>🏘️ ورود به شهر</button><button id="townNpcBtn" hidden>💬 صحبت با اهالی</button><button id="townExitBtn" hidden>🌲 بازگشت به جنگل</button><button id="bridgeBtn" hidden>🌉 پل باستانی</button>
   </div>
