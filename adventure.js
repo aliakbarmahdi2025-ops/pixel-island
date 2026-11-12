@@ -1149,6 +1149,7 @@ function updateStationUI(){
   const ready=!!stations[r.station]&&Object.entries(r.cost).every(([k,v])=>(bag[k]||0)>=v);
   b.disabled=!ready;b.textContent=(stations[r.station]?"":"🔒 ")+"ساخت "+r.label+" — نیاز: "+Object.entries(r.cost).map(([k,v])=>v+" "+(materialNames[k]||k)).join(" + ");
  }
+ const rod=$("make_fishingRod");if(rod){const ready=stations.workbench&&bag.wood>=5&&bag.fiber>=3&&bag.rope>=1;rod.disabled=fishingRodOwned||!ready;rod.textContent=fishingRodOwned?"🎣 چوب ماهیگیری ساخته شده":"🎣 چوب ماهیگیری — نیاز: ۵ چوب + ۳ الیاف + ۱ طناب";}
 }
 function toolLevelName(type){return ["چوبی","آهنی","کریستالی"][Math.max(0,Math.min(2,toolLevels[type]||0))];}
 function toolUpgradeCost(type){
