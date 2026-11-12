@@ -1237,7 +1237,12 @@ function renderInventory(){
  inventoryOrder=[...inventoryOrder.filter(id=>ids.includes(id)),...ids.filter(id=>!inventoryOrder.includes(id))];
  const byId=new Map(items.map(v=>[v.id,v]));
  const ordered=inventoryOrder.map(id=>byId.get(id)).filter(Boolean);
- grid.innerHTML=ordered.map(item=>'<div class="inventory-item '+(inventorySelected===item.id?"selected":"")+'" data-item="'+item.id+'" draggable="true" role="button" tabindex="0"><span class="inventory-item-icon">'+item.icon+'</span><span class="inventory-item-name">'+item.name+'</span><small>'+item.kind+'</small><b class="inventory-item-count">'+item.count+'</b><span class="inventory-item-detail">'+item.detail+'</span>'+(item.equip?'<button type="button" class="inventory-equip" data-equip="'+item.equip+'">انتخاب</button>':(item.id.startsWith("bag:")||item.id.startsWith("seed:")?'<button type="button" class="inventory-discard" data-discard="'+item.id+'" aria-label="حذف '+item.name+'">🗑 حذف</button>':'')+'</div>').join("");
+ grid.innerHTML=ordered.map(item=>{
+  let action="";
+  if(item.equip)action='<button type="button" class="inventory-equip" data-equip="'+item.equip+'">انتخاب</button>';
+  else if(item.id.startsWith("bag:")||item.id.startsWith("seed:"))action='<button type="button" class="inventory-discard" data-discard="'+item.id+'" aria-label="حذف '+item.name+'">🗑 حذف</button>';
+  return '<div class="inventory-item '+(inventorySelected===item.id?"selected":"") + '" data-item="'+item.id+'" draggable="true" role="button" tabindex="0"><span class="inventory-item-icon">'+item.icon+'</span><span class="inventory-item-name">'+item.name+'</span><small>'+item.kind+'</small><b class="inventory-item-count">'+item.count+'</b><span class="inventory-item-detail">'+item.detail+'</span>'+action+'</div>';
+ }).join("");
  $("inventorySummary").textContent="ظرفیت کوله: "+bagUsed()+" / "+backpackCaps[backpackTier]+" • "+items.length+" نوع وسیله";
 }
 function renderHotbar(){
