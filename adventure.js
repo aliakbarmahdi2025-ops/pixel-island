@@ -1664,25 +1664,254 @@ function enterPlayerHome() {
   showToast("به خانه خودت خوش اومدی 🏡");
   saveQuietly(); syncXpPanel();
 }
-function drawCaveGround(){
- const t=WORLD.tile,sx=Math.floor(camera.x/t),sy=Math.floor(camera.y/t),ex=Math.ceil((camera.x+viewW)/t),ey=Math.ceil((camera.y+viewH)/t);
- for(let y=sy;y<=ey;y++)for(let x=sx;x<=ex;x++){
-  const h=terrainHash(x+81,y+37),px=x*t-camera.x,py=y*t-camera.y;
+/* ===== Stage 1 — cached ground layer (performance foundation) =====
+   The grass / cave floor, forest mounds, small props, cave ceiling formations and crystal glow pools are all
+   deterministic (terrainHash of world coordinates), so they are painted ONCE into small offscreen "chunks"
+   and then blitted every frame. The artwork code below is the same code that used to run per tile per frame.
+   Nothing here reads or writes saved data, gameplay state or rand(). */
+const GROUND_CHUNK_TILES = 6;                       // 6 tiles * 48px = 288px = exactly 3 detail cells of 96px
+const groundCaches = { forest: new Map(), cave: new Map() };
+let groundCacheDpr = 0;
+function releaseGroundCaches(){
+  for(const m of Object.values(groundCaches)){
+    for(const c of m.values()){c.width=c.height=0;}
+    m.clear();
+  }
+}
+function getGroundChunk(kind, cx, cy, paintChunk){
+  const cache = groundCaches[kind], key = cx + "," + cy;
+  let c = cache.get(key);
+  if(c){cache.delete(key);cache.set(key,c);return c;}   // re-insert = mark as recently used
+  const size = GROUND_CHUNK_TILES * WORLD.tile;
+  c = document.createElement("canvas");
+  c.width = Math.ceil(size * dpr); c.height = Math.ceil(size * dpr);
+  const g = c.getContext("2d");
+  g.scale(dpr, dpr);
+  g.save(); g.beginPath(); g.rect(0, 0, size, size); g.clip();
+  paintChunk(g, cx, cy, size);
+  g.restore();
+  cache.set(key, c);
+  return c;
+}
+function drawGroundChunks(kind, paintChunk){
+  if(groundCacheDpr !== dpr){releaseGroundCaches();groundCacheDpr = dpr;}
+  for(const k of Object.keys(groundCaches)){if(k!==kind&&groundCaches[k].size){for(const c of groundCaches[k].values()){c.width=c.height=0;}groundCaches[k].clear();}}
+  const size = GROUND_CHUNK_TILES * WORLD.tile, cache = groundCaches[kind];
+  const cx0=Math.floor(camera.x/size), cx1=Math.floor((camera.x+viewW-.01)/size);
+  const cy0=Math.floor(camera.y/size), cy1=Math.floor((camera.y+viewH-.01)/size);
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  for(let cy=cy0;cy<=cy1;cy++)for(let cx=cx0;cx<=cx1;cx++){
+    const c = getGroundChunk(kind, cx, cy, paintChunk);
+    // Snap to whole device pixels so chunk seams never show and the ground does not shimmer while scrolling.
+    ctx.drawImage(c, Math.round((cx*size-camera.x)*dpr)/dpr, Math.round((cy*size-camera.y)*dpr)/dpr, c.width/dpr, c.height/dpr);
+  }
+  ctx.restore();
+  // Warm up at most ONE chunk per frame in a one-chunk ring around the view, so scrolling never has to build several at once.
+  let built = false;
+  for(let cy=cy0-1;cy<=cy1+1&&!built;cy++)for(let cx=cx0-1;cx<=cx1+1&&!built;cx++){
+    if(cx<0||cy<0||cx*size>=(kind==="cave"?CAVE.w:WORLD.w)||cy*size>=(kind==="cave"?CAVE.h:WORLD.h))continue;
+    if(!cache.has(cx+","+cy)){getGroundChunk(kind, cx, cy, paintChunk);built = true;}
+  }
+  const maxChunks = (cx1-cx0+3)*(cy1-cy0+3)+2;
+  while(cache.size>maxChunks){const oldest=cache.keys().next().value;const o=cache.get(oldest);o.width=o.height=0;cache.delete(oldest);}
+}
+
+// ----- forest -----
+function paintForestTile(ctx,x,y,px,py,t){
+  const h=terrainHash(x,y);
+  // Stage 2: the base colour, ridge hills, paver squares and per-tile discs were replaced by paintForestField()/ponds below.
+  // Tiny ground grain keeps the grass from reading as a flat repeating grid.
+  for(let k=0;k<5;k++){
+   const gx=px+4+((x*13+y*7+k*17)%39),gy=py+5+((x*5+y*19+k*11)%37);
+   ctx.fillStyle=k%2?"rgba(27,61,35,.22)":"rgba(190,205,119,.18)";
+   ctx.fillRect(gx,gy,k%3===0?4:2,1);
+  }
+  // Tufts, clover and little wildflowers are seeded by tile coordinates.
+  if(h>.27&&h<.47){
+   ctx.fillStyle="#315f38";ctx.fillRect(px+9,py+23,2,8);ctx.fillRect(px+14,py+19,2,12);ctx.fillRect(px+19,py+24,2,7);
+   ctx.fillStyle="#83aa59";ctx.fillRect(px+8,py+21,3,2);ctx.fillRect(px+14,py+17,3,2);ctx.fillRect(px+19,py+22,3,2);
+  }
+  if((x*7+y*11)%23===0){
+   const fx=px+34,fy=py+10;
+   ctx.fillStyle="#3d7041";ctx.fillRect(fx+1,fy+3,2,8);
+   ctx.fillStyle=(x+y)%2?"#e8d68b":"#df9ba0";ctx.fillRect(fx-2,fy,3,3);ctx.fillRect(fx+2,fy-1,3,3);ctx.fillRect(fx,fy-3,3,3);
+   ctx.fillStyle="#fff0c2";ctx.fillRect(fx,fy,2,2);
+  }
+  if((x*3-y*5)%31===0){ctx.fillStyle="#b9a57c";ctx.fillRect(px+7,py+39,5,3);ctx.fillStyle="#e1d0a9";ctx.fillRect(px+8,py+39,2,1);}
+  if((x*11+y*3)%47===0){ctx.fillStyle="#6e4937";ctx.fillRect(px+28,py+34,8,3);ctx.fillStyle="#a17a4c";ctx.fillRect(px+30,py+32,5,2);}
+}
+function paintForestMounds(ctx,ox,oy,w,h){
+ // Broad, soft-edged forest mounds create depth without blocking movement.
+ for(let i=0;i<7;i++){
+  const wx=360+i*390,wy=300+(i%3)*610,sx=wx-ox,sy=wy-oy;
+  if(sx>-260&&sx<w+260&&sy>-160&&sy<h+160){
+   ctx.fillStyle="#294f34";ctx.beginPath();ctx.ellipse(sx,sy+8,154,58,.22,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#4c8046";ctx.beginPath();ctx.ellipse(sx-8,sy-5,143,48,.22,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#78a85c";ctx.beginPath();ctx.ellipse(sx-30,sy-20,83,19,.22,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#a0c276";ctx.fillRect(sx-53,sy-25,13,3);ctx.fillRect(sx+19,sy-13,10,2);
+  }
+ }
+}
+function paintForestDetailCell(ctx,gx,gy,x,y){
+  const h=terrainHash(gx+517,gy+239);
+  if(h>.12&&h<.19){
+   ctx.fillStyle="rgba(19,39,25,.25)";ctx.beginPath();ctx.ellipse(x+49,y+66,23,7,-.2,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#315f3b";ctx.beginPath();ctx.moveTo(x+27,y+65);ctx.lineTo(x+34,y+43);ctx.lineTo(x+42,y+57);ctx.lineTo(x+49,y+36);ctx.lineTo(x+56,y+58);ctx.lineTo(x+67,y+46);ctx.lineTo(x+72,y+67);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#79a95e";ctx.fillRect(x+39,y+53,3,8);ctx.fillRect(x+52,y+48,3,10);ctx.fillRect(x+63,y+57,3,7);
+  }else if(h>.31&&h<.36){
+   ctx.fillStyle="rgba(27,37,24,.24)";ctx.beginPath();ctx.ellipse(x+48,y+70,28,6,-.15,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#563c2b";ctx.fillRect(x+25,y+58,47,9);ctx.fillStyle="#80583a";ctx.fillRect(x+29,y+56,39,5);
+   ctx.fillStyle="#a17a50";ctx.fillRect(x+35,y+57,5,3);ctx.fillRect(x+56,y+57,4,3);
+   ctx.fillStyle="#355d37";ctx.fillRect(x+28,y+52,9,5);ctx.fillRect(x+61,y+51,8,6);
+  }else if(h>.57&&h<.63){
+   ctx.fillStyle="#315f39";ctx.fillRect(x+47,y+55,2,11);ctx.fillRect(x+42,y+60,3,5);ctx.fillRect(x+52,y+60,3,5);
+   ctx.fillStyle=h>.6?"#e6c7d1":"#e8d58b";ctx.fillRect(x+44,y+51,4,4);ctx.fillRect(x+49,y+49,4,4);ctx.fillRect(x+48,y+55,3,3);
+   ctx.fillStyle="#fff0c1";ctx.fillRect(x+48,y+53,2,2);
+  }else if(h>.91){
+   ctx.fillStyle="rgba(23,34,21,.24)";ctx.beginPath();ctx.ellipse(x+52,y+69,13,4,0,0,Math.PI*2);ctx.fill();
+   ctx.fillStyle="#ead9ad";ctx.fillRect(x+43,y+56,17,12);ctx.fillStyle="#b85f53";ctx.fillRect(x+42,y+53,19,6);
+   ctx.fillStyle="#f3d9a4";ctx.fillRect(x+49,y+55,4,3);ctx.fillStyle="#6c4935";ctx.fillRect(x+46,y+66,2,3);
+  }
+  if((gx*7+gy*13)%17===0){
+   ctx.fillStyle="rgba(37,74,42,.38)";ctx.fillRect(x+12,y+77,2,5);ctx.fillRect(x+18,y+73,2,9);ctx.fillRect(x+23,y+78,2,5);
+   ctx.fillStyle="#9bb86b";ctx.fillRect(x+11,y+75,3,2);ctx.fillRect(x+17,y+71,3,2);ctx.fillRect(x+22,y+76,3,2);
+  }
+}
+/* ===== Stage 2 — forest ground: continuous pixel-art terrain, dirt patches and real ponds =====
+   Decoration only: nothing here is read by gameplay, saving or rand(). All values come from terrainHash(world coords). */
+const FIELD_PX = 3;   // one "art pixel" of the terrain = 3 css px, so soft colour zones stay crisp and chunky
+const BAYER4 = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v=>(v+.5)/16);
+function hexRGB(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+const GRASS_RGB = ["#386637","#426f3e","#4b7d43","#568a4a","#629656"].map(hexRGB);
+const DIRT_RGB  = ["#7a6845","#8a7650","#9a8659"].map(hexRGB);
+const WATER_RGB = ["#1f5163","#2a6b7c","#4a98a4","#a4cdb8","#33572f"].map(hexRGB);   // deep, mid, shallow, shore, wet-bank
+function vnoise(x,y){
+  const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy,u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);
+  const a=terrainHash(ix,iy),b=terrainHash(ix+1,iy),c=terrainHash(ix,iy+1),d=terrainHash(ix+1,iy+1);
+  return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;
+}
+// One pond per chunk at most, always fully inside its chunk. Never near houses, the river, the cave entrance, the town sign,
+// the temple gate, the big mounds, or any tree / rock / bush that makeWorld() already placed.
+const FOREST_NO_POND = [[700,520,240],[1900,450,240],[1320,1010,120],[1200,900,130],[2310,900,150],[2080,1450,130],[3000,1710,200]];
+const forestPondCache = new Map();
+function forestPondForChunk(cx,cy){
+  const key=cx+","+cy;
+  if(forestPondCache.has(key))return forestPondCache.get(key);
+  let pond=null;
+  const size=GROUND_CHUNK_TILES*WORLD.tile;
+  if(terrainHash(cx+701,cy+903)>.5){
+    const rx=42+terrainHash(cx+11,cy+3)*34, ry=rx*(.55+terrainHash(cx+5,cy+17)*.3);
+    const ext=Math.max(rx,ry)*1.38+4;
+    if(ext*2<size){
+      const px=cx*size+ext+terrainHash(cx+41,cy+59)*(size-2*ext), py=cy*size+ext+terrainHash(cx+67,cy+23)*(size-2*ext);
+      let ok = px>120&&py>120&&px<WORLD.w-120&&py<WORLD.h-120&&Math.abs(px-2700)>rx*1.4+210;
+      for(const z of FOREST_NO_POND){if(Math.hypot(px-z[0],py-z[1])<z[2]+rx)ok=false;}
+      for(let i=0;i<7&&ok;i++){const wx=360+i*390,wy=300+(i%3)*610;if(((px-wx)/(154+rx))**2+((py-wy)/(58+ry+10))**2<1)ok=false;}
+      for(const r of resources){if(!ok)break;if(((r.x-px)/(rx*1.4+22))**2+((r.y-py)/(ry*1.4+22))**2<1)ok=false;}
+      if(ok)pond={x:Math.round(px),y:Math.round(py),rx,ry,seed:cx*31+cy*17};
+    }
+  }
+  forestPondCache.set(key,pond);
+  return pond;
+}
+let fieldCanvas=null,fieldCtx=null,fieldImg=null,fieldN=0;
+function paintForestField(g,ox,oy,size,pond){
+  const n=size/FIELD_PX;
+  if(fieldN!==n){fieldCanvas=document.createElement("canvas");fieldCanvas.width=fieldCanvas.height=n;fieldCtx=fieldCanvas.getContext("2d");fieldImg=fieldCtx.createImageData(n,n);fieldN=n;}
+  const d=fieldImg.data;
+  for(let ay=0;ay<n;ay++)for(let ax=0;ax<n;ax++){
+    const wx=ox+ax*FIELD_PX+1.5,wy=oy+ay*FIELD_PX+1.5,b=BAYER4[(ay&3)*4+(ax&3)];
+    // grass: two noise scales -> five greens, ordered-dithered so zones blend like hand-placed pixel art
+    const gv=(.6*vnoise(wx/220+11,wy/220+7)+.4*vnoise(wx/64+3,wy/64+29)-.5)*2.3+.5;
+    let gi=Math.floor(gv*5+(b-.5)*.9);gi=gi<0?0:gi>4?4:gi;
+    let c=GRASS_RGB[gi];
+    // organic dirt patches
+    if(vnoise(wx/140+53,wy/140+97)+(b-.5)*.09>.7){
+      let di=Math.floor(vnoise(wx/22+5,wy/22+9)*3+(b-.5)*.8);di=di<0?0:di>2?2:di;c=DIRT_RGB[di];
+    }
+    // pond: wobbly outline, depth bands, light shore, dark wet bank
+    if(pond){
+      const dx=(wx-pond.x)/pond.rx,dy=(wy-pond.y)/pond.ry;
+      let dd=Math.sqrt(dx*dx+dy*dy);
+      if(dd<1.45){
+        dd*=1+.4*(vnoise(wx/20+pond.seed,wy/20+pond.seed*.7)-.5);
+        const q=dd+(b-.5)*.07;
+        if(q<.5)c=WATER_RGB[0];else if(q<.78)c=WATER_RGB[1];else if(q<.94)c=WATER_RGB[2];else if(q<1.02)c=WATER_RGB[3];else if(q<1.14)c=WATER_RGB[4];
+      }
+    }
+    const o=(ay*n+ax)*4;d[o]=c[0];d[o+1]=c[1];d[o+2]=c[2];d[o+3]=255;
+  }
+  fieldCtx.putImageData(fieldImg,0,0);
+  g.save();g.imageSmoothingEnabled=false;g.drawImage(fieldCanvas,0,0,size,size);g.restore();
+}
+function paintPondDecor(ctx,pond,ox,oy){
+  const x=pond.x-ox,y=pond.y-oy,s=pond.seed;
+  for(let k=0;k<3;k++){   // lily pads
+    const a=terrainHash(s+k*7,91)*6.283,r=.15+terrainHash(s+k*13,47)*.3;
+    const lx=Math.round(x+Math.cos(a)*pond.rx*r),ly=Math.round(y+Math.sin(a)*pond.ry*r);
+    ctx.fillStyle="rgba(8,28,30,.35)";ctx.fillRect(lx-5,ly+3,12,3);
+    ctx.fillStyle="#3f8a4b";ctx.fillRect(lx-5,ly-2,11,5);ctx.fillRect(lx-3,ly-3,7,7);
+    ctx.fillStyle="#66b45f";ctx.fillRect(lx-3,ly-2,4,2);
+    ctx.fillStyle="#2a6b7c";ctx.fillRect(lx+2,ly,3,1);
+    if(k===0){ctx.fillStyle="#f2b6c8";ctx.fillRect(lx+1,ly-5,4,3);ctx.fillStyle="#fff0c8";ctx.fillRect(lx+2,ly-4,2,1);}
+  }
+  for(let k=0;k<7;k++){   // reeds and cattails on the bank
+    const a=terrainHash(s+k*5,19)*6.283,bx=Math.round(x+Math.cos(a)*pond.rx*1.1),by=Math.round(y+Math.sin(a)*pond.ry*1.1);
+    ctx.fillStyle="rgba(15,35,20,.3)";ctx.fillRect(bx-3,by+1,9,2);
+    ctx.fillStyle="#2f5d33";ctx.fillRect(bx,by-10,2,11);ctx.fillRect(bx-3,by-7,2,8);ctx.fillRect(bx+3,by-8,2,9);
+    ctx.fillStyle="#8fb860";ctx.fillRect(bx-3,by-8,1,2);ctx.fillRect(bx+3,by-9,1,2);
+    if(k%2===0){ctx.fillStyle="#7a5238";ctx.fillRect(bx,by-14,3,5);ctx.fillStyle="#a77b55";ctx.fillRect(bx,by-14,1,5);}
+  }
+  for(let k=0;k<4;k++){   // shore stones
+    const a=terrainHash(s+k*9,63)*6.283,sx=Math.round(x+Math.cos(a)*pond.rx*1.16),sy=Math.round(y+Math.sin(a)*pond.ry*1.16);
+    ctx.fillStyle="rgba(10,25,20,.3)";ctx.fillRect(sx-5,sy+2,12,3);
+    ctx.fillStyle="#5d6862";ctx.fillRect(sx-4,sy-3,9,6);ctx.fillStyle="#8c978c";ctx.fillRect(sx-3,sy-3,5,2);
+  }
+}
+function paintForestChunk(g,cx,cy,size){
+  const t=WORLD.tile,C=GROUND_CHUNK_TILES,x0=cx*C,y0=cy*C,ox=cx*size,oy=cy*size;
+  const pond=forestPondForChunk(cx,cy);
+  const near=(wx,wy,pad)=>pond&&((wx-pond.x)/(pond.rx*1.45+pad))**2+((wy-pond.y)/(pond.ry*1.45+pad))**2<1;
+  paintForestField(g,ox,oy,size,pond);
+  // small props never overflow their own tile now, so no neighbour ring is needed; skip anything that would sit in the water
+  for(let y=y0;y<y0+C;y++)for(let x=x0;x<x0+C;x++){if(near(x*t+24,y*t+24,20))continue;paintForestTile(g,x,y,(x-x0)*t,(y-y0)*t,t);}
+  paintForestMounds(g,ox,oy,size,size);
+  if(pond)paintPondDecor(g,pond,ox,oy);
+  const cells=size/96;
+  for(let j=0;j<cells;j++)for(let i=0;i<cells;i++){if(near(ox+i*96+48,oy+j*96+48,40))continue;paintForestDetailCell(g,ox/96+i,oy/96+j,i*96,j*96);}
+}
+// Per-frame water life (only for ponds on screen): drifting ripple ring + a few glints. A handful of tiny draws.
+function drawForestWaterFx(){
+  const size=GROUND_CHUNK_TILES*WORLD.tile;
+  const cx0=Math.floor(camera.x/size),cx1=Math.floor((camera.x+viewW)/size),cy0=Math.floor(camera.y/size),cy1=Math.floor((camera.y+viewH)/size);
+  for(let cy=cy0;cy<=cy1;cy++)for(let cx=cx0;cx<=cx1;cx++){
+    if(cx<0||cy<0)continue;
+    const p=forestPondForChunk(cx,cy);if(!p)continue;
+    const x=p.x-camera.x,y=p.y-camera.y;
+    if(x<-120||x>viewW+120||y<-100||y>viewH+100)continue;
+    const rp=(animTime*.35+p.seed*.13)%1;
+    ctx.strokeStyle="rgba(190,230,230,"+(.3*(1-rp))+")";ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.ellipse(x-p.rx*.12,y-p.ry*.05,p.rx*(.16+.5*rp),p.ry*(.16+.5*rp),0,0,Math.PI*2);ctx.stroke();
+    for(let k=0;k<5;k++){
+      const a=Math.sin(animTime*1.1+k*1.9+p.seed);if(a<.35)continue;
+      const ang=k*2.4+p.seed,r=.15+.5*terrainHash(p.seed+k,5);
+      const gx=Math.round(x+Math.cos(ang)*p.rx*r),gy=Math.round(y+Math.sin(ang)*p.ry*r);
+      ctx.fillStyle="rgba(235,252,248,"+(.2+.55*a)+")";ctx.fillRect(gx,gy,k%2?6:4,1);ctx.fillRect(gx+1,gy-1,2,3);
+    }
+  }
+}
+function drawGround(){drawGroundChunks("forest",paintForestChunk);}
+
+// ----- cave -----
+function paintCaveTile(ctx,x,y,px,py,t){
+  const h=terrainHash(x+81,y+37);
   ctx.fillStyle=h<.22?"#292d32":h<.72?"#353a40":"#41464a";ctx.fillRect(px,py,t+1,t+1);
   if(h>.76){ctx.fillStyle="#555b60";ctx.fillRect(px+5,py+7,31,24);ctx.fillStyle="#70777b";ctx.fillRect(px+10,py+7,18,7);ctx.fillStyle="#24282d";ctx.fillRect(px+5,py+27,31,5);}
   if(h<.08){ctx.fillStyle="#245568";ctx.beginPath();ctx.ellipse(px+24,py+25,21,13,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#6bb5c0";ctx.fillRect(px+12,py+21,15,3);}
   if(h>.48&&h<.53){ctx.fillStyle="#6d8b85";ctx.fillRect(px+19,py+13,4,20);ctx.fillRect(px+14,py+25,14,4);}
- }
- // layered rock shelves and shadowed ledges
- for(let i=0;i<8;i++){const x=170+i*185,y=180+(i%3)*290,sx=x-camera.x,sy=y-camera.y;if(sx>-180&&sx<viewW+180&&sy>-100&&sy<viewH+100){ctx.fillStyle="#20252b";ctx.beginPath();ctx.ellipse(sx,sy,105,35,.12,0,Math.PI*2);ctx.fill();ctx.fillStyle="#555d63";ctx.beginPath();ctx.ellipse(sx-5,sy-10,92,27,.12,0,Math.PI*2);ctx.fill();ctx.fillStyle="#858b8b";ctx.fillRect(sx-35,sy-25,28,5);}}
- ctx.fillStyle="#17191b";ctx.fillRect(-camera.x,-camera.y,CAVE.w,38);ctx.fillRect(-camera.x,CAVE.h-38-camera.y,CAVE.w,38);ctx.fillRect(-camera.x,-camera.y,38,CAVE.h);ctx.fillRect(CAVE.w-38-camera.x,-camera.y,38,CAVE.h);
- ctx.fillStyle="#e0c58a";ctx.font="bold 15px Tahoma";ctx.fillText("غار جنگلی • تالار کریستال",CAVE.w/2-camera.x,75-camera.y);
 }
-function drawCaveDetails(){
- const tile=96,sx=Math.floor(camera.x/tile),sy=Math.floor(camera.y/tile),ex=Math.ceil((camera.x+viewW)/tile),ey=Math.ceil((camera.y+viewH)/tile);
- // Mineral seams, floor cracks and small stones are deterministic, so they never flicker.
- for(let gy=sy;gy<=ey;gy++)for(let gx=sx;gx<=ex;gx++){
-  const h=terrainHash(gx+191,gy+73),x=gx*tile-camera.x,y=gy*tile-camera.y;
+function paintCaveDetailCell(ctx,gx,gy,x,y){
+  const h=terrainHash(gx+191,gy+73);
   if(h>.18&&h<.27){
    ctx.strokeStyle="rgba(116,139,142,.34)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+17,y+18);ctx.lineTo(x+29,y+29);ctx.lineTo(x+25,y+43);ctx.lineTo(x+42,y+58);ctx.stroke();
    ctx.strokeStyle="rgba(17,25,30,.42)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+29,y+29);ctx.lineTo(x+39,y+23);ctx.stroke();
@@ -1702,26 +1931,40 @@ function drawCaveDetails(){
    ctx.fillStyle="#286b78";ctx.fillRect(cx-4,cy-12,8,19);ctx.fillRect(cx-10,cy-5,6,12);ctx.fillRect(cx+5,cy-7,6,10);
    ctx.fillStyle="#a4f3e9";ctx.fillRect(cx-2,cy-10,3,12);ctx.fillRect(cx-8,cy-3,2,7);
   }
- }
- // Jagged ceiling formations frame the room without covering its playable floor.
- for(let i=0;i<Math.ceil((viewW+100)/118);i++){
-  const wx=Math.floor(camera.x/118)*118+i*118,screenX=wx-camera.x;
-  const h=terrainHash(Math.floor(wx/118)+31,9);
-  if(h>.24){
-   const len=15+Math.floor(h*30);
-   ctx.fillStyle="#252b30";ctx.beginPath();ctx.moveTo(screenX-10,38-camera.y);ctx.lineTo(screenX-5,38-camera.y);ctx.lineTo(screenX+2,38+len-camera.y);ctx.lineTo(screenX+8,38-camera.y);ctx.closePath();ctx.fill();
-   ctx.fillStyle="#687176";ctx.fillRect(screenX-4,42-camera.y,2,Math.max(5,len-12));
-  }
- }
- // Gentle crystal pools add depth while keeping the cave readable on mobile screens.
- const glows=[[330,390,105,"#3ab9c6"],[1130,720,125,"#56d9d0"],[1450,1030,95,"#5c9ec7"],[650,120,85,"#4b9da9"]];
- for(const g of glows){
-  const x=g[0]-camera.x,y=g[1]-camera.y;
-  if(x<-g[2]||x>viewW+g[2]||y<-g[2]||y>viewH+g[2])continue;
-  const grad=ctx.createRadialGradient(x,y,4,x,y,g[2]);grad.addColorStop(0,g[3]+"30");grad.addColorStop(1,g[3]+"00");
-  ctx.fillStyle=grad;ctx.fillRect(x-g[2],y-g[2],g[2]*2,g[2]*2);
- }
 }
+function paintCaveChunk(g,cx,cy,size){
+  const t=WORLD.tile,C=GROUND_CHUNK_TILES,x0=cx*C,y0=cy*C,ox=cx*size,oy=cy*size;
+  for(let y=y0-1;y<=y0+C;y++)for(let x=x0-1;x<=x0+C;x++)paintCaveTile(g,x,y,(x-x0)*t,(y-y0)*t,t);
+  // layered rock shelves and shadowed ledges
+  for(let i=0;i<8;i++){const x=170+i*185,y=180+(i%3)*290,sx=x-ox,sy=y-oy;if(sx>-180&&sx<size+180&&sy>-100&&sy<size+100){g.fillStyle="#20252b";g.beginPath();g.ellipse(sx,sy,105,35,.12,0,Math.PI*2);g.fill();g.fillStyle="#555d63";g.beginPath();g.ellipse(sx-5,sy-10,92,27,.12,0,Math.PI*2);g.fill();g.fillStyle="#858b8b";g.fillRect(sx-35,sy-25,28,5);}}
+  g.fillStyle="#17191b";g.fillRect(-ox,-oy,CAVE.w,38);g.fillRect(-ox,CAVE.h-38-oy,CAVE.w,38);g.fillRect(-ox,-oy,38,CAVE.h);g.fillRect(CAVE.w-38-ox,-oy,38,CAVE.h);
+  // Mineral seams, floor cracks and small stones
+  const cells=size/96;
+  // crystal glows spill ~8px outside their 96px cell, so paint one extra ring of cells (the chunk clip trims the rest)
+  for(let j=-1;j<=cells;j++)for(let i=-1;i<=cells;i++)paintCaveDetailCell(g,ox/96+i,oy/96+j,i*96,j*96);
+  // Jagged ceiling formations frame the room without covering its playable floor.
+  for(let wx=Math.floor((ox-20)/118)*118;wx<ox+size+20;wx+=118){
+    const screenX=wx-ox,h=terrainHash(Math.floor(wx/118)+31,9);
+    if(h>.24){
+      const len=15+Math.floor(h*30);
+      g.fillStyle="#252b30";g.beginPath();g.moveTo(screenX-10,38-oy);g.lineTo(screenX-5,38-oy);g.lineTo(screenX+2,38+len-oy);g.lineTo(screenX+8,38-oy);g.closePath();g.fill();
+      g.fillStyle="#687176";g.fillRect(screenX-4,42-oy,2,Math.max(5,len-12));
+    }
+  }
+  // Gentle crystal pools add depth while keeping the cave readable on mobile screens.
+  const glows=[[330,390,105,"#3ab9c6"],[1130,720,125,"#56d9d0"],[1450,1030,95,"#5c9ec7"],[650,120,85,"#4b9da9"]];
+  for(const gl of glows){
+    const x=gl[0]-ox,y=gl[1]-oy;
+    if(x<-gl[2]||x>size+gl[2]||y<-gl[2]||y>size+gl[2])continue;
+    const grad=g.createRadialGradient(x,y,4,x,y,gl[2]);grad.addColorStop(0,gl[3]+"30");grad.addColorStop(1,gl[3]+"00");
+    g.fillStyle=grad;g.fillRect(x-gl[2],y-gl[2],gl[2]*2,gl[2]*2);
+  }
+}
+function drawCaveGround(){
+  drawGroundChunks("cave",paintCaveChunk);
+  ctx.fillStyle="#e0c58a";ctx.font="bold 15px Tahoma";ctx.fillText("غار جنگلی • تالار کریستال",CAVE.w/2-camera.x,75-camera.y);
+}
+function drawCaveDetails(){}   // Stage 1: cave details are now part of the cached ground chunks
 function drawCaveObjects(){for(const c of caveChests){let x=c.x-camera.x,y=c.y-camera.y;ctx.fillStyle=c.opened?"#59452d":"#a66a32";ctx.fillRect(x-17,y-12,34,24);ctx.fillStyle=c.opened?"#76634b":"#e5b75b";ctx.fillRect(x-17,y-12,34,7);}}
 function drawHouse(x,y,level,isSaman){
  const sx=x-camera.x,sy=y-camera.y;
@@ -1779,86 +2022,7 @@ function drawInterior() {
   ctx.fillStyle="#f0d18c";ctx.fillRect(viewW/2-32,oy+h-18,64,18);
 }
 function terrainHash(x,y){let n=(x*374761393+y*668265263)>>>0;n=(n^(n>>>13))*1274126177;return ((n^(n>>>16))>>>0)/4294967295;}
-function drawGround() {
- const t=WORLD.tile,sx=Math.floor(camera.x/t),sy=Math.floor(camera.y/t),ex=Math.ceil((camera.x+viewW)/t),ey=Math.ceil((camera.y+viewH)/t);
- for(let y=sy;y<=ey;y++)for(let x=sx;x<=ex;x++){
-  const h=terrainHash(x,y),px=x*t-camera.x,py=y*t-camera.y;
-  const ridge=terrainHash(Math.floor(x/5),Math.floor(y/4));
-  ctx.fillStyle=h<.18?"#426f3e":h<.55?"#4b7d43":"#568a4a";ctx.fillRect(px,py,t+1,t+1);
-  // Tiny ground grain keeps the grass from reading as a flat repeating grid.
-  for(let k=0;k<5;k++){
-   const gx=px+4+((x*13+y*7+k*17)%39),gy=py+5+((x*5+y*19+k*11)%37);
-   ctx.fillStyle=k%2?"rgba(27,61,35,.22)":"rgba(190,205,119,.18)";
-   ctx.fillRect(gx,gy,k%3===0?4:2,1);
-  }
-  if(ridge>.77){
-   ctx.fillStyle="#315b37";ctx.beginPath();ctx.moveTo(px+1,py+35);ctx.lineTo(px+7,py+13);ctx.lineTo(px+25,py+5);ctx.lineTo(px+46,py+17);ctx.lineTo(px+48,py+39);ctx.closePath();ctx.fill();
-   ctx.fillStyle="#5f914f";ctx.beginPath();ctx.moveTo(px+5,py+29);ctx.lineTo(px+13,py+12);ctx.lineTo(px+27,py+9);ctx.lineTo(px+42,py+19);ctx.lineTo(px+39,py+35);ctx.closePath();ctx.fill();
-   ctx.fillStyle="#8ab66a";ctx.fillRect(px+15,py+13,8,3);ctx.fillRect(px+29,py+19,7,2);
-  }
-  if(h>.58&&h<.67){
-   ctx.fillStyle="#927b55";ctx.fillRect(px+5,py+11,35,24);ctx.fillStyle="#c1a779";ctx.fillRect(px+9,py+10,25,17);
-   ctx.fillStyle="#dfc99a";ctx.fillRect(px+13,py+13,11,3);ctx.fillStyle="#6d6248";ctx.fillRect(px+8,py+31,27,3);
-  }
-  if(h>.91){
-   ctx.fillStyle="#285f70";ctx.beginPath();ctx.ellipse(px+24,py+25,25,16,0,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle="#4a98a4";ctx.beginPath();ctx.ellipse(px+21,py+21,18,10,-.1,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle="#a0d5c8";ctx.fillRect(px+11,py+18,13,2);ctx.fillRect(px+29,py+26,7,2);
-  }
-  // Tufts, clover and little wildflowers are seeded by tile coordinates.
-  if(h>.27&&h<.47){
-   ctx.fillStyle="#315f38";ctx.fillRect(px+9,py+23,2,8);ctx.fillRect(px+14,py+19,2,12);ctx.fillRect(px+19,py+24,2,7);
-   ctx.fillStyle="#83aa59";ctx.fillRect(px+8,py+21,3,2);ctx.fillRect(px+14,py+17,3,2);ctx.fillRect(px+19,py+22,3,2);
-  }
-  if((x*7+y*11)%23===0){
-   const fx=px+34,fy=py+10;
-   ctx.fillStyle="#3d7041";ctx.fillRect(fx+1,fy+3,2,8);
-   ctx.fillStyle=(x+y)%2?"#e8d68b":"#df9ba0";ctx.fillRect(fx-2,fy,3,3);ctx.fillRect(fx+2,fy-1,3,3);ctx.fillRect(fx,fy-3,3,3);
-   ctx.fillStyle="#fff0c2";ctx.fillRect(fx,fy,2,2);
-  }
-  if((x*3-y*5)%31===0){ctx.fillStyle="#b9a57c";ctx.fillRect(px+7,py+39,5,3);ctx.fillStyle="#e1d0a9";ctx.fillRect(px+8,py+39,2,1);}
-  if((x*11+y*3)%47===0){ctx.fillStyle="#6e4937";ctx.fillRect(px+28,py+34,8,3);ctx.fillStyle="#a17a4c";ctx.fillRect(px+30,py+32,5,2);}
- }
- // Broad, soft-edged forest mounds create depth without blocking movement.
- for(let i=0;i<7;i++){
-  const wx=360+i*390,wy=300+(i%3)*610,sx=wx-camera.x,sy=wy-camera.y;
-  if(sx>-260&&sx<viewW+260&&sy>-160&&sy<viewH+160){
-   ctx.fillStyle="#294f34";ctx.beginPath();ctx.ellipse(sx,sy+8,154,58,.22,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle="#4c8046";ctx.beginPath();ctx.ellipse(sx-8,sy-5,143,48,.22,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle="#78a85c";ctx.beginPath();ctx.ellipse(sx-30,sy-20,83,19,.22,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle="#a0c276";ctx.fillRect(sx-53,sy-25,13,3);ctx.fillRect(sx+19,sy-13,10,2);
-  }
- }
-}
-function drawForestDetails(){
- const tile=96,sx=Math.floor(camera.x/tile),sy=Math.floor(camera.y/tile),ex=Math.ceil((camera.x+viewW)/tile),ey=Math.ceil((camera.y+viewH)/tile);
- // Small natural props are tied to world coordinates: the forest stays stable while the camera moves.
- for(let gy=sy;gy<=ey;gy++)for(let gx=sx;gx<=ex;gx++){
-  const h=terrainHash(gx+517,gy+239),x=gx*tile-camera.x,y=gy*tile-camera.y;
-  if(h>.12&&h<.19){
-   ctx.fillStyle="rgba(19,39,25,.25)";ctx.beginPath();ctx.ellipse(x+49,y+66,23,7,-.2,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle="#315f3b";ctx.beginPath();ctx.moveTo(x+27,y+65);ctx.lineTo(x+34,y+43);ctx.lineTo(x+42,y+57);ctx.lineTo(x+49,y+36);ctx.lineTo(x+56,y+58);ctx.lineTo(x+67,y+46);ctx.lineTo(x+72,y+67);ctx.closePath();ctx.fill();
-   ctx.fillStyle="#79a95e";ctx.fillRect(x+39,y+53,3,8);ctx.fillRect(x+52,y+48,3,10);ctx.fillRect(x+63,y+57,3,7);
-  }else if(h>.31&&h<.36){
-   ctx.fillStyle="rgba(27,37,24,.24)";ctx.beginPath();ctx.ellipse(x+48,y+70,28,6,-.15,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle="#563c2b";ctx.fillRect(x+25,y+58,47,9);ctx.fillStyle="#80583a";ctx.fillRect(x+29,y+56,39,5);
-   ctx.fillStyle="#a17a50";ctx.fillRect(x+35,y+57,5,3);ctx.fillRect(x+56,y+57,4,3);
-   ctx.fillStyle="#355d37";ctx.fillRect(x+28,y+52,9,5);ctx.fillRect(x+61,y+51,8,6);
-  }else if(h>.57&&h<.63){
-   ctx.fillStyle="#315f39";ctx.fillRect(x+47,y+55,2,11);ctx.fillRect(x+42,y+60,3,5);ctx.fillRect(x+52,y+60,3,5);
-   ctx.fillStyle=h>.6?"#e6c7d1":"#e8d58b";ctx.fillRect(x+44,y+51,4,4);ctx.fillRect(x+49,y+49,4,4);ctx.fillRect(x+48,y+55,3,3);
-   ctx.fillStyle="#fff0c1";ctx.fillRect(x+48,y+53,2,2);
-  }else if(h>.91){
-   ctx.fillStyle="rgba(23,34,21,.24)";ctx.beginPath();ctx.ellipse(x+52,y+69,13,4,0,0,Math.PI*2);ctx.fill();
-   ctx.fillStyle="#ead9ad";ctx.fillRect(x+43,y+56,17,12);ctx.fillStyle="#b85f53";ctx.fillRect(x+42,y+53,19,6);
-   ctx.fillStyle="#f3d9a4";ctx.fillRect(x+49,y+55,4,3);ctx.fillStyle="#6c4935";ctx.fillRect(x+46,y+66,2,3);
-  }
-  if((gx*7+gy*13)%17===0){
-   ctx.fillStyle="rgba(37,74,42,.38)";ctx.fillRect(x+12,y+77,2,5);ctx.fillRect(x+18,y+73,2,9);ctx.fillRect(x+23,y+78,2,5);
-   ctx.fillStyle="#9bb86b";ctx.fillRect(x+11,y+75,3,2);ctx.fillRect(x+17,y+71,3,2);ctx.fillRect(x+22,y+76,3,2);
-  }
- }
-}
+// Stage 1: forest ground + details are painted by paintForestChunk (see "cached ground layer" above)
 function drawTree(r) {
  const x=r.x-camera.x,y=r.y-camera.y;
  // A grounded trunk and roots, with a layered, pixel-cut canopy.
@@ -2058,10 +2222,11 @@ function drawAncientBridge(){
 
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
+  if (templeMode||townMode) releaseGroundCaches();
   if (templeMode) { drawTempleGround(); for(const e of templeEnemies){if(e.alive)drawTempleEnemy(e);} drawPlayer(); return; }
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
   if(townMode){drawTown();drawTownPeople();drawPlayer();drawNightOverlay();return;}
-  if(caveMode){drawCaveGround();drawCaveDetails();drawCaveObjects();}else {drawGround();drawForestDetails();drawAncientBridge();}
+  if(caveMode){drawCaveGround();drawCaveDetails();drawCaveObjects();}else {drawGround();drawForestWaterFx();drawAncientBridge();}
   if (!caveMode) { drawHouse(playerHome.x, playerHome.y, homeLevel, false); drawHouse(samanHome.x, samanHome.y, 1, true); drawFarmPlots(); drawStations(); }
   for (const r of activeNodes()) {
     if (r.x < camera.x - 60 || r.x > camera.x + viewW + 60 || r.y < camera.y - 60 || r.y > camera.y + viewH + 60) continue;
