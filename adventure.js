@@ -582,6 +582,7 @@ $("toolHotbar").addEventListener("click",e=>{
  inventorySelected=id;renderInventory();renderHotbar();
  const item=inventoryItems().find(v=>v.id===id);if(item)showToast(item.name+" انتخاب شد");
 
+});
 $("inventoryGrid").addEventListener("click",e=>{
  const discard=e.target.closest("[data-discard]");if(discard){e.stopPropagation();discardInventoryItem(discard.dataset.discard);return;}
  const equip=e.target.closest("[data-equip]");
@@ -2003,7 +2004,17 @@ function drawCaveGround(){
   ctx.fillStyle="#e0c58a";ctx.font="bold 15px Tahoma";ctx.fillText("غار جنگلی • تالار کریستال",CAVE.w/2-camera.x,75-camera.y);
 }
 function drawCaveDetails(){}   // Stage 1: cave details are now part of the cached ground chunks
-function drawCaveObjects(){for(const c of caveChests){let x=c.x-camera.x,y=c.y-camera.y;ctx.fillStyle=c.opened?"#59452d":"#a66a32";ctx.fillRect(x-17,y-12,34,24);ctx.fillStyle=c.opened?"#76634b":"#e5b75b";ctx.fillRect(x-17,y-12,34,7);}}
+function drawCaveObjects(){
+ for(const c of caveChests){let x=c.x-camera.x,y=c.y-camera.y;ctx.fillStyle=c.opened?"#59452d":"#a66a32";ctx.fillRect(x-17,y-12,34,24);ctx.fillStyle=c.opened?"#76634b":"#e5b75b";ctx.fillRect(x-17,y-12,34,7);}
+ const x=800-camera.x,y=1080-camera.y;
+ ctx.fillStyle="rgba(0,0,0,.35)";ctx.beginPath();ctx.ellipse(x,y+28,58,13,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#343a3d";ctx.fillRect(x-43,y-58,86,84);ctx.fillStyle="#87908b";ctx.fillRect(x-37,y-53,74,73);
+ ctx.fillStyle="#4a3830";ctx.fillRect(x-29,y-47,58,67);ctx.fillStyle="#171b1d";ctx.fillRect(x-23,y-40,46,60);
+ ctx.fillStyle="#b5a078";ctx.fillRect(x-33,y-61,66,8);ctx.fillRect(x-46,y-55,10,79);ctx.fillRect(x+36,y-55,10,79);
+ ctx.fillStyle="#d6bd82";ctx.fillRect(x-17,y-34,34,3);ctx.fillRect(x-17,y-34,3,45);ctx.fillRect(x+14,y-34,3,45);
+ ctx.fillStyle="#e5c887";ctx.beginPath();ctx.arc(x+13,y-3,3,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#fff0c2";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText("در خروج",x,y-73);ctx.textAlign="start";
+}
 function drawHouse(x,y,level,isSaman){
  const sx=x-camera.x,sy=y-camera.y;
  ctx.fillStyle="rgba(18,27,20,.32)";ctx.beginPath();ctx.ellipse(sx,sy+27,82,14,0,0,Math.PI*2);ctx.fill();
@@ -2524,6 +2535,19 @@ function drawAncientBridge(){
  }
 }
 
+function drawCaveEntrance(){
+ const x=2080-camera.x,y=1450-camera.y;
+ if(x<-115||x>viewW+115||y<-115||y>viewH+115)return;
+ ctx.fillStyle="rgba(0,0,0,.28)";ctx.beginPath();ctx.ellipse(x,y+35,94,22,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#28312c";ctx.beginPath();ctx.moveTo(x-82,y+28);ctx.lineTo(x-78,y-22);ctx.lineTo(x-54,y-66);ctx.lineTo(x-20,y-86);ctx.lineTo(x+22,y-84);ctx.lineTo(x+62,y-58);ctx.lineTo(x+83,y-12);ctx.lineTo(x+88,y+29);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#68736a";ctx.beginPath();ctx.moveTo(x-70,y+22);ctx.lineTo(x-66,y-18);ctx.lineTo(x-45,y-53);ctx.lineTo(x-16,y-72);ctx.lineTo(x+19,y-70);ctx.lineTo(x+49,y-48);ctx.lineTo(x+69,y-10);ctx.lineTo(x+72,y+22);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#9aa18a";ctx.fillRect(x-54,y-46,17,7);ctx.fillRect(x+28,y-57,18,6);ctx.fillRect(x-75,y-7,12,6);ctx.fillRect(x+61,y-13,13,7);
+ ctx.fillStyle="#111719";ctx.beginPath();ctx.moveTo(x-47,y+26);ctx.lineTo(x-42,y-16);ctx.lineTo(x-24,y-47);ctx.lineTo(x,y-58);ctx.lineTo(x+25,y-44);ctx.lineTo(x+43,y-12);ctx.lineTo(x+49,y+26);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#263a3c";ctx.fillRect(x-38,y+17,76,8);ctx.fillStyle="#4e6d68";ctx.fillRect(x-32,y+18,64,3);
+ ctx.fillStyle="#76563b";ctx.fillRect(x-57,y-21,8,50);ctx.fillRect(x+49,y-21,8,50);ctx.fillStyle="#c29a62";ctx.fillRect(x-61,y-24,15,7);ctx.fillRect(x+46,y-24,15,7);
+ ctx.fillStyle="#6ad5d0";ctx.fillRect(x-63,y-2,5,10);ctx.fillRect(x+58,y-2,5,10);ctx.fillStyle="#b6f3df";ctx.fillRect(x-62,y,3,4);ctx.fillRect(x+59,y,3,4);
+ ctx.fillStyle="#d5c18c";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("غار جنگلی",x,y-100);ctx.textAlign="start";
+}
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
   if (templeMode||townMode) releaseGroundCaches();
@@ -2552,7 +2576,7 @@ function draw() {
   drawNightOverlay();
   ctx.strokeStyle = "#d6f0a8"; ctx.lineWidth = 3;
   ctx.strokeRect(2-camera.x,2-camera.y,(caveMode?CAVE.w:WORLD.w)-4,(caveMode?CAVE.h:WORLD.h)-4);
-  if(!caveMode){let x=2080-camera.x,y=1450-camera.y;ctx.fillStyle='#151719';ctx.beginPath();ctx.ellipse(x,y,42,27,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#a9bd8d';ctx.lineWidth=4;ctx.stroke();ctx.fillStyle='#fff';ctx.font='12px Tahoma';ctx.fillText('غار',x-12,y-36);}
+  if(!caveMode)drawCaveEntrance();
 }
 function loop(time) {
   const dt = Math.min((time - lastTime) / 1000 || 0, 0.04);
