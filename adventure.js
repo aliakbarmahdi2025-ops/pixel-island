@@ -482,7 +482,7 @@ function harvest(targetId=null) {
   playGameSound("gather");
   if(caveMode){const chest=caveChests.find(c=>!c.opened&&(targetId?c.id===targetId:Math.hypot(player.x-c.x,player.y-c.y)<76));if(chest){if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;const leveled=addXP(25);bag.crystal=(bag.crystal||0)+1;progressNpcCrystal(1);updateUI();saveQuietly();showToast(leveled?"سطح جدید! یک امتیاز مهارت گرفتی ⭐":"صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
   const dropIndex=lootDrops.findIndex(d=>targetId?d.id===targetId:Math.hypot(player.x-d.x,player.y-d.y)<62);
-  if(dropIndex>=0){const preview=lootDrops[dropIndex];if(preview.type!=="coin"&&!bagCanAdd(preview.qty)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}const drop=lootDrops.splice(dropIndex,1)[0];if(drop.type==="coin")player.coins+=drop.qty;else if(drop.type==="stone")bag.stone=(bag.stone||0)+drop.qty;else if(drop.type==="iron")bag.iron=(bag.iron||0)+drop.qty;else if(drop.type==="crystal"){bag.crystal=(bag.crystal||0)+drop.qty;progressNpcCrystal(drop.qty);}else if(drop.type==="potion")bag.potion=(bag.potion||0)+drop.qty;updateUI();saveQuietly();playGameSound("pickup");showToast(({coin:"🪙 سکه",stone:"🪨 سنگ",iron:"⛏️ آهن",crystal:"💎 کریستال",potion:"🧪 معجون"})[drop.type]+" ×"+drop.qty+" برداشتی!");return;}
+  if(dropIndex>=0){const preview=lootDrops[dropIndex];if(preview.type!=="coin"&&!bagCanAdd(preview.qty)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}const drop=lootDrops.splice(dropIndex,1)[0];spawnPickupFx(drop.x,drop.y,drop.type);if(drop.type==="coin")player.coins+=drop.qty;else if(drop.type==="stone")bag.stone=(bag.stone||0)+drop.qty;else if(drop.type==="iron")bag.iron=(bag.iron||0)+drop.qty;else if(drop.type==="crystal"){bag.crystal=(bag.crystal||0)+drop.qty;progressNpcCrystal(drop.qty);}else if(drop.type==="potion")bag.potion=(bag.potion||0)+drop.qty;updateUI();saveQuietly();playGameSound("pickup");showToast(({coin:"🪙 سکه",stone:"🪨 سنگ",iron:"⛏️ آهن",crystal:"💎 کریستال",potion:"🧪 معجون"})[drop.type]+" ×"+drop.qty+" برداشتی!");return;}
   let nearest = null, best = 76;
   for (const r of activeNodes()) {
     if(targetId&&r.id!==targetId)continue;
@@ -495,6 +495,7 @@ function harvest(targetId=null) {
   const amount=nearest.type==="tree"?3:(nearest.type==="stone"||nearest.type==="bush"||nearest.type==="sand")?2:1;
   if(nearest.hp-damage<=0&&!bagCanAdd(amount)){showToast("کوله‌پشتی پره! برای ظرفیت بیشتر برو پیش آقای نادری 🎒");return;}
   nearest.hp -= damage;
+  spawnGatherFx(nearest.type,nearest.x,nearest.y,nearest.hp<=0);
   if (nearest.hp <= 0) {
     (caveMode ? caveHarvested : harvested).add(nearest.id);
     if (nearest.type === "tree") { bag.wood += 3; quests.wood = Math.min(10, quests.wood + 3); }
@@ -1903,13 +1904,6 @@ function drawForestWaterFx(){
 function drawGround(){drawGroundChunks("forest",paintForestChunk);}
 
 // ----- cave -----
-function paintCaveTile(ctx,x,y,px,py,t){
-  const h=terrainHash(x+81,y+37);
-  ctx.fillStyle=h<.22?"#292d32":h<.72?"#353a40":"#41464a";ctx.fillRect(px,py,t+1,t+1);
-  if(h>.76){ctx.fillStyle="#555b60";ctx.fillRect(px+5,py+7,31,24);ctx.fillStyle="#70777b";ctx.fillRect(px+10,py+7,18,7);ctx.fillStyle="#24282d";ctx.fillRect(px+5,py+27,31,5);}
-  if(h<.08){ctx.fillStyle="#245568";ctx.beginPath();ctx.ellipse(px+24,py+25,21,13,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#6bb5c0";ctx.fillRect(px+12,py+21,15,3);}
-  if(h>.48&&h<.53){ctx.fillStyle="#6d8b85";ctx.fillRect(px+19,py+13,4,20);ctx.fillRect(px+14,py+25,14,4);}
-}
 function paintCaveDetailCell(ctx,gx,gy,x,y){
   const h=terrainHash(gx+191,gy+73);
   if(h>.18&&h<.27){
@@ -1934,14 +1928,15 @@ function paintCaveDetailCell(ctx,gx,gy,x,y){
 }
 function paintCaveChunk(g,cx,cy,size){
   const t=WORLD.tile,C=GROUND_CHUNK_TILES,x0=cx*C,y0=cy*C,ox=cx*size,oy=cy*size;
-  for(let y=y0-1;y<=y0+C;y++)for(let x=x0-1;x<=x0+C;x++)paintCaveTile(g,x,y,(x-x0)*t,(y-y0)*t,t);
+  const puddle=cavePuddleForChunk(cx,cy);
+  paintCaveField(g,ox,oy,size,puddle);   // Stage 3: flagstone floor, moss and puddles replace the repeating tile blocks
   // layered rock shelves and shadowed ledges
   for(let i=0;i<8;i++){const x=170+i*185,y=180+(i%3)*290,sx=x-ox,sy=y-oy;if(sx>-180&&sx<size+180&&sy>-100&&sy<size+100){g.fillStyle="#20252b";g.beginPath();g.ellipse(sx,sy,105,35,.12,0,Math.PI*2);g.fill();g.fillStyle="#555d63";g.beginPath();g.ellipse(sx-5,sy-10,92,27,.12,0,Math.PI*2);g.fill();g.fillStyle="#858b8b";g.fillRect(sx-35,sy-25,28,5);}}
   g.fillStyle="#17191b";g.fillRect(-ox,-oy,CAVE.w,38);g.fillRect(-ox,CAVE.h-38-oy,CAVE.w,38);g.fillRect(-ox,-oy,38,CAVE.h);g.fillRect(CAVE.w-38-ox,-oy,38,CAVE.h);
   // Mineral seams, floor cracks and small stones
   const cells=size/96;
   // crystal glows spill ~8px outside their 96px cell, so paint one extra ring of cells (the chunk clip trims the rest)
-  for(let j=-1;j<=cells;j++)for(let i=-1;i<=cells;i++)paintCaveDetailCell(g,ox/96+i,oy/96+j,i*96,j*96);
+  for(let j=-1;j<=cells;j++)for(let i=-1;i<=cells;i++){if(puddle&&inEllipse(puddle,ox+i*96+48,oy+j*96+48,40))continue;paintCaveDetailCell(g,ox/96+i,oy/96+j,i*96,j*96);}
   // Jagged ceiling formations frame the room without covering its playable floor.
   for(let wx=Math.floor((ox-20)/118)*118;wx<ox+size+20;wx+=118){
     const screenX=wx-ox,h=terrainHash(Math.floor(wx/118)+31,9);
@@ -1962,6 +1957,7 @@ function paintCaveChunk(g,cx,cy,size){
 }
 function drawCaveGround(){
   drawGroundChunks("cave",paintCaveChunk);
+  drawCaveWaterFx();
   ctx.fillStyle="#e0c58a";ctx.font="bold 15px Tahoma";ctx.fillText("غار جنگلی • تالار کریستال",CAVE.w/2-camera.x,75-camera.y);
 }
 function drawCaveDetails(){}   // Stage 1: cave details are now part of the cached ground chunks
@@ -2001,8 +1997,7 @@ function drawInterior() {
   ctx.fillStyle="#69472f"; ctx.fillRect(0,0,viewW,viewH);
   const ox=(viewW- Math.min(viewW-24,760))/2, oy= Math.max(35,(viewH-520)/2), w=Math.min(viewW-24,760), h=Math.min(viewH-80,520);
   ctx.fillStyle="#b98250"; ctx.fillRect(ox,oy,w,h);
-  ctx.fillStyle="#d5a66d"; ctx.fillRect(ox+12,oy+12,w-24,h-24);
-  ctx.fillStyle="#7b5134"; ctx.fillRect(ox+18,oy+18,w-36,h-36);
+  ctx.fillStyle="#d5a66d"; ctx.fillRect(ox+12,oy+12,w-24,h-24);  ctx.fillStyle="#7b5134"; ctx.fillRect(ox+18,oy+18,w-36,h-36);
   for(let x=ox+28;x<ox+w-28;x+=42){ctx.fillStyle="#96663e";ctx.fillRect(x,oy+24,3,h-48);}
   ctx.fillStyle="#e2bd82";ctx.fillRect(ox+28,oy+28,w-56,38);
   ctx.fillStyle="#6c432b";ctx.fillRect(ox+45,oy+88,Math.min(170,w*.28),78);
@@ -2187,7 +2182,274 @@ function drawPlayer(){
 }
 
 function nightStrength(){const h=worldClock/60;const dusk=h>=18&&h<21?(h-18)/3:h>=21||h<5?1:h>=5&&h<7?(7-h)/2:0;return Math.max(0,Math.min(.68,dusk*.68));}
-function drawNightOverlay(){const a=nightStrength();if(a<=0)return;ctx.save();ctx.fillStyle="rgba(10,18,39,"+a+")";ctx.fillRect(0,0,viewW,viewH);const px=player.x-camera.x,py=player.y-camera.y;const glow=ctx.createRadialGradient(px,py,24,px,py,Math.max(viewW,viewH)*.48);glow.addColorStop(0,"rgba(255,220,145,"+(a*.32)+")");glow.addColorStop(.35,"rgba(255,210,130,"+(a*.12)+")");glow.addColorStop(1,"rgba(255,210,130,0)");ctx.fillStyle=glow;ctx.fillRect(0,0,viewW,viewH);ctx.restore();}
+/* ===== Stage 3 — lighting, night cycle, cave floor and particles =====
+   Visual only. Reads worldClock / positions / flags, never writes them. Cosmetic randomness uses Math.random only; the seeded world generator is never touched. */
+function smooth01(t){t=t<0?0:t>1?1:t;return t*t*(3-2*t);}
+function inEllipse(p,wx,wy,pad){return ((wx-p.x)/(p.rx*1.45+pad))**2+((wy-p.y)/(p.ry*1.45+pad))**2<1;}
+
+// ---- Sky tint over 24h: [hour, r, g, b, darkness]. Smoothstep between keys = no visible steps, golden dusk and pink dawn.
+const AMBIENT_KEYS=[[0,10,18,39,.68],[5,10,18,39,.68],[6.2,86,58,96,.40],[7.4,255,196,140,.07],[8.4,255,230,190,0],[16.5,255,225,170,0],[17.8,255,176,106,.09],[19,122,62,86,.32],[20.4,36,30,70,.55],[21.6,10,18,39,.68],[24,10,18,39,.68]];
+const AMB={r:10,g:18,b:39,a:0};
+const CAVE_AMB={r:7,g:12,b:22,a:.52};
+function computeAmbient(){
+  const h=(((worldClock/60)%24)+24)%24;
+  let k=1;while(k<AMBIENT_KEYS.length-1&&h>AMBIENT_KEYS[k][0])k++;
+  const a=AMBIENT_KEYS[k-1],b=AMBIENT_KEYS[k],t=smooth01((h-a[0])/(b[0]-a[0]));
+  AMB.r=Math.round(a[1]+(b[1]-a[1])*t);AMB.g=Math.round(a[2]+(b[2]-a[2])*t);AMB.b=Math.round(a[3]+(b[3]-a[3])*t);AMB.a=a[4]+(b[4]-a[4])*t;
+  return AMB;
+}
+
+// ---- Light layer: darkness is built on a tiny (1/4 size) canvas, light holes are cut with a pre-rendered soft sprite, then it is drawn once.
+const LIGHT_SCALE=3;
+const LIGHT_SMOOTH=false;
+let lightCanvas=null,lightCtx=null,lightSprite=null,glowSprites=null;
+const LIGHTS=[];let lightN=0;
+function makeGlowSprite(rgb){
+  const c=document.createElement("canvas");c.width=c.height=128;const g=c.getContext("2d");
+  const gr=g.createRadialGradient(64,64,0,64,64,64);
+  gr.addColorStop(0,"rgba("+rgb+",1)");gr.addColorStop(.35,"rgba("+rgb+",.55)");gr.addColorStop(1,"rgba("+rgb+",0)");
+  g.fillStyle=gr;g.fillRect(0,0,128,128);return c;
+}
+function ensureLightAssets(){
+  if(lightCanvas)return;
+  lightCanvas=document.createElement("canvas");lightCtx=lightCanvas.getContext("2d");
+  lightSprite=makeGlowSprite("255,255,255");
+  glowSprites=[makeGlowSprite("255,205,125"),makeGlowSprite("120,228,236"),makeGlowSprite("255,150,70"),makeGlowSprite("205,255,120")];   // warm, cool, fire, firefly
+}
+function pushLight(x,y,r,i,k){   // screen-space; k: 0 warm, 1 cool crystal, 2 fire
+  if(x+r<0||x-r>viewW||y+r<0||y-r>viewH)return;
+  const L=LIGHTS[lightN]||(LIGHTS[lightN]={});L.x=x;L.y=y;L.r=r;L.i=i;L.k=k;lightN++;
+}
+const TOWN_LAMPS=[[560,760],[1080,760],[760,340],[980,350],[250,650],[1450,650]];
+const CAVE_GLOWS=[[330,390,105],[1130,720,125],[1450,1030,95],[650,120,85]];
+function gatherForestLights(){
+  lightN=0;
+  const fl=1+Math.sin(animTime*7.3)*.025+Math.sin(animTime*13.1)*.015;
+  pushLight(player.x-camera.x,player.y-camera.y-8,168*fl,.95,0);                                   // player's lantern
+  if(homeLevel>0)pushLight(playerHome.x-camera.x,playerHome.y-camera.y+36,125,.8,0);               // own house
+  pushLight(samanHome.x-camera.x,samanHome.y-camera.y+36,125,.8,0);                                // Saman's house
+  if(stations.furnace)pushLight(playerHome.x+112-camera.x,playerHome.y+98-camera.y,95+Math.sin(animTime*9)*6,.85,2);
+}
+function gatherTownLights(){
+  lightN=0;
+  const fl=1+Math.sin(animTime*7.3)*.025;
+  pushLight(player.x-camera.x,player.y-camera.y-8,150*fl,.8,0);
+  for(const p of TOWN_LAMPS)pushLight(p[0]-camera.x,p[1]-camera.y-28,128+Math.sin(animTime*5+p[0])*3,.9,0);
+}
+function gatherCaveLights(){
+  lightN=0;
+  const fl=1+Math.sin(animTime*6.1)*.02+Math.sin(animTime*11.7)*.012;
+  pushLight(player.x-camera.x,player.y-camera.y-6,215*fl,.95,0);
+  for(const r of caveResources){if(r.type!=="crystal"||caveHarvested.has(r.id))continue;pushLight(r.x-camera.x,r.y-camera.y-10,125,.8,1);}
+  for(const g of CAVE_GLOWS)pushLight(g[0]-camera.x,g[1]-camera.y,g[2]*1.15,.55,1);
+  for(const c of caveChests){if(!c.opened)pushLight(c.x-camera.x,c.y-camera.y,52,.5,0);}
+}
+function drawLightLayer(amb){
+  if(amb.a<.004)return;
+  ensureLightAssets();
+  const S=LIGHT_SCALE,lw=Math.ceil(viewW/S),lh=Math.ceil(viewH/S);
+  if(lightCanvas.width!==lw||lightCanvas.height!==lh){lightCanvas.width=lw;lightCanvas.height=lh;}
+  const g=lightCtx;
+  g.globalCompositeOperation="source-over";g.globalAlpha=1;g.clearRect(0,0,lw,lh);
+  g.globalAlpha=amb.a;g.fillStyle="rgb("+amb.r+","+amb.g+","+amb.b+")";g.fillRect(0,0,lw,lh);
+  g.globalCompositeOperation="destination-out";
+  for(let i=0;i<lightN;i++){const L=LIGHTS[i],r=L.r/S;g.globalAlpha=L.i;g.drawImage(lightSprite,L.x/S-r,L.y/S-r,r*2,r*2);}
+  g.globalAlpha=1;g.globalCompositeOperation="source-over";
+  // warm / cool tint of the lit area is painted into the SAME small canvas, so the whole light pass costs one full-screen blit
+  g.globalCompositeOperation="source-over";
+  const ga=Math.min(.3,amb.a*.45);
+  for(let i=0;i<lightN;i++){const L=LIGHTS[i],r=L.r*.8/S;g.globalAlpha=L.i*ga;g.drawImage(glowSprites[L.k],L.x/S-r,L.y/S-r,r*2,r*2);}
+  g.globalAlpha=1;
+  ctx.save();ctx.imageSmoothingEnabled=LIGHT_SMOOTH;
+  ctx.drawImage(lightCanvas,0,0,lw*S,lh*S);
+  ctx.restore();
+}
+function drawNightOverlay(){
+  if(caveMode){gatherCaveLights();drawLightLayer(CAVE_AMB);return;}
+  computeAmbient();
+  if(AMB.a>.004){if(townMode)gatherTownLights();else gatherForestLights();drawLightLayer(AMB);}
+  if(!townMode)drawFireflies();
+}
+
+// ---- Particles: one small pooled list, hard-capped, auto-scaled. FX.level 2 = full, 1 = half, 0 = off (chosen from measured frame time).
+const FX={level:2,avg:.0167,since:0,scene:"",stepT:0,fresh:true};
+const PARTS=[],FLIES=[],PART_MAX=100;
+const LEAF_COLORS=["#4f9a4a","#78b85f","#a7d46b","#c9b24a","#6f8f3a"];
+const CHIP_COLORS={tree:["#7a5238","#a77b55","#4f9a4a","#78b85f"],stone:["#8c978c","#5d6862","#c4ccc4"],iron:["#d88c56","#ffcf7a","#8c978c"],crystal:["#68e5e8","#c9fbf4","#3aa8b4"],bush:["#4f9a4a","#78b85f","#a7d46b"],sand:["#d8c38a","#bba66b"],marble:["#e3e7e8","#bdc6c9"]};
+function fxScene(){return (templeMode||homeInterior)?"none":caveMode?"cave":townMode?"town":"forest";}
+function addPart(p){if(PARTS.length<PART_MAX)PARTS.push(p);}
+function spawnGatherFx(type,x,y,done){
+  if(FX.level<=0)return;
+  const cols=CHIP_COLORS[type]||CHIP_COLORS.stone,n=Math.round((done?10:5)*(FX.level>1?1:.6)),oy=type==="tree"?-24:-10;
+  for(let k=0;k<n;k++){
+    const life=.45+Math.random()*.35;
+    addPart({k:1,x:x+(Math.random()-.5)*16,y:y+oy+(Math.random()-.5)*8,vx:(Math.random()-.5)*120,vy:-(40+Math.random()*90),life:life,max:life,c:cols[k%cols.length],s:Math.random()<.3?3:2,glow:type==="iron"||type==="crystal"});
+  }
+}
+function spawnPickupFx(x,y,type){
+  if(FX.level<=0)return;
+  const c=type==="coin"?"#ffe27a":type==="crystal"?"#9ff3ee":type==="potion"?"#e3a9ff":type==="iron"?"#ffcf9a":"#f2f2e8";
+  for(let k=0;k<(FX.level>1?6:3);k++){const life=.55+Math.random()*.3;addPart({k:3,x:x+(Math.random()-.5)*22,y:y-4+(Math.random()-.5)*10,vx:(Math.random()-.5)*14,vy:-(18+Math.random()*26),life:life,max:life,c:c});}
+}
+function updateParticles(dt){
+  // pick the effects level from the measured frame time (slow phones get fewer particles; it recovers if the game speeds up)
+  FX.avg+=(dt-FX.avg)*.04;FX.since+=dt;
+  if(FX.since>3&&FX.avg>.031&&FX.level>0){FX.level--;FX.since=0;}
+  else if(FX.since>20&&FX.avg<.0215&&FX.level<2){FX.level++;FX.since=0;}
+  const sc=fxScene();
+  if(sc!==FX.scene){FX.scene=sc;PARTS.length=0;FLIES.length=0;FX.fresh=true;}
+  if(sc==="none")return;
+  const lvl=FX.level;
+  // move / expire
+  for(let i=PARTS.length-1;i>=0;i--){
+    const p=PARTS[i];p.life-=dt;
+    if(p.k===0){   // leaf
+      p.ph+=dt*2.4;p.x+=(p.vx*(1+.5*Math.sin(animTime*.3))+Math.sin(p.ph)*14)*dt;p.y+=p.vy*dt;
+      if(p.y>camera.y+viewH+40||p.x>camera.x+viewW+170||p.x<camera.x-230)p.life=0;
+    }else if(p.k===1){p.vy+=260*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;}                 // chips
+    else if(p.k===2){p.x+=p.vx*dt;p.y+=p.vy*dt;}                                // dust puff
+    else if(p.k===3){p.x+=p.vx*dt;p.y+=p.vy*dt;}                                // pickup sparkle
+    else if(p.k===4){                                                           // cave mote (wraps around the view)
+      p.ph+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
+      if(p.x<camera.x-20)p.x+=viewW+40;else if(p.x>camera.x+viewW+20)p.x-=viewW+40;
+      if(p.y<camera.y-20)p.y+=viewH+40;else if(p.y>camera.y+viewH+20)p.y-=viewH+40;
+    }
+    if(p.life<=0){PARTS[i]=PARTS[PARTS.length-1];PARTS.pop();}
+  }
+  // ambient spawners
+  let leaves=0,motes=0;for(const p of PARTS){if(p.k===0)leaves++;else if(p.k===4)motes++;}
+  if(sc==="forest"){
+    const night=computeAmbient().a,want=night<.25?(lvl>1?12:lvl>0?6:0):0;
+    for(let n=0;leaves<want&&n<2;n++,leaves++){
+      PARTS.push({k:0,x:camera.x+Math.random()*(viewW+260)-130,y:FX.fresh?camera.y+Math.random()*viewH:camera.y-24-Math.random()*50,vx:18+Math.random()*26,vy:16+Math.random()*20,ph:Math.random()*6.28,life:30,c:LEAF_COLORS[(Math.random()*LEAF_COLORS.length)|0]});
+    }
+    const wantF=night>.2?(lvl>1?14:lvl>0?7:0):0;
+    while(FLIES.length<wantF)FLIES.push({x:camera.x+Math.random()*viewW,y:camera.y+Math.random()*viewH,a:Math.random()*6.28,sp:8+Math.random()*10,ph:Math.random()*6.28});
+    while(FLIES.length>wantF)FLIES.pop();
+    for(const f of FLIES){
+      f.a+=Math.sin(animTime*.7+f.ph)*1.6*dt;f.x+=Math.cos(f.a)*f.sp*dt;f.y+=Math.sin(f.a)*f.sp*dt;
+      if(f.x<camera.x-60)f.x+=viewW+120;else if(f.x>camera.x+viewW+60)f.x-=viewW+120;
+      if(f.y<camera.y-60)f.y+=viewH+120;else if(f.y>camera.y+viewH+60)f.y-=viewH+120;
+    }
+  }else if(sc==="cave"){
+    const want=lvl>1?16:lvl>0?8:0;
+    for(let n=0;motes<want&&n<3;n++,motes++)PARTS.push({k:4,x:camera.x+Math.random()*viewW,y:camera.y+Math.random()*viewH,vx:(Math.random()-.5)*7,vy:-1-Math.random()*5,ph:Math.random()*6.28,life:1e9});
+    if(motes>want){for(let i=PARTS.length-1;i>=0&&motes>want;i--){if(PARTS[i].k===4){PARTS.splice(i,1);motes--;}}}
+  }
+  FX.fresh=false;
+  // footstep dust
+  if(playerMoving&&lvl>0){
+    FX.stepT-=dt;
+    if(FX.stepT<=0){FX.stepT=.17;const life=.5;addPart({k:2,x:player.x+(Math.random()-.5)*8,y:player.y+11,vx:(Math.random()-.5)*14,vy:-(6+Math.random()*10),life:life,max:life,c:sc==="cave"?"#8f9aa0":sc==="town"?"#d9c9a0":"#cdbb8c"});}
+  }else FX.stepT=0;
+}
+function drawParticles(){
+  if(!PARTS.length)return;
+  ctx.save();
+  for(const p of PARTS){
+    const x=Math.round(p.x-camera.x),y=Math.round(p.y-camera.y);
+    if(x<-20||x>viewW+20||y<-20||y>viewH+20)continue;
+    if(p.k===0){ctx.globalAlpha=p.life<1?p.life:1;ctx.fillStyle=p.c;if(Math.sin(p.ph)>0)ctx.fillRect(x,y,3,2);else ctx.fillRect(x,y,2,3);}
+    else if(p.k===1){const a=Math.min(1,p.life/.2);if(p.glow){ctx.globalAlpha=a*.3;ctx.fillStyle=p.c;ctx.fillRect(x-2,y-2,p.s+4,p.s+4);}ctx.globalAlpha=a;ctx.fillStyle=p.c;ctx.fillRect(x,y,p.s,p.s);}
+    else if(p.k===2){const t=1-p.life/p.max,s=2+t*3;ctx.globalAlpha=.38*(1-t);ctx.fillStyle=p.c;ctx.fillRect(Math.round(x-s/2),Math.round(y-s/2),Math.round(s),Math.round(s));}
+    else if(p.k===3){const a=Math.min(1,p.life/.25);ctx.globalAlpha=a;ctx.fillStyle=p.c;ctx.fillRect(x,y-2,1,5);ctx.fillRect(x-2,y,5,1);}
+    else if(p.k===4){ctx.globalAlpha=.12+.22*(.5+.5*Math.sin(p.ph*1.3));ctx.fillStyle="#bfeff0";ctx.fillRect(x,y,2,2);}
+  }
+  ctx.restore();
+}
+function drawFireflies(){
+  if(!FLIES.length)return;
+  const k=Math.min(1,Math.max(0,(AMB.a-.2)*4));if(k<=0)return;
+  ensureLightAssets();
+  ctx.save();ctx.globalCompositeOperation="lighter";
+  for(const f of FLIES){
+    const b=.5+.5*Math.sin(animTime*2.3+f.ph*3),a=b*k;if(a<.05)continue;
+    const x=f.x-camera.x,y=f.y-camera.y,r=11+b*5;
+    ctx.globalAlpha=a*.55;ctx.drawImage(glowSprites[3],x-r,y-r,r*2,r*2);
+    ctx.globalAlpha=a;ctx.fillStyle="#f4ffb0";ctx.fillRect(Math.round(x),Math.round(y),2,2);
+  }
+  ctx.restore();
+}
+
+// ---- Cave floor: irregular flagstones (jittered-cell seams), mossy patches and a few puddles, painted once into cached chunks.
+const CAVE_STONE_RGB=["#20252b","#292f36","#323941","#3c444d","#474f58"].map(hexRGB);
+const CAVE_MOSS_RGB=["#26393c","#2e474a","#385558"].map(hexRGB);
+const CAVE_SEAM_RGB=hexRGB("#171c21");
+const CAVE_WATER_RGB=["#10303d","#1a4859","#2b6f80","#8fb8b4","#1b2a30"].map(hexRGB);
+const CAVE_CELL=72;   // 72 * 4 = 288 = one chunk, so seam cells line up with chunk borders
+const cavePuddleCache=new Map();
+function cavePuddleForChunk(cx,cy){
+  const key=cx+","+cy;
+  if(cavePuddleCache.has(key))return cavePuddleCache.get(key);
+  let p=null;const size=GROUND_CHUNK_TILES*WORLD.tile;
+  if(terrainHash(cx+311,cy+523)>.55){
+    const rx=24+terrainHash(cx+13,cy+71)*22,ry=rx*(.5+terrainHash(cx+97,cy+5)*.3),ext=Math.max(rx,ry)*1.38+4;
+    if(ext*2<size){
+      const px=cx*size+ext+terrainHash(cx+43,cy+61)*(size-2*ext),py=cy*size+ext+terrainHash(cx+79,cy+29)*(size-2*ext);
+      let ok=px>100&&py>100&&px<CAVE.w-100&&py<CAVE.h-100&&Math.hypot(px-800,py-650)>120+rx&&Math.hypot(px-800,py-1080)>130+rx;
+      for(const r of caveResources){if(!ok)break;if(((r.x-px)/(rx*1.4+24))**2+((r.y-py)/(ry*1.4+24))**2<1)ok=false;}
+      for(const c of caveChests){if(!ok)break;if(((c.x-px)/(rx*1.4+30))**2+((c.y-py)/(ry*1.4+30))**2<1)ok=false;}
+      if(ok)p={x:Math.round(px),y:Math.round(py),rx,ry,seed:cx*23+cy*41};
+    }
+  }
+  cavePuddleCache.set(key,p);return p;
+}
+const caveFx=new Float32Array(7*7),caveFy=new Float32Array(7*7),caveFh=new Float32Array(7*7);
+function paintCaveField(g,ox,oy,size,puddle){
+  const n=size/FIELD_PX,cn=size/CAVE_CELL+3,c0x=Math.floor(ox/CAVE_CELL)-1,c0y=Math.floor(oy/CAVE_CELL)-1;
+  if(fieldN!==n){fieldCanvas=document.createElement("canvas");fieldCanvas.width=fieldCanvas.height=n;fieldCtx=fieldCanvas.getContext("2d");fieldImg=fieldCtx.createImageData(n,n);fieldN=n;}
+  for(let j=0;j<cn;j++)for(let i=0;i<cn;i++){
+    const gi=c0x+i,gj=c0y+j,k=j*cn+i;
+    caveFx[k]=(gi+.15+.7*terrainHash(gi+401,gj+17))*CAVE_CELL;caveFy[k]=(gj+.15+.7*terrainHash(gi+29,gj+433))*CAVE_CELL;caveFh[k]=terrainHash(gi+601,gj+77);
+  }
+  const d=fieldImg.data;
+  for(let ay=0;ay<n;ay++)for(let ax=0;ax<n;ax++){
+    const wx=ox+ax*FIELD_PX+1.5,wy=oy+ay*FIELD_PX+1.5,b=BAYER4[(ay&3)*4+(ax&3)];
+    const i0=Math.floor(wx/CAVE_CELL)-c0x,j0=Math.floor(wy/CAVE_CELL)-c0y;
+    let m1=1e9,m2=1e9,sh=.5;
+    for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){
+      const k=(j0+dj)*cn+(i0+di),dx=wx-caveFx[k],dy=wy-caveFy[k],dd=dx*dx+dy*dy;
+      if(dd<m1){m2=m1;m1=dd;sh=caveFh[k];}else if(dd<m2)m2=dd;
+    }
+    const edge=Math.sqrt(m2)-Math.sqrt(m1);
+    const v=(.55*vnoise(wx/200+5,wy/200+9)+.45*vnoise(wx/50+17,wy/50+3)-.5)*1.7+.5;
+    let si=Math.floor(v*5+(sh-.5)*.7+(b-.5)*.8);si=si<0?0:si>4?4:si;
+    let c;
+    if(edge<2.2)c=CAVE_SEAM_RGB;
+    else{
+      if(edge<6&&b<.5)si=si>0?si-1:0;
+      c=CAVE_STONE_RGB[si];
+      if(edge>2.2&&vnoise(wx/120+211,wy/120+57)+(b-.5)*.08>.74){let mi=Math.floor(vnoise(wx/24+9,wy/24+31)*3+(b-.5)*.8);mi=mi<0?0:mi>2?2:mi;c=CAVE_MOSS_RGB[mi];}
+    }
+    if(puddle){
+      const dx=(wx-puddle.x)/puddle.rx,dy=(wy-puddle.y)/puddle.ry;let dd=Math.sqrt(dx*dx+dy*dy);
+      if(dd<1.45){
+        dd*=1+.4*(vnoise(wx/18+puddle.seed,wy/18+puddle.seed*.7)-.5);const q=dd+(b-.5)*.07;
+        if(q<.5)c=CAVE_WATER_RGB[0];else if(q<.78)c=CAVE_WATER_RGB[1];else if(q<.94)c=CAVE_WATER_RGB[2];else if(q<1.02)c=CAVE_WATER_RGB[3];else if(q<1.14)c=CAVE_WATER_RGB[4];
+      }
+    }
+    const o=(ay*n+ax)*4;d[o]=c[0];d[o+1]=c[1];d[o+2]=c[2];d[o+3]=255;
+  }
+  fieldCtx.putImageData(fieldImg,0,0);
+  g.save();g.imageSmoothingEnabled=false;g.drawImage(fieldCanvas,0,0,size,size);g.restore();
+}
+function drawCaveWaterFx(){
+  const size=GROUND_CHUNK_TILES*WORLD.tile;
+  const cx0=Math.floor(camera.x/size),cx1=Math.floor((camera.x+viewW)/size),cy0=Math.floor(camera.y/size),cy1=Math.floor((camera.y+viewH)/size);
+  for(let cy=cy0;cy<=cy1;cy++)for(let cx=cx0;cx<=cx1;cx++){
+    if(cx<0||cy<0)continue;
+    const p=cavePuddleForChunk(cx,cy);if(!p)continue;
+    const x=p.x-camera.x,y=p.y-camera.y;if(x<-90||x>viewW+90||y<-70||y>viewH+70)continue;
+    const rp=(animTime*.3+p.seed*.11)%1;
+    ctx.strokeStyle="rgba(150,225,230,"+(.28*(1-rp))+")";ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.ellipse(x,y,p.rx*(.14+.5*rp),p.ry*(.14+.5*rp),0,0,Math.PI*2);ctx.stroke();
+    for(let k=0;k<3;k++){
+      const a=Math.sin(animTime*1.2+k*2.1+p.seed);if(a<.4)continue;
+      const ang=k*2.7+p.seed,r=.15+.45*terrainHash(p.seed+k,7);
+      ctx.fillStyle="rgba(210,250,250,"+(.2+.5*a)+")";ctx.fillRect(Math.round(x+Math.cos(ang)*p.rx*r),Math.round(y+Math.sin(ang)*p.ry*r),4,1);
+    }
+  }
+}
 function drawLootDrops(){for(const d of lootDrops){if(d.x<camera.x-40||d.x>camera.x+viewW+40||d.y<camera.y-40||d.y>camera.y+viewH+40)continue;const x=d.x-camera.x,y=d.y-camera.y+Math.sin(animTime*3+d.x*.02)*2;const colors={coin:"#f5c94b",stone:"#aab1b8",iron:"#d88c56",crystal:"#68e5e8",potion:"#c779ef"};ctx.fillStyle="rgba(0,0,0,.28)";ctx.beginPath();ctx.ellipse(x,y+8,10,4,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=colors[d.type]||"#fff";if(d.type==="crystal"){ctx.beginPath();ctx.moveTo(x,y-11);ctx.lineTo(x+7,y-2);ctx.lineTo(x+3,y+7);ctx.lineTo(x-4,y+6);ctx.lineTo(x-7,y-2);ctx.closePath();ctx.fill();}else if(d.type==="coin"){ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle="#fff0a8";ctx.fillRect(x-2,y-4,3,8);}else{ctx.fillRect(x-6,y-6,12,12);ctx.fillStyle="#fff";ctx.fillRect(x-3,y-4,3,3);}}}
 
 function drawAncientBridge(){
@@ -2225,7 +2487,7 @@ function draw() {
   if (templeMode||townMode) releaseGroundCaches();
   if (templeMode) { drawTempleGround(); for(const e of templeEnemies){if(e.alive)drawTempleEnemy(e);} drawPlayer(); return; }
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
-  if(townMode){drawTown();drawTownPeople();drawPlayer();drawNightOverlay();return;}
+  if(townMode){drawTown();drawTownPeople();drawPlayer();drawParticles();drawNightOverlay();return;}
   if(caveMode){drawCaveGround();drawCaveDetails();drawCaveObjects();}else {drawGround();drawForestWaterFx();drawAncientBridge();}
   if (!caveMode) { drawHouse(playerHome.x, playerHome.y, homeLevel, false); drawHouse(samanHome.x, samanHome.y, 1, true); drawFarmPlots(); drawStations(); }
   for (const r of activeNodes()) {
@@ -2244,7 +2506,8 @@ function draw() {
   if(!caveMode) drawForestNpc();
   if(!caveMode){const sx=2310-camera.x,sy=900-camera.y;ctx.fillStyle="#65452c";ctx.fillRect(sx-4,sy-2,8,50);ctx.fillStyle="#b77b3e";ctx.fillRect(sx-43,sy-38,86,34);ctx.strokeStyle="#f0d49a";ctx.lineWidth=3;ctx.strokeRect(sx-43,sy-38,86,34);ctx.fillStyle="#fff0c2";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("شهر سبز",sx,sy-16);ctx.textAlign="start";}
   drawPlayer();
-  if(!caveMode)drawNightOverlay();
+  drawParticles();
+  drawNightOverlay();
   ctx.strokeStyle = "#d6f0a8"; ctx.lineWidth = 3;
   ctx.strokeRect(2-camera.x,2-camera.y,(caveMode?CAVE.w:WORLD.w)-4,(caveMode?CAVE.h:WORLD.h)-4);
   if(!caveMode){let x=2080-camera.x,y=1450-camera.y;ctx.fillStyle='#151719';ctx.beginPath();ctx.ellipse(x,y,42,27,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#a9bd8d';ctx.lineWidth=4;ctx.stroke();ctx.fillStyle='#fff';ctx.font='12px Tahoma';ctx.fillText('غار',x-12,y-36);}
@@ -2253,6 +2516,7 @@ function loop(time) {
   const dt = Math.min((time - lastTime) / 1000 || 0, 0.04);
   lastTime = time;
   update(dt);
+  updateParticles(dt);
   draw();
   if (!$("mapPanel").hidden) drawWorldMap();
   requestAnimationFrame(loop);
