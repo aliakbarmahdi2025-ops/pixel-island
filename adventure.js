@@ -1139,7 +1139,7 @@ function update(dt) {
   if (keys.has("s") || keys.has("arrowdown")) dy += 1;
   if(moveTarget){
     const tx=moveTarget.x-player.x,ty=moveTarget.y-player.y,dist=Math.hypot(tx,ty);
-    const stop={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12}[moveTarget.type]??10;
+    const stop={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,workshop:48}[moveTarget.type]??10;
     if(dist>stop){dx=tx/dist;dy=ty/dist;}else{dx=0;dy=0;}
   }
   const oldX=player.x,oldY=player.y;
@@ -1237,7 +1237,7 @@ function renderInventory(){
  inventoryOrder=[...inventoryOrder.filter(id=>ids.includes(id)),...ids.filter(id=>!inventoryOrder.includes(id))];
  const byId=new Map(items.map(v=>[v.id,v]));
  const ordered=inventoryOrder.map(id=>byId.get(id)).filter(Boolean);
- grid.innerHTML=ordered.map(item=>'<div class="inventory-item '+(inventorySelected===item.id?"selected":"")+'" data-item="'+item.id+'" draggable="true" role="button" tabindex="0"><span class="inventory-item-icon">'+item.icon+'</span><span class="inventory-item-name">'+item.name+'</span><small>'+item.kind+'</small><b class="inventory-item-count">'+item.count+'</b><span class="inventory-item-detail">'+item.detail+'</span>'+(item.equip?'<button type="button" class="inventory-equip" data-equip="'+item.equip+'">انتخاب</button>':'<button type="button" class="inventory-discard" data-discard="'+item.id+'" aria-label="حذف '+item.name+'">🗑 حذف</button>')+'</div>').join("");
+ grid.innerHTML=ordered.map(item=>'<div class="inventory-item '+(inventorySelected===item.id?"selected":"")+'" data-item="'+item.id+'" draggable="true" role="button" tabindex="0"><span class="inventory-item-icon">'+item.icon+'</span><span class="inventory-item-name">'+item.name+'</span><small>'+item.kind+'</small><b class="inventory-item-count">'+item.count+'</b><span class="inventory-item-detail">'+item.detail+'</span>'+(item.equip?'<button type="button" class="inventory-equip" data-equip="'+item.equip+'">انتخاب</button>':(item.id.startsWith("bag:")||item.id.startsWith("seed:")?'<button type="button" class="inventory-discard" data-discard="'+item.id+'" aria-label="حذف '+item.name+'">🗑 حذف</button>':'')+'</div>').join("");
  $("inventorySummary").textContent="ظرفیت کوله: "+bagUsed()+" / "+backpackCaps[backpackTier]+" • "+items.length+" نوع وسیله";
 }
 function renderHotbar(){
