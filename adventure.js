@@ -607,11 +607,11 @@ function canvasWorldTap(e){
   e.preventDefault();
   const wx=e.clientX+camera.x,wy=e.clientY+camera.y;
   if(homeInterior){
-    const doorY=Math.max(35,(viewH-520)/2)+Math.min(viewH-80,520)-9;
+    const doorY=Math.max(35,(viewH-520)/2)+Math.min(viewH-80,520)-81;
     if(Math.abs(e.clientX-viewW/2)<66&&Math.abs(e.clientY-doorY)<52)handleHomeButton();
     return;
   }
-  if(townMode&&Math.hypot(wx-800,wy-1110)<92){transitionTown(false);return;}
+  if(townMode&&Math.hypot(wx-800,wy-1030)<108){transitionTown(false);return;}
   if(caveMode&&Math.hypot(wx-800,wy-1080)<78){toggleCave();return;}
   if(!templeMode&&!townMode&&!caveMode&&!homeInterior){
     if(Math.hypot(wx-2080,wy-1450)<88){toggleCave();return;}
@@ -790,7 +790,7 @@ function getWorldMapState(){
   }
   if(townMode){
     const points=townPeople.map(p=>({x:p.x,y:p.y,label:p.name,color:p.id==="naderi"?"#e6c477":p.id==="rezaei"?"#8ed08d":"#9dc7d7",kind:"npc"}));
-    points.push({x:800,y:1110,label:"خروج جنگل",color:"#d8c18c",kind:"exit"});
+    points.push({x:800,y:1030,label:"خروج جنگل",color:"#d8c18c",kind:"exit"});
     return {key:"town",title:"شهر سبز",w:TOWN.w,h:TOWN.h,points,legend:"🟡 تو • 🔵 اهالی شهر • 🟨 فروشگاه‌ها و خروجی"};
   }
   if(caveMode){
@@ -2072,7 +2072,7 @@ function drawInterior() {
    if(furnitureOwned.table){ctx.fillStyle="#6f492c";ctx.fillRect(ox+w-180,oy+h-160,85,12);ctx.fillRect(ox+w-174,oy+h-148,7,28);ctx.fillRect(ox+w-110,oy+h-148,7,28);}
    if(furnitureOwned.chair){ctx.fillStyle="#875b36";ctx.fillRect(ox+w-235,oy+h-145,35,8);ctx.fillRect(ox+w-235,oy+h-175,7,34);ctx.fillRect(ox+w-232,oy+h-137,5,18);ctx.fillRect(ox+w-207,oy+h-137,5,18);}
   ctx.fillStyle="#fff0c2";ctx.font="bold 16px Tahoma";ctx.textAlign="center";ctx.fillText("خانه من",viewW/2,oy-8);ctx.textAlign="start";
-  ctx.fillStyle="#f0d18c";ctx.fillRect(viewW/2-32,oy+h-18,64,18);
+  ctx.fillStyle="#f0d18c";ctx.fillRect(viewW/2-32,oy+h-90,64,18);
 }
 function terrainHash(x,y){let n=(x*374761393+y*668265263)>>>0;n=(n^(n>>>13))*1274126177;return ((n^(n>>>16))>>>0)/4294967295;}
 // Stage 1: forest ground + details are painted by paintForestChunk (see "cached ground layer" above)
