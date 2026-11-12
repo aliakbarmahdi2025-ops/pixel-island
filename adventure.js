@@ -529,6 +529,12 @@ function drawTempleEnemy(e){
 
 function requiredToolForResource(node){return node.type==="tree"||node.type==="bush"?"axe":node.type==="sand"?"shovel":"pickaxe";}
 function removeTilledFarmPlot(index){const plot=farmPlots[index];if(!plot||!(plot.state==="tilled"||plot.state==="empty")){showToast("فقط زمین خالی یا شخم‌خورده رو می‌تونی با کلنگ جمع کنی");return;}farmPlots.splice(index,1);farmPlots.forEach((p,i)=>p.id=i);selectedFarmPlot=farmPlots.length?Math.min(index,farmPlots.length-1):-1;updateFarmUI();saveQuietly();showToast("زمین شخم‌خورده جمع شد ⛏️");}
+function chestUsed(){return Object.values(chestStorage).reduce((n,v)=>n+(Number(v)||0),0);}
+function chestItemName(key){if(key.startsWith("seed:")){const crop=FARM_CROPS[key.slice(5)];return crop?"بذر "+crop.name:"بذر";}const crop=FARM_CROPS[key];return crop?crop.name:(INVENTORY_LABELS[key]||key);}
+function chestItemIcon(key){if(key.startsWith("seed:"))return FARM_CROPS[key.slice(5)]?.icon||"🌱";const crop=FARM_CROPS[key];return crop?crop.icon:(INVENTORY_ICONS[key]||"📦");}
+function openChestPanel(){if(caveMode||townMode||homeInterior||templeMode)return;$("chestPanel").hidden=false;updateChestUI();syncXpPanel();}
+function updateChestUI(){const keys=[...new Set([...Object.keys(bag).filter(k=>k!=="seeds"),...Object.keys(farmSeedStock).map(k=>"seed:"+k),...Object.keys(chestStorage)])].filter(k=>(bag[k]||0)>0||(k.startsWith("seed:")?(farmSeedStock[k.slice(5)]||0)>0:false)||(chestStorage[k]||0)>0);$("chestSummary").textContent="ظرفیت صندوق: "+chestUsed()+" / "+CHEST_CAPACITY+" • فضای خالی: "+(CHEST_CAPACITY-chestUsed());$("chestItems").innerHTML=keys.map(k=>{const source=k.startsWith("seed:")?(farmSeedStock[k.slice(5)]||0):(bag[k]||0),stored=chestStorage[k]||0;return '<div class="chest-item"><span>'+chestItemIcon(k)+" "+chestItemName(k)+"<br><small>کوله: "+source+" • صندوق: "+stored+"</small></span><button type=\"button\" data-deposit=\""+k+"\" "+(source<1||chestUsed()>=CHEST_CAPACITY?"disabled":"")+">＋</button><button type=\"button\" data-withdraw=\""+k+"\" "+(stored<1?"disabled":"")+">−</button></div>";}).join("")||"<p>صندوق و کوله فعلاً خالی هستند.</p>";}
+function moveChestItem(key,dir){const isSeed=key.startsWith("seed:"),item=isSeed?key.slice(5):key;if(dir>0){const available=isSeed?(farmSeedStock[item]||0):(bag[item]||0);if(available<1||chestUsed()>=CHEST_CAPACITY)return;if(isSeed)farmSeedStock[item]--;else bag[item]--;chestStorage[key]=(chestStorage[key]||0)+1;}else{if((chestStorage[key]||0)<1)return;if(!bagCanAdd(1)){showToast("کوله جا نداره؛ اول چند وسیله رو داخل صندوق بذار");return;}chestStorage[key]--;if(isSeed)farmSeedStock[item]=(farmSeedStock[item]||0)+1;else bag[item]=(bag[item]||0)+1;}updateUI();updateChestUI();saveQuietly();}
 function catchFish(){if(!fishingRodOwned||selectedTool!=="fishingRod"){showToast("اول چوب ماهیگیری رو انتخاب کن");return;}if(fishingCooldown>0){showToast("کمی صبر کن تا دوباره قلاب بندازی");return;}fishingCooldown=2.2;if(Math.random()<.16){showToast("این بار ماهی نگرفتی؛ دوباره امتحان کن 🎣");return;}const roll=Math.random(),type=roll<.52?"carp":roll<.86?"perch":"trout";if(!bagCanAdd(1)){showToast("کوله‌پشتی پره؛ اول وسایلت رو مرتب کن");return;}bag[type]=(bag[type]||0)+1;updateUI();saveQuietly();showToast(({carp:"کپور",perch:"ماهی سوف",trout:"قزل‌آلا"})[type]+" گرفتی! 🎣");}
 function harvest(targetId=null) {
   if(templeMode){templeInteract();return;}
@@ -595,7 +601,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
+      bag, chestStorage, fishingRodOwned, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
     }));
   } catch (e) {}
 }
@@ -825,7 +831,7 @@ $("buildFurnace").addEventListener("click",()=>buildStation("furnace"));
 $("buildSawmill").addEventListener("click",()=>buildStation("sawmill"));
 $("openStations").addEventListener("click",openStationPanel);
 $("workshopBtn").addEventListener("click",openStationPanel);
-$("closeStations").addEventListener("click",()=>{$("stationPanel").hidden=true;syncXpPanel();});$("make_fishingRod").addEventListener("click",craftFishingRod);
+$("closeStations").addEventListener("click",()=>{$("stationPanel").hidden=true;syncXpPanel();});$("make_fishingRod").addEventListener("click",craftFishingRod);$("closeChest").addEventListener("click",()=>{$("chestPanel").hidden=true;syncXpPanel();});$("chestItems").addEventListener("click",e=>{const d=e.target.closest("[data-deposit]"),w=e.target.closest("[data-withdraw]");if(d)moveChestItem(d.dataset.deposit,1);else if(w)moveChestItem(w.dataset.withdraw,-1);});
 ["planks","bricks","rope","nails","glass","cloth","marbleSlabs","ironParts","templeFoundation","templeColumn","templeBeam","templeMosaic","templeBanner"].forEach(type=>$("make_"+type).addEventListener("click",()=>craftWorkshopItem(type)));
 ["axe","pickaxe","shovel"].forEach(type=>$("upgradeTool_"+type).addEventListener("click",()=>upgradeTool(type)));
 $("usePotion").addEventListener("click", usePotion);
@@ -1208,6 +1214,7 @@ function buyUpgrade(type) {
 }
 
 function update(dt) {
+  fishingCooldown=Math.max(0,fishingCooldown-dt);
   worldClock += dt * 8;
   if(worldClock >= 1440){worldClock -= 1440;worldDay++;onNewFarmDay();saveQuietly();}
   if(townMode)townSchedule(dt);
