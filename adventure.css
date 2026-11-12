@@ -213,3 +213,13 @@ button:disabled{opacity:.38;filter:grayscale(.65)}
 .inventory-discard:active{filter:brightness(1.2);}
 #caveBtn,#homeBtn,#townBtn,#townExitBtn,#workshopBtn{display:none!important;}
 @media(min-width:800px){#toolHotbar .hotbar-item{flex-basis:68px;width:68px;min-width:68px;height:70px;}}
+
+
+/* Stage 46 — safe manual save backup and restore panel. */
+.backup-panel{width:min(92vw,460px);}
+.backup-panel h2{margin-bottom:10px;}
+.backup-panel p{font-size:12px;line-height:1.9;}
+.backup-actions{display:grid;gap:9px;margin:14px 0;}
+.backup-actions button{min-height:48px;}
+.backup-warning{padding:9px 11px;border:1px solid #9a7654;border-radius:8px;background:#34291f;color:#f0d4a5!important;}
+#closeBackup{width:100%;min-height:42px;}
