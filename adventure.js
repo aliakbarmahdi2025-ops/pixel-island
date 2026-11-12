@@ -248,7 +248,11 @@ function load() {
     if((bag.seeds||0)>0){farmSeedStock.carrot+=(bag.seeds||0);bag.seeds=0;}
     if(Array.isArray(data.farmPlots)){farmPlots.length=0;data.farmPlots.forEach((p,i)=>{if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y))farmPlots.push({...p,id:Number.isFinite(p.id)?p.id:i});});}
     if(data.livestock&&typeof data.livestock==="object")livestock={...livestock,...data.livestock};
-    Object.keys(livestock).forEach(k=>livestock[k]=Math.max(0,Number(livestock[k])||0));
+    livestock.chickens=Math.max(0,Math.min(4,Number(livestock.chickens)||0));
+    livestock.cows=Math.max(0,Math.min(2,Number(livestock.cows)||0));
+    livestock.chickenFedDay=Number.isFinite(Number(livestock.chickenFedDay))?Number(livestock.chickenFedDay):-1;
+    livestock.cowFedDay=Number.isFinite(Number(livestock.cowFedDay))?Number(livestock.cowFedDay):-1;
+    ["chickenDays","cowDays","eggsReady","milkReady"].forEach(k=>livestock[k]=Math.max(0,Math.min(999,Number(livestock[k])||0)));
     selectedFarmPlot=farmPlots.length?0:-1;
   } catch (e) { console.warn("Save could not be loaded", e); }
 }
@@ -1383,6 +1387,7 @@ function onNewFarmDay(){
  ensureDailyMissions();
  if(livestock.chickens>0){if(livestock.chickenFedDay===worldDay-1){livestock.chickenDays++;livestock.eggsReady+=livestock.chickens;}else livestock.chickenDays=0;}
  if(livestock.cows>0){if(livestock.cowFedDay===worldDay-1){livestock.cowDays++;if(livestock.cowDays%2===0)livestock.milkReady+=livestock.cows;}else livestock.cowDays=0;}
+ updateLivestockUI();
  updateQuestUI();
  const season=getFarmSeason(),seasonChanged=getFarmSeasonDay()===1;
  for(const p of farmPlots){
@@ -1415,6 +1420,7 @@ function buyLivestock(type){
 function feedLivestock(type){
  const chicken=type==="chicken",count=chicken?livestock.chickens:livestock.cows,key=chicken?"chickenFedDay":"cowFedDay";
  if(!count||livestock[key]===worldDay)return;
+ if((bag.wheat||0)+(bag.carrot||0)<count){showToast("برای غذا دادن به همه، به "+count+" گندم یا هویج نیاز داری 🌾");return;}
  let remaining=count;
  for(const crop of ["wheat","carrot"]){const used=Math.min(remaining,bag[crop]||0);bag[crop]-=used;remaining-=used;if(!remaining)break;}
  if(remaining){showToast("برای غذا دادن به همه، به "+count+" گندم یا هویج نیاز داری 🌾");return;}
