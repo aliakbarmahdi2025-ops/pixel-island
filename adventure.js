@@ -255,6 +255,43 @@ function save() {
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
 }
+function exportSaveBackup() {
+  try {
+    saveQuietly();
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw)throw new Error("No save data");
+    const backup={format:"pixel-island-save-backup",version:1,game:"Pixel Island: Adventure",exportedAt:new Date().toISOString(),save:JSON.parse(raw)};
+    const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download="pixel-island-backup-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    showToast("نسخه پشتیبان آماده شد؛ فایل را نگه دار 💾");
+  } catch(e) { console.warn("Backup export failed",e);showToast("ساخت نسخه پشتیبان ناموفق بود"); }
+}
+function importSaveBackup(file) {
+  if(!file)return;
+  if(file.size>5*1024*1024){showToast("حجم فایل پشتیبان بیش از حد مجاز است");$("importSaveFile").value="";return;}
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try {
+      const parsed=JSON.parse(String(reader.result||""));
+      const data=parsed&&parsed.format==="pixel-island-save-backup"?parsed.save:parsed;
+      if(!data||typeof data!=="object"||!data.player||typeof data.player!=="object"||!data.bag||typeof data.bag!=="object"||!Number.isFinite(Number(data.player.x))||!Number.isFinite(Number(data.player.y))) {
+        throw new Error("Invalid save structure");
+      }
+      if(!confirm("با بازیابی این فایل، سیو فعلی جایگزین می‌شود. اگر هنوز از سیو فعلی نسخه پشتیبان نگرفته‌ای، اول خروجی بگیر. ادامه می‌دهی؟"))return;
+      localStorage.setItem(SAVE_KEY,JSON.stringify(data));
+      showToast("نسخه پشتیبان بازیابی شد؛ بازی در حال بارگذاری دوباره است…");
+      setTimeout(()=>location.reload(),500);
+    } catch(e) {
+      console.warn("Backup import failed",e);
+      showToast("فایل پشتیبان معتبر نیست یا بازیابی انجام نشد");
+    } finally {$("importSaveFile").value="";}
+  };
+  reader.onerror=()=>{showToast("خواندن فایل ناموفق بود");$("importSaveFile").value="";};
+  reader.readAsText(file);
+}
 function showToast(message) {
   $("toast").textContent = message;
   $("toast").classList.add("show");
@@ -736,6 +773,12 @@ $("enterHome").addEventListener("click", enterPlayerHome);
 $("upgradeHome").addEventListener("click", upgradePlayerHome);
 $("npcClose").addEventListener("click", () => { $("npcPanel").hidden = true; syncXpPanel(); });
 $("saveBtn").addEventListener("click", save);
+$("backupBtn").addEventListener("click",()=>{$("backupPanel").hidden=false;syncXpPanel();});
+$("closeBackup").addEventListener("click",()=>{$("backupPanel").hidden=true;syncXpPanel();});
+$("exportSaveBtn").addEventListener("click",exportSaveBackup);
+$("importSaveBtn").addEventListener("click",()=>$("importSaveFile").click());
+$("importSaveFile").addEventListener("change",e=>importSaveBackup(e.target.files&&e.target.files[0]));
+
 $("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); syncXpPanel(); });
 $("closeBag").addEventListener("click", () => { $("inventory").hidden = true; syncXpPanel(); });
 $("caveBtn").addEventListener("click",toggleCave);

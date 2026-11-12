@@ -22,9 +22,21 @@
       <button id="questBtn">📜 مأموریت</button>
       <button id="mapBtn" type="button">🗺️ نقشه</button>
       <button id="saveBtn">💾 ذخیره</button>
+      <button id="backupBtn" type="button">🛡️ پشتیبان</button>
       <button id="soundBtn" type="button" aria-label="فعال‌سازی صدای بازی" aria-pressed="false">🔈 فعال‌سازی صدا</button>
     </div>
   </header>
+  <section id="backupPanel" class="panel backup-panel" hidden>
+    <h2>🛡️ پشتیبان ذخیره بازی</h2>
+    <p>از پیشرفتت یک فایل امن بساز و آن را در گوشی یا فضای ابری نگه دار. برای بازیابی، فایل پشتیبان قبلی را انتخاب کن.</p>
+    <div class="backup-actions">
+      <button id="exportSaveBtn" type="button">⬇️ دریافت فایل پشتیبان</button>
+      <button id="importSaveBtn" type="button">⬆️ بازیابی از فایل</button>
+    </div>
+    <p class="backup-warning">هشدار: بازیابی، سیو فعلی را با اطلاعات فایل انتخاب‌شده جایگزین می‌کند. قبلش از سیو فعلی خروجی بگیر.</p>
+    <button id="closeBackup" type="button">بستن</button>
+  </section>
+  <input id="importSaveFile" type="file" accept=".json,application/json" hidden>
   <section id="xpPanel" aria-label="تجربه بازیکن">
     <div class="xp-label"><span>⭐ تجربه</span><b id="xpText">0 / 50 XP</b></div>
     <div class="xp-track"><div id="xpFill"></div></div>
