@@ -605,6 +605,24 @@ function canvasWorldTap(e){
   if(document.querySelector(".panel:not([hidden])"))return;
   e.preventDefault();
   const wx=e.clientX+camera.x,wy=e.clientY+camera.y;
+  if(homeInterior){
+    const doorY=Math.max(35,(viewH-520)/2)+Math.min(viewH-80,520)-9;
+    if(Math.abs(e.clientX-viewW/2)<66&&Math.abs(e.clientY-doorY)<52)handleHomeButton();
+    return;
+  }
+  if(townMode&&Math.hypot(wx-800,wy-1110)<92){transitionTown(false);return;}
+  if(caveMode&&Math.hypot(wx-800,wy-1080)<78){toggleCave();return;}
+  if(!templeMode&&!townMode&&!caveMode&&!homeInterior){
+    if(Math.hypot(wx-2080,wy-1450)<88){toggleCave();return;}
+    if(Math.hypot(wx-2310,wy-900)<92){transitionTown(true);return;}
+    if(Math.hypot(wx-playerHome.x,wy-playerHome.y)<92){if(homeLevel>0)enterPlayerHome();else openHomePanel();return;}
+    const stationsHere=[];
+    if(stations.workbench)stationsHere.push({x:playerHome.x-108,y:playerHome.y+104});
+    if(stations.sawmill)stationsHere.push({x:playerHome.x+8,y:playerHome.y+145});
+    if(stations.furnace)stationsHere.push({x:playerHome.x+112,y:playerHome.y+104});
+    const station=stationsHere.find(p=>Math.hypot(wx-p.x,wy-p.y)<68);
+    if(station){setWorldTarget("workshop",station.x,station.y);return;}
+  }
   const near=(items,radius,fn)=>items.find(o=>Math.hypot(wx-o.x,wy-o.y)<radius&&(!fn||fn(o)));
   if(templeMode){
     const enemy=near(templeEnemies,48,o=>o.alive);
@@ -663,7 +681,7 @@ function tickWorldInteraction(dt){
     if(person){t.x=person.x;t.y=person.y;}
   }else if(t.type==="forestNpc"){t.x=forestNpc.x;t.y=forestNpc.y;}
   const d=Math.hypot(player.x-t.x,player.y-t.y);
-  const stops={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12};
+  const stops={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,workshop:48};
   if(d>(stops[t.type]??10))return;
   playerMoving=false;
   if(t.type==="ground"){moveTarget=null;return;}
@@ -692,6 +710,7 @@ function tickWorldInteraction(dt){
   else if(t.type==="farmPlant"){farmPlant();moveTarget=null;}
   else if(t.type==="farmHarvest"){farmHarvest();moveTarget=null;}
   else if(t.type==="farmTill"){farmTill(t.x,t.y);moveTarget=null;}
+  else if(t.type==="workshop"){openStationPanel();moveTarget=null;}
   else if(t.type==="temple"){templeInteract(t.rune??null);moveTarget=null;}
 }
 
