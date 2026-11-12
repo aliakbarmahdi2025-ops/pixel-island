@@ -21,6 +21,7 @@ let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
 let caveResources = [], caveChests = [];
 let resources = [];
 let quests = { wood: 0, slime: 0, iron: 0, claimed: { wood: false, slime: false, iron: false } };
+let dailyMissions = { day: 1, progress: { wood: 0, iron: 0, harvest: 0 }, claimed: { wood: false, iron: false, harvest: false } };
 let npcMet = false, npcTalkIndex = 0;
 let npcQuest = { accepted: false, progress: 0, claimed: false };
 let homeLevel = 0, homeInterior = false, homeReturn = { x: 760, y: 590 };
@@ -231,6 +232,7 @@ function load() {
     if (Array.isArray(data.lootDrops)) lootDrops = data.lootDrops.filter(d => d && Number.isFinite(d.x) && Number.isFinite(d.y) && ["coin","stone","iron","crystal","potion"].includes(d.type));
     caveMode = !!data.caveMode; if(data.caveReturn)caveReturn=data.caveReturn; if(Array.isArray(data.openedChests))openedChests=data.openedChests;
     if(data.quests)quests={...quests,...data.quests,claimed:{...quests.claimed,...(data.quests.claimed||{})}};
+    if(data.dailyMissions&&typeof data.dailyMissions==="object")dailyMissions={...dailyMissions,...data.dailyMissions,progress:{...dailyMissions.progress,...(data.dailyMissions.progress||{})},claimed:{...dailyMissions.claimed,...(data.dailyMissions.claimed||{})}};
     npcMet = !!data.npcMet; npcTalkIndex = Number.isInteger(data.npcTalkIndex) ? data.npcTalkIndex : 0;
     if (data.npcQuest) npcQuest = { ...npcQuest, ...data.npcQuest };
     homeLevel = Math.max(0, Math.min(3, Number(data.homeLevel) || 0));
@@ -250,7 +252,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock
+      bag, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -536,9 +538,9 @@ function harvest(targetId=null) {
   spawnGatherFx(nearest.type,nearest.x,nearest.y,nearest.hp<=0);
   if (nearest.hp <= 0) {
     (caveMode ? caveHarvested : harvested).add(nearest.id);
-    if (nearest.type === "tree") { bag.wood += 3; quests.wood = Math.min(10, quests.wood + 3); }
+    if (nearest.type === "tree") { bag.wood += 3; quests.wood = Math.min(10, quests.wood + 3); progressDailyMission("wood",3); }
     if (nearest.type === "stone") bag.stone += 2;
-    if (nearest.type === "iron") { bag.iron += 1; quests.iron = Math.min(5, quests.iron + 1); }
+    if (nearest.type === "iron") { bag.iron += 1; quests.iron = Math.min(5, quests.iron + 1); progressDailyMission("iron",1); }
     if (nearest.type === "crystal") { bag.crystal = (bag.crystal||0)+1; progressNpcCrystal(1); }
     if (nearest.type === "bush") bag.fiber = (bag.fiber||0) + 2;
     if (nearest.type === "sand") bag.sand = (bag.sand||0) + 2;
@@ -578,7 +580,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock
+      bag, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock
     }));
   } catch (e) {}
 }
@@ -808,6 +810,9 @@ $("closeQuests").addEventListener("click", () => { $("questPanel").hidden = true
 $("claimWood").addEventListener("click", () => claimQuest("wood"));
 $("claimSlime").addEventListener("click", () => claimQuest("slime"));
 $("claimIron").addEventListener("click", () => claimQuest("iron"));
+$("claimDailyWood").addEventListener("click",()=>claimDailyMission("wood"));
+$("claimDailyIron").addEventListener("click",()=>claimDailyMission("iron"));
+$("claimDailyHarvest").addEventListener("click",()=>claimDailyMission("harvest"));
 $("upgradeBtn").addEventListener("click", () => { $("upgradePanel").hidden = false; updateUpgradeUI(); syncXpPanel(); });
 $("closeUpgrades").addEventListener("click", () => { $("upgradePanel").hidden = true; syncXpPanel(); });
 $("upgradeHealth").addEventListener("click", () => buyUpgrade("health"));
@@ -991,6 +996,43 @@ function advanceNpcDialogue() {
   npcTalkIndex++;
   saveQuietly();
 }
+const DAILY_MISSION_INFO = {
+  wood: { goal: 6, unit: "چوب", reward: 40, label: "جمع‌آوری چوب", icon: "🪵" },
+  iron: { goal: 3, unit: "آهن", reward: 40, label: "استخراج آهن", icon: "⛏️" },
+  harvest: { goal: 2, unit: "محصول", reward: 40, label: "برداشت محصول", icon: "🧺" }
+};
+ensureDailyMissions();
+function ensureDailyMissions() {
+  if(!dailyMissions||typeof dailyMissions!=="object")dailyMissions={day:worldDay,progress:{},claimed:{}};
+  if(Number(dailyMissions.day)!==Number(worldDay))dailyMissions={day:worldDay,progress:{wood:0,iron:0,harvest:0},claimed:{wood:false,iron:false,harvest:false}};
+  dailyMissions.progress=dailyMissions.progress&&typeof dailyMissions.progress==="object"?dailyMissions.progress:{};
+  dailyMissions.claimed=dailyMissions.claimed&&typeof dailyMissions.claimed==="object"?dailyMissions.claimed:{};
+  for(const key of Object.keys(DAILY_MISSION_INFO)){
+    dailyMissions.progress[key]=Math.max(0,Math.min(DAILY_MISSION_INFO[key].goal,Number(dailyMissions.progress[key])||0));
+    dailyMissions.claimed[key]=!!dailyMissions.claimed[key];
+  }
+}
+function progressDailyMission(key,amount=1) {
+  ensureDailyMissions();const mission=DAILY_MISSION_INFO[key];if(!mission)return;
+  dailyMissions.progress[key]=Math.min(mission.goal,dailyMissions.progress[key]+Math.max(0,Number(amount)||0));
+}
+function updateDailyMissionUI() {
+  ensureDailyMissions();
+  for(const [key,mission] of Object.entries(DAILY_MISSION_INFO)){
+    const progress=dailyMissions.progress[key],claimed=dailyMissions.claimed[key];
+    const suffix=key.charAt(0).toUpperCase()+key.slice(1);
+    const text=$("daily"+suffix+"Text"),button=$("claimDaily"+suffix);
+    if(text)text.textContent=Math.min(mission.goal,progress)+" / "+mission.goal+" "+mission.unit;
+    if(button){button.disabled=claimed||progress<mission.goal;button.textContent=claimed?"جایزه دریافت شد ✓":"دریافت جایزه (۴۰ سکه + ۲۵ XP)";}
+  }
+  const dayLabel=$("dailyMissionDay");if(dayLabel)dayLabel.textContent="روز "+worldDay+" • با شروع روز بعد تازه می‌شود";
+}
+function claimDailyMission(key) {
+  ensureDailyMissions();const mission=DAILY_MISSION_INFO[key];
+  if(!mission||dailyMissions.claimed[key]||dailyMissions.progress[key]<mission.goal){showToast("این مأموریت روزانه هنوز کامل نشده");return;}
+  dailyMissions.claimed[key]=true;player.coins+=mission.reward;const leveled=addXP(25);
+  updateUI();saveQuietly();showToast(leveled?"جایزه روزانه دریافت شد! سطح جدید ⭐ +۴۰ سکه":"جایزه روزانه دریافت شد! +۴۰ سکه و ۲۵ XP 🎉");
+}
 function updateQuestUI() {
   const rows = [
     { key: "wood", text: "questWoodText", button: "claimWood", goal: 10, unit: "چوب" },
@@ -1002,6 +1044,7 @@ function updateQuestUI() {
     $(q.button).disabled = quests.claimed[q.key] || quests[q.key] < q.goal;
     $(q.button).textContent = quests.claimed[q.key] ? "انجام شد ✓" : "دریافت جایزه (+۲۰ سکه، +۳۰ XP)";
   }
+  updateDailyMissionUI();
 }
 function claimQuest(key) {
   const goals = { wood: 10, slime: 3, iron: 5 };
@@ -1331,6 +1374,8 @@ function getFarmSeasonDay(){return ((worldDay-1)%28)+1;}
 function getFarmTileAt(x,y){return farmPlots.findIndex(p=>Math.hypot(p.x-x,p.y-y)<42);}
 function openFarmPanel(){selectedFarmPlot=farmPlots.length?Math.max(0,farmPlots.reduce((best,p,i)=>Math.hypot(p.x-player.x,p.y-player.y)<Math.hypot(farmPlots[best].x-player.x,farmPlots[best].y-player.y)?i:best,0)):-1;$("farmPanel").hidden=false;updateFarmUI();syncXpPanel();}
 function onNewFarmDay(){
+ ensureDailyMissions();
+ updateQuestUI();
  const season=getFarmSeason(),seasonChanged=getFarmSeasonDay()===1;
  for(const p of farmPlots){
   if(p.state==="growing"&&p.crop&&p.wateredDay===worldDay-1){
@@ -1385,7 +1430,7 @@ function farmHarvest(){
  const crop=FARM_CROPS[p.crop],target=p.harvests>0&&crop.regrow?crop.regrow:crop.days;
  if(p.growth<target)return;
  if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}
- bag[p.crop]=(bag[p.crop]||0)+1;
+ bag[p.crop]=(bag[p.crop]||0)+1;progressDailyMission("harvest",1);
  if(crop.regrow){p.harvests=(p.harvests||0)+1;p.growth=0;p.wateredDay=-1;}
  else{p.state="tilled";p.crop=null;p.growth=0;p.harvests=0;p.wateredDay=-1;}
  updateUI();updateFarmUI();saveQuietly();showToast(crop.name+" برداشت شد! 🧺");
