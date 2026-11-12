@@ -27,7 +27,7 @@ let homeLevel = 0, homeInterior = false, homeReturn = { x: 760, y: 590 };
 
 let townMode = false, townReturn = {x:2240,y:900}, townNpcIndex = 0;
 let backpackTier = 0, furnitureOwned = {bed:false,table:false,chair:false};
-const backpackCaps = [30,50,75];
+const backpackCaps = [30,45,60];
 const townFriendship = {mina:0,hana:0,nahid:0,saeed:0,rezaei:0,naderi:0};
 const townStock = {bread:0,seeds:0,apple:0};
 const TOWN = {w:1600,h:1200};
@@ -215,7 +215,7 @@ function load() {
       if (!Object.prototype.hasOwnProperty.call(data.player, "skillPoints")) player.skillPoints = Math.max(0, player.level - 1);
     }
     if (data.bag) Object.assign(bag, data.bag);
-    if(!Number.isFinite(Number(data.backpackTier))){const used=Object.values(bag).reduce((n,v)=>n+(Number(v)||0),0);backpackTier=used>50?2:used>30?1:0;}
+    if(!Number.isFinite(Number(data.backpackTier))){const used=Object.values(bag).reduce((n,v)=>n+(Number(v)||0),0);backpackTier=used>45?2:used>30?1:0;}
     if (data.stations) Object.assign(stations, data.stations);
     if (data.toolLevels) Object.keys(toolLevels).forEach(k => toolLevels[k] = Math.max(0, Math.min(2, Number(data.toolLevels[k]) || 0)));
     bridgeStage = Math.max(0, Math.min(3, Number(data.bridgeStage) || 0));
@@ -234,7 +234,7 @@ function load() {
     npcMet = !!data.npcMet; npcTalkIndex = Number.isInteger(data.npcTalkIndex) ? data.npcTalkIndex : 0;
     if (data.npcQuest) npcQuest = { ...npcQuest, ...data.npcQuest };
     homeLevel = Math.max(0, Math.min(3, Number(data.homeLevel) || 0));
-    if(Number.isFinite(Number(data.backpackTier))) backpackTier=Math.max(0,Math.min(2,Number(data.backpackTier))); else { const used=Object.values(bag).reduce((n,v)=>n+(Number(v)||0),0)+Object.values(farmSeedStock).reduce((n,v)=>n+(Number(v)||0),0); backpackTier=used>50?2:used>30?1:0; }
+    if(Number.isFinite(Number(data.backpackTier))) backpackTier=Math.max(0,Math.min(2,Number(data.backpackTier))); else { const used=Object.values(bag).reduce((n,v)=>n+(Number(v)||0),0)+Object.values(farmSeedStock).reduce((n,v)=>n+(Number(v)||0),0); backpackTier=used>45?2:used>30?1:0; }
     if(Array.isArray(data.inventoryOrder))inventoryOrder=data.inventoryOrder.filter(v=>typeof v==="string");
     if(data.furnitureOwned) furnitureOwned={...furnitureOwned,...data.furnitureOwned};
     homeInterior = !!data.homeInterior; if (data.homeReturn) homeReturn = data.homeReturn;
@@ -290,6 +290,7 @@ function updateUI() {
   $("xpText").textContent = player.xp + " / " + xpNeeded() + " XP";
   $("xpFill").style.width = Math.min(100, player.xp / xpNeeded() * 100) + "%";
   renderInventory();
+  renderHotbar();
   updateUpgradeUI();
   updateQuestUI();
   if ($("npcQuestStatus")) updateNpcQuestUI();
@@ -573,11 +574,16 @@ $("soundBtn").addEventListener("click",()=>{
 try{if(localStorage.getItem("pixelIsland_sound_enabled")==="1")$("soundBtn").textContent="🔈 برای فعال‌سازی صدا لمس کن";}catch(e){}
 
 $("toolHotbar").addEventListener("click",e=>{
-  const btn=e.target.closest("[data-tool]");
-  if(btn)chooseTool(btn.dataset.tool);
-});
+ const btn=e.target.closest("button");if(!btn)return;
+ if(btn.dataset.tool){chooseTool(btn.dataset.tool);return;}
+ const id=btn.dataset.hotItem;if(!id)return;
+ if(id==="bag:potion"){usePotion();return;}
+ if(id.startsWith("seed:")){selectedCrop=id.slice(5);chooseTool("seeds");return;}
+ inventorySelected=id;renderInventory();renderHotbar();
+ const item=inventoryItems().find(v=>v.id===id);if(item)showToast(item.name+" انتخاب شد");
 
 $("inventoryGrid").addEventListener("click",e=>{
+ const discard=e.target.closest("[data-discard]");if(discard){e.stopPropagation();discardInventoryItem(discard.dataset.discard);return;}
  const equip=e.target.closest("[data-equip]");
  if(equip){chooseTool(equip.dataset.equip);inventorySelected=null;renderInventory();return;}
  const card=e.target.closest("[data-item]");if(!card)return;
@@ -586,6 +592,7 @@ $("inventoryGrid").addEventListener("click",e=>{
  if(inventorySelected===id){inventorySelected=null;renderInventory();return;}
  swapInventoryItems(inventorySelected,id);
 });
+
 let inventoryDragId=null;
 $("inventoryGrid").addEventListener("dragstart",e=>{const card=e.target.closest("[data-item]");if(!card)return;inventoryDragId=card.dataset.item;e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",inventoryDragId);});
 $("inventoryGrid").addEventListener("dragover",e=>{if(e.target.closest("[data-item]"))e.preventDefault();});
@@ -1212,8 +1219,26 @@ function renderInventory(){
  inventoryOrder=[...inventoryOrder.filter(id=>ids.includes(id)),...ids.filter(id=>!inventoryOrder.includes(id))];
  const byId=new Map(items.map(v=>[v.id,v]));
  const ordered=inventoryOrder.map(id=>byId.get(id)).filter(Boolean);
- grid.innerHTML=ordered.map(item=>'<div class="inventory-item '+(inventorySelected===item.id?"selected":"")+'" data-item="'+item.id+'" draggable="true" role="button" tabindex="0"><span class="inventory-item-icon">'+item.icon+'</span><span class="inventory-item-name">'+item.name+'</span><small>'+item.kind+'</small><b class="inventory-item-count">'+item.count+'</b><span class="inventory-item-detail">'+item.detail+'</span>'+(item.equip?'<button type="button" class="inventory-equip" data-equip="'+item.equip+'">انتخاب</button>':"")+'</div>').join("");
+ grid.innerHTML=ordered.map(item=>'<div class="inventory-item '+(inventorySelected===item.id?"selected":"")+'" data-item="'+item.id+'" draggable="true" role="button" tabindex="0"><span class="inventory-item-icon">'+item.icon+'</span><span class="inventory-item-name">'+item.name+'</span><small>'+item.kind+'</small><b class="inventory-item-count">'+item.count+'</b><span class="inventory-item-detail">'+item.detail+'</span>'+(item.equip?'<button type="button" class="inventory-equip" data-equip="'+item.equip+'">انتخاب</button>':'<button type="button" class="inventory-discard" data-discard="'+item.id+'" aria-label="حذف '+item.name+'">🗑 حذف</button>')+'</div>').join("");
  $("inventorySummary").textContent="ظرفیت کوله: "+bagUsed()+" / "+backpackCaps[backpackTier]+" • "+items.length+" نوع وسیله";
+}
+function renderHotbar(){
+ const bar=$("toolHotbar");if(!bar)return;
+ const items=inventoryItems(),byId=new Map(items.map(v=>[v.id,v]));
+ inventoryOrder=[...inventoryOrder.filter(id=>byId.has(id)),...items.map(v=>v.id).filter(id=>!inventoryOrder.includes(id))];
+ const scroll=bar.scrollLeft;
+ bar.innerHTML=inventoryOrder.map(id=>byId.get(id)).filter(Boolean).map(item=>{
+  const tool=item.equip||"",selected=tool?tool===selectedTool:inventorySelected===item.id;
+  return '<button type="button" class="hotbar-item '+(selected?"selected":"")+'" '+(tool?'data-tool="'+tool+'"':'data-hot-item="'+item.id+'"')+' title="'+item.name+'"><span>'+item.icon+'</span><small>'+item.name+'</small><b class="hotbar-count">'+item.count+'</b></button>';
+ }).join("");
+ bar.scrollLeft=scroll;
+}
+function discardInventoryItem(id){
+ if(!id||(!id.startsWith("bag:")&&!id.startsWith("seed:")))return;
+ const item=inventoryItems().find(v=>v.id===id);if(!item)return;
+ if(!window.confirm("همه‌ی "+item.name+"ها ("+item.count+") از کوله حذف بشن؟"))return;
+ if(id.startsWith("bag:"))bag[id.slice(4)]=0;else farmSeedStock[id.slice(5)]=0;
+ inventorySelected=null;updateUI();saveQuietly();showToast(item.name+" از کوله حذف شد");
 }
 function swapInventoryItems(a,b){
  if(!a||!b||a===b)return;
