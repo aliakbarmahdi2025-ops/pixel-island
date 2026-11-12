@@ -337,7 +337,6 @@ function updateUI() {
   if ($("stationPanel")) updateToolUI();
 }
 load();
-ensureDailyMissions();
 if(caveMode&&Math.hypot(player.x-800,player.y-1080)<8){player.x=800;player.y=1015;}
 makeWorld();
 makeCave();
@@ -1002,6 +1001,7 @@ const DAILY_MISSION_INFO = {
   iron: { goal: 3, unit: "آهن", reward: 40, label: "استخراج آهن", icon: "⛏️" },
   harvest: { goal: 2, unit: "محصول", reward: 40, label: "برداشت محصول", icon: "🧺" }
 };
+ensureDailyMissions();
 function ensureDailyMissions() {
   if(!dailyMissions||typeof dailyMissions!=="object")dailyMissions={day:worldDay,progress:{},claimed:{}};
   if(Number(dailyMissions.day)!==Number(worldDay))dailyMissions={day:worldDay,progress:{wood:0,iron:0,harvest:0},claimed:{wood:false,iron:false,harvest:false}};
