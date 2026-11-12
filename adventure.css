@@ -120,7 +120,7 @@ button:active{transform:translateY(2px)}
 /* Stage 27 — ancient bridge and temple route. */
 #bridgeBtn{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);pointer-events:auto;white-space:nowrap;background:linear-gradient(180deg,#80613b,#58412c);border:2px solid #e8cc8f;color:#fff4d2;z-index:5;box-shadow:0 4px 0 #302317}
 #bridgeBtn:active{transform:translateX(-50%) translateY(2px)}
-.bridge-story,.bridge-warning{font-size:12px;line-height:1.9;padding:10px;border-radius:9px;background:#294532;color:#e5f1ce;margin:10px 0}
+.bridge-story,.bridge-warning{font-size:12px;line-height:1.9;padding:10px;border-radius:9px;background:#294532;color:#e5f1ce;margin:10px 0}.chest-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border:1px solid #526b5c;border-radius:10px;background:#172820;color:#f4ead0}.chest-item span{flex:1;text-align:right}.chest-item button{min-width:42px;padding:7px}
 .bridge-status{padding:12px;border:2px solid #b8965c;background:#59452f;border-radius:10px;color:#ffe6ae;font-weight:800;line-height:1.8}
 .bridge-recipe{white-space:pre-line;padding:12px;background:#1e3428;border:1px solid #6d8b61;border-radius:9px;font-size:12px;line-height:2;color:#f1e4c2}
 #bridgeBuildBtn{background:#80603a;border-color:#e8cc8f;min-height:46px;width:100%;margin:5px 0}

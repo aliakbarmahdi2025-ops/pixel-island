@@ -9,7 +9,8 @@ const SAVE_KEY = "pixelIsland_adventure_save_v1";
 let viewW = innerWidth, viewH = innerHeight, dpr = 1;
 const camera = { x: 0, y: 0 };
 const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, maxHealth: 5, level: 1, xp: 0, skillPoints: 0, attackPower: 1, armorLevel: 0, coins: 0 };
-const bag = { wood: 0, stone: 0, iron: 0, crystal: 0, potion: 0, egg: 0, milk: 0, seeds: 0, wheat: 0, carrot: 0, strawberry: 0, fiber: 0, sand: 0, marble: 0, plank: 0, brick: 0, rope: 0, nail: 0, glass: 0, cloth: 0, marbleSlab: 0, ironParts: 0, templeFoundation: 0, templeColumn: 0, templeBeam: 0, templeMosaic: 0, templeBanner: 0 };
+const bag = { wood: 0, stone: 0, iron: 0, crystal: 0, potion: 0, egg: 0, milk: 0, carp:0, perch:0, trout:0, seeds: 0, wheat: 0, carrot: 0, strawberry: 0, fiber: 0, sand: 0, marble: 0, plank: 0, brick: 0, rope: 0, nail: 0, glass: 0, cloth: 0, marbleSlab: 0, ironParts: 0, templeFoundation: 0, templeColumn: 0, templeBeam: 0, templeMosaic: 0, templeBanner: 0 };
+const chestStorage={};let fishingRodOwned=false,fishingCooldown=0;const CHEST_CAPACITY=150;const CHEST_POS={x:555,y:585};
 const stations = { workbench: false, furnace: false, sawmill: false };
 const toolLevels = { axe: 0, pickaxe: 0, shovel: 0 };
 let bridgeStage = 0; // 0 broken, 1 stone piers, 2 timber deck, 3 ancient seal complete
@@ -72,7 +73,7 @@ let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
 let move = { x: 0, y: 0 };
 let moveTarget = null, selectedTool = "hand", interactionTimer = 0;
 const TOOL_INFO = {
- hand:{icon:"🖐️",label:"دست خالی"}, axe:{icon:"🪓",label:"تبر"}, pickaxe:{icon:"⛏️",label:"کلنگ"},
+ hand:{icon:"🖐️",label:"دست خالی"}, fishingRod:{icon:"🎣",label:"چوب ماهیگیری"}, axe:{icon:"🪓",label:"تبر"}, pickaxe:{icon:"⛏️",label:"کلنگ"},
  shovel:{icon:"🪏",label:"بیل"}, watering:{icon:"💧",label:"آب‌پاش"},
  sword:{icon:"⚔️",label:"شمشیر"}, seeds:{icon:"🌱",label:"بذر"}
 };
@@ -218,6 +219,8 @@ function load() {
       if (!Object.prototype.hasOwnProperty.call(data.player, "skillPoints")) player.skillPoints = Math.max(0, player.level - 1);
     }
     if (data.bag) Object.assign(bag, data.bag);
+    if(data.chestStorage&&typeof data.chestStorage==="object")Object.keys(data.chestStorage).forEach(k=>chestStorage[k]=Math.max(0,Number(data.chestStorage[k])||0));
+    fishingRodOwned=!!data.fishingRodOwned;
     if(!Number.isFinite(Number(data.backpackTier))){const used=Object.values(bag).reduce((n,v)=>n+(Number(v)||0),0);backpackTier=used>45?2:used>30?1:0;}
     if (data.stations) Object.assign(stations, data.stations);
     if (data.toolLevels) Object.keys(toolLevels).forEach(k => toolLevels[k] = Math.max(0, Math.min(2, Number(data.toolLevels[k]) || 0)));
@@ -260,7 +263,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
+      bag, chestStorage, fishingRodOwned, stations, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -396,9 +399,9 @@ function toggleCave(){
 
 
 const bridgeRecipes = [
- {name:"پایه‌های سنگی",cost:{brick:30,marbleSlab:5,ironParts:3},hint:"۳۰ آجر سنگی • ۵ تخته مرمر • ۳ قطعه آهنی"},
- {name:"عرشه چوبی و مهارها",cost:{plank:45,nail:18,rope:14},hint:"۴۵ تخته • ۱۸ میخ • ۱۴ طناب"},
- {name:"مهر باستانی معبد",cost:{crystal:6,glass:6,cloth:6,templeFoundation:2,templeColumn:1,templeBeam:1},hint:"۶ کریستال • ۶ شیشه • ۶ پارچه • ۲ پایه • ۱ ستون • ۱ تیر معبد"}
+ {name:"پایه‌های سنگی",cost:{brick:18,marbleSlab:3,ironParts:2},hint:"۱۸ آجر سنگی • ۳ تخته مرمر • ۲ قطعه آهنی"},
+ {name:"عرشه چوبی و مهارها",cost:{plank:24,nail:10,rope:6},hint:"۲۴ تخته • ۱۰ میخ • ۶ طناب"},
+ {name:"مهر باستانی معبد",cost:{crystal:3,glass:3,cloth:3,templeFoundation:1,templeColumn:1,templeBeam:1},hint:"۳ کریستال • ۳ شیشه • ۳ پارچه • ۱ پایه • ۱ ستون • ۱ تیر معبد"}
 ];
 function bridgeCanBuild(stage){
  const recipe=bridgeRecipes[stage];return !!recipe&&Object.values(stations).every(Boolean)&&Object.entries(recipe.cost).every(([k,v])=>(bag[k]||0)>=v);
@@ -526,6 +529,13 @@ function drawTempleEnemy(e){
 
 function requiredToolForResource(node){return node.type==="tree"||node.type==="bush"?"axe":node.type==="sand"?"shovel":"pickaxe";}
 function removeTilledFarmPlot(index){const plot=farmPlots[index];if(!plot||!(plot.state==="tilled"||plot.state==="empty")){showToast("فقط زمین خالی یا شخم‌خورده رو می‌تونی با کلنگ جمع کنی");return;}farmPlots.splice(index,1);farmPlots.forEach((p,i)=>p.id=i);selectedFarmPlot=farmPlots.length?Math.min(index,farmPlots.length-1):-1;updateFarmUI();saveQuietly();showToast("زمین شخم‌خورده جمع شد ⛏️");}
+function chestUsed(){return Object.values(chestStorage).reduce((n,v)=>n+(Number(v)||0),0);}
+function chestItemName(key){if(key.startsWith("seed:")){const crop=FARM_CROPS[key.slice(5)];return crop?"بذر "+crop.name:"بذر";}const crop=FARM_CROPS[key];return crop?crop.name:(INVENTORY_LABELS[key]||key);}
+function chestItemIcon(key){if(key.startsWith("seed:"))return FARM_CROPS[key.slice(5)]?.icon||"🌱";const crop=FARM_CROPS[key];return crop?crop.icon:(INVENTORY_ICONS[key]||"📦");}
+function openChestPanel(){if(caveMode||townMode||homeInterior||templeMode)return;$("chestPanel").hidden=false;updateChestUI();syncXpPanel();}
+function updateChestUI(){const keys=[...new Set([...Object.keys(bag).filter(k=>k!=="seeds"),...Object.keys(farmSeedStock).map(k=>"seed:"+k),...Object.keys(chestStorage)])].filter(k=>(bag[k]||0)>0||(k.startsWith("seed:")?(farmSeedStock[k.slice(5)]||0)>0:false)||(chestStorage[k]||0)>0);$("chestSummary").textContent="ظرفیت صندوق: "+chestUsed()+" / "+CHEST_CAPACITY+" • فضای خالی: "+(CHEST_CAPACITY-chestUsed());$("chestItems").innerHTML=keys.map(k=>{const source=k.startsWith("seed:")?(farmSeedStock[k.slice(5)]||0):(bag[k]||0),stored=chestStorage[k]||0;return '<div class="chest-item"><span>'+chestItemIcon(k)+" "+chestItemName(k)+"<br><small>کوله: "+source+" • صندوق: "+stored+"</small></span><button type=\"button\" data-deposit=\""+k+"\" "+(source<1||chestUsed()>=CHEST_CAPACITY?"disabled":"")+">＋</button><button type=\"button\" data-withdraw=\""+k+"\" "+(stored<1?"disabled":"")+">−</button></div>";}).join("")||"<p>صندوق و کوله فعلاً خالی هستند.</p>";}
+function moveChestItem(key,dir){const isSeed=key.startsWith("seed:"),item=isSeed?key.slice(5):key;if(dir>0){const available=isSeed?(farmSeedStock[item]||0):(bag[item]||0);if(available<1||chestUsed()>=CHEST_CAPACITY)return;if(isSeed)farmSeedStock[item]--;else bag[item]--;chestStorage[key]=(chestStorage[key]||0)+1;}else{if((chestStorage[key]||0)<1)return;if(!bagCanAdd(1)){showToast("کوله جا نداره؛ اول چند وسیله رو داخل صندوق بذار");return;}chestStorage[key]--;if(isSeed)farmSeedStock[item]=(farmSeedStock[item]||0)+1;else bag[item]=(bag[item]||0)+1;}updateUI();updateChestUI();saveQuietly();}
+function catchFish(){if(!fishingRodOwned||selectedTool!=="fishingRod"){showToast("اول چوب ماهیگیری رو انتخاب کن");return;}if(fishingCooldown>0){showToast("کمی صبر کن تا دوباره قلاب بندازی");return;}fishingCooldown=2.2;if(Math.random()<.16){showToast("این بار ماهی نگرفتی؛ دوباره امتحان کن 🎣");return;}const roll=Math.random(),type=roll<.52?"carp":roll<.86?"perch":"trout";if(!bagCanAdd(1)){showToast("کوله‌پشتی پره؛ اول وسایلت رو مرتب کن");return;}bag[type]=(bag[type]||0)+1;updateUI();saveQuietly();showToast(({carp:"کپور",perch:"ماهی سوف",trout:"قزل‌آلا"})[type]+" گرفتی! 🎣");}
 function harvest(targetId=null) {
   if(templeMode){templeInteract();return;}
   triggerPlayerAction("gather",0.36);
@@ -591,7 +601,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
+      bag, chestStorage, fishingRodOwned, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
     }));
   } catch (e) {}
 }
@@ -652,6 +662,7 @@ $("inventoryGrid").addEventListener("keydown",e=>{if((e.key==="Enter"||e.key==="
 function setWorldTarget(type,x,y,extra={}){
   moveTarget={type,x,y,...extra};interactionTimer=0;
 }
+function nearestPondAt(x,y){const size=GROUND_CHUNK_TILES*WORLD.tile,cx=Math.floor(x/size),cy=Math.floor(y/size);for(let yy=cy-1;yy<=cy+1;yy++)for(let xx=cx-1;xx<=cx+1;xx++){const p=forestPondForChunk(xx,yy);if(p&&((x-p.x)/(p.rx*.9))**2+((y-p.y)/(p.ry*.9))**2<1)return p;}return null;}
 function canvasWorldTap(e){
   if(document.querySelector(".panel:not([hidden])"))return;
   e.preventDefault();
@@ -666,6 +677,7 @@ function canvasWorldTap(e){
   if(!templeMode&&!townMode&&!caveMode&&!homeInterior){
     if(Math.hypot(wx-2080,wy-1450)<88){toggleCave();return;}
     if(Math.hypot(wx-2310,wy-900)<92){transitionTown(true);return;}
+    if(Math.hypot(wx-CHEST_POS.x,wy-CHEST_POS.y)<52){openChestPanel();return;}
     if(Math.hypot(wx-playerHome.x,wy-playerHome.y)<92){if(homeLevel>0)enterPlayerHome();else openHomePanel();return;}
     if(Math.hypot(wx-LIVESTOCK_PEN.x,wy-LIVESTOCK_PEN.y)<112){openLivestockPanel();return;}
     const stationsHere=[];
@@ -700,6 +712,7 @@ function canvasWorldTap(e){
     if(chest){setWorldTarget("chest",chest.x,chest.y,{id:chest.id});return;}
   }
   if(!caveMode&&!townMode&&!homeInterior){
+    if(selectedTool==="fishingRod"){const pond=nearestPondAt(wx,wy);if(pond){setWorldTarget("fish",pond.x,pond.y);return;}showToast("برای ماهیگیری روی آب یک برکه بزن 🎣");return;}
     const node=near(activeNodes(),48);
     if(node){setWorldTarget("resource",node.x,node.y,{id:node.id});return;}
     const plot=near(farmPlots,38);
@@ -735,7 +748,7 @@ function tickWorldInteraction(dt){
     if(person){t.x=person.x;t.y=person.y;}
   }else if(t.type==="forestNpc"){t.x=forestNpc.x;t.y=forestNpc.y;}
   const d=Math.hypot(player.x-t.x,player.y-t.y);
-  const stops={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,workshop:48};
+  const stops={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,fish:22,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,workshop:48};
   if(d>(stops[t.type]??10))return;
   playerMoving=false;
   if(t.type==="ground"){moveTarget=null;return;}
@@ -765,13 +778,14 @@ function tickWorldInteraction(dt){
   else if(t.type==="farmHarvest"){farmHarvest();moveTarget=null;}
   else if(t.type==="farmTill"){farmTill(t.x,t.y);moveTarget=null;}
   else if(t.type==="farmRemove"){removeTilledFarmPlot(farmPlots.findIndex(p=>p.id===t.id));moveTarget=null;}
+  else if(t.type==="fish"){catchFish();moveTarget=null;}
   else if(t.type==="workshop"){openStationPanel();moveTarget=null;}
   else if(t.type==="temple"){templeInteract(t.rune??null);moveTarget=null;}
 }
 
 $("farmBtn").addEventListener("click",openFarmPanel);$("farmClose").addEventListener("click",()=>{$("farmPanel").hidden=true;syncXpPanel();});$("farmPlotsGrid").addEventListener("click",e=>{const b=e.target.closest("[data-plot]");if(!b)return;selectedFarmPlot=Number(b.dataset.plot);updateFarmUI();});
 $("farmTill").addEventListener("click",farmTill);$("farmPlant").addEventListener("click",farmPlant);$("farmWater").addEventListener("click",farmWater);$("farmHarvest").addEventListener("click",farmHarvest);
-$("farmCrop").addEventListener("change",e=>{selectedCrop=e.target.value;updateFarmUI();});$("sellCrops").addEventListener("click",sellFarmCrops);
+$("farmCrop").addEventListener("change",e=>{selectedCrop=e.target.value;updateFarmUI();});$("sellCrops").addEventListener("click",sellFarmCrops);$("sellFish").addEventListener("click",sellFish);
 $("openLivestock").addEventListener("click",openLivestockPanel);$("closeLivestock").addEventListener("click",()=>{$("livestockPanel").hidden=true;syncXpPanel();});$("buyChicken").addEventListener("click",()=>buyLivestock("chicken"));$("buyCow").addEventListener("click",()=>buyLivestock("cow"));$("feedChicken").addEventListener("click",()=>feedLivestock("chicken"));$("feedCow").addEventListener("click",()=>feedLivestock("cow"));$("collectEggs").addEventListener("click",()=>collectAnimalProduct("egg"));$("collectMilk").addEventListener("click",()=>collectAnimalProduct("milk"));$("sellAnimalProducts").addEventListener("click",sellAnimalProducts);
 $("npcBtn").addEventListener("click", openNpcDialogue);
 $("townBtn").addEventListener("click",()=>transitionTown(true));$("townExitBtn").addEventListener("click",()=>transitionTown(false));$("townNpcBtn").addEventListener("click",openTownNpc);$("townNpcTalk").addEventListener("click",nextTownDialogue);$("townNpcShop").addEventListener("click",openTownShop);$("carpenterClose").addEventListener("click",()=>{$("carpenterPanel").hidden=true;syncXpPanel();});$("carpenterBuild").addEventListener("click",carpenterBuild);$("carpenterUpgrade").addEventListener("click",carpenterUpgrade);$("furnitureBed").addEventListener("click",()=>buildFurniture("bed"));$("furnitureTable").addEventListener("click",()=>buildFurniture("table"));$("furnitureChair").addEventListener("click",()=>buildFurniture("chair"));$("backpackUpgrade").addEventListener("click",upgradeBackpack);$("townNpcClose").addEventListener("click",()=>{$("townNpcPanel").hidden=true;syncXpPanel();});$("townShopClose").addEventListener("click",()=>{$("townShopPanel").hidden=true;syncXpPanel();});$("buyBread").addEventListener("click",()=>buyTownItem("bread"));$("buySeeds").addEventListener("click",()=>buyCropSeed(selectedCrop));$("seedShopList").addEventListener("click",e=>{const b=e.target.closest("[data-seed]");if(!b)return;selectedCrop=b.dataset.seed;updateTownShop();});$("buyApple").addEventListener("click",()=>buyTownItem("apple"));
@@ -817,7 +831,7 @@ $("buildFurnace").addEventListener("click",()=>buildStation("furnace"));
 $("buildSawmill").addEventListener("click",()=>buildStation("sawmill"));
 $("openStations").addEventListener("click",openStationPanel);
 $("workshopBtn").addEventListener("click",openStationPanel);
-$("closeStations").addEventListener("click",()=>{$("stationPanel").hidden=true;syncXpPanel();});
+$("closeStations").addEventListener("click",()=>{$("stationPanel").hidden=true;syncXpPanel();});$("make_fishingRod").addEventListener("click",craftFishingRod);$("closeChest").addEventListener("click",()=>{$("chestPanel").hidden=true;syncXpPanel();});$("chestItems").addEventListener("click",e=>{const d=e.target.closest("[data-deposit]"),w=e.target.closest("[data-withdraw]");if(d)moveChestItem(d.dataset.deposit,1);else if(w)moveChestItem(w.dataset.withdraw,-1);});
 ["planks","bricks","rope","nails","glass","cloth","marbleSlabs","ironParts","templeFoundation","templeColumn","templeBeam","templeMosaic","templeBanner"].forEach(type=>$("make_"+type).addEventListener("click",()=>craftWorkshopItem(type)));
 ["axe","pickaxe","shovel"].forEach(type=>$("upgradeTool_"+type).addEventListener("click",()=>upgradeTool(type)));
 $("usePotion").addEventListener("click", usePotion);
@@ -1071,6 +1085,7 @@ function claimQuest(key) {
   updateUI(); saveQuietly();
   showToast(leveled ? "مأموریت کامل شد! سطح جدید ⭐ +۲۰ سکه" : "مأموریت کامل شد! +۲۰ سکه و ۳۰ تجربه 🎉");
 }
+function craftFishingRod(){if(fishingRodOwned){showToast("چوب ماهیگیری رو قبلاً ساختی");return;}const cost={wood:5,fiber:3,rope:1};if(!stations.workbench){showToast("برای ساخت چوب ماهیگیری به میزکار نیاز داری");return;}if(Object.entries(cost).some(([k,v])=>(bag[k]||0)<v)){showToast("برای چوب ماهیگیری ۵ چوب، ۳ الیاف و ۱ طناب لازمه");return;}Object.entries(cost).forEach(([k,v])=>bag[k]-=v);fishingRodOwned=true;updateUI();updateStationUI();saveQuietly();showToast("چوب ماهیگیری ساخته شد! کنار برکه برو 🎣");}
 function updateCraftUI() {
   const wb=$("buildWorkbench"),fu=$("buildFurnace"),sm=$("buildSawmill");
   wb.disabled=stations.workbench||bag.wood<8||bag.stone<4;wb.textContent=stations.workbench?"🪚 میزکار ساخته شده":"🪚 میزکار — ۸ چوب + ۴ سنگ";
@@ -1128,11 +1143,13 @@ function buildStation(type){
 }
 function updateStationUI(){
  const labels={planks:"تخته چوب",bricks:"آجر سنگی",rope:"طناب",nails:"میخ",glass:"شیشه",cloth:"پارچه",marbleSlabs:"تخته مرمر",ironParts:"قطعه آهنی",templeFoundation:"پایه معبد",templeColumn:"ستون معبد",templeBeam:"تیر سقف معبد",templeMosaic:"کاشی موزاییک",templeBanner:"پرچم تزئینی"};
+ const materialNames={wood:"چوب",stone:"سنگ",iron:"آهن",crystal:"کریستال",fiber:"الیاف",sand:"شن",marble:"مرمر",plank:"تخته چوب",brick:"آجر",rope:"طناب",nail:"میخ",glass:"شیشه",cloth:"پارچه",marbleSlab:"تخته مرمر",ironParts:"قطعه آهنی",templeFoundation:"پایه معبد",templeColumn:"ستون معبد",templeBeam:"تیر معبد",templeMosaic:"موزاییک",templeBanner:"پرچم"};
  for(const [type,r] of Object.entries(workshopRecipes)){
   const b=$("make_"+type);if(!b)continue;
   const ready=!!stations[r.station]&&Object.entries(r.cost).every(([k,v])=>(bag[k]||0)>=v);
-  b.disabled=!ready;b.textContent=(stations[r.station]?"":"🔒 ")+labels[type]+" — "+r.label;
+  b.disabled=!ready;b.textContent=(stations[r.station]?"":"🔒 ")+"ساخت "+r.label+" — نیاز: "+Object.entries(r.cost).map(([k,v])=>v+" "+(materialNames[k]||k)).join(" + ");
  }
+ const rod=$("make_fishingRod");if(rod){const ready=stations.workbench&&bag.wood>=5&&bag.fiber>=3&&bag.rope>=1;rod.disabled=fishingRodOwned||!ready;rod.textContent=fishingRodOwned?"🎣 چوب ماهیگیری ساخته شده":"🎣 چوب ماهیگیری — نیاز: ۵ چوب + ۳ الیاف + ۱ طناب";}
 }
 function toolLevelName(type){return ["چوبی","آهنی","کریستالی"][Math.max(0,Math.min(2,toolLevels[type]||0))];}
 function toolUpgradeCost(type){
@@ -1198,6 +1215,7 @@ function buyUpgrade(type) {
 }
 
 function update(dt) {
+  fishingCooldown=Math.max(0,fishingCooldown-dt);
   worldClock += dt * 8;
   if(worldClock >= 1440){worldClock -= 1440;worldDay++;onNewFarmDay();saveQuietly();}
   if(townMode)townSchedule(dt);
@@ -1309,8 +1327,8 @@ function bagUsed(){return Object.values(bag).reduce((sum,v)=>sum+(Number(v)||0),
 function bagCanAdd(amount=1){return bagUsed()+amount<=backpackCaps[backpackTier];}
 function bagAdd(key,amount){if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره! پیش آقای نادری ظرفیتش رو ارتقا بده 🎒");return false;}bag[key]=(bag[key]||0)+amount;return true;}
 
-const INVENTORY_LABELS={wood:"چوب",stone:"سنگ",iron:"آهن",crystal:"کریستال",potion:"معجون",egg:"تخم‌مرغ",milk:"شیر",fiber:"الیاف",sand:"شن",marble:"مرمر",plank:"تخته چوب",brick:"آجر",rope:"طناب",nail:"میخ",glass:"شیشه",cloth:"پارچه",marbleSlab:"تخته مرمر",ironParts:"قطعه آهنی",templeFoundation:"پایه معبد",templeColumn:"ستون معبد",templeBeam:"تیر معبد",templeMosaic:"موزاییک",templeBanner:"پرچم معبد"};
-const INVENTORY_ICONS={wood:"🪵",stone:"🪨",iron:"⛓️",crystal:"💎",potion:"🧪",egg:"🥚",milk:"🥛",fiber:"🧵",sand:"🏖️",marble:"⬜",plank:"🪚",brick:"🧱",rope:"🪢",nail:"🔩",glass:"🪟",cloth:"🧶",marbleSlab:"◻️",ironParts:"⚙️",templeFoundation:"🏛️",templeColumn:"🏛️",templeBeam:"🪵",templeMosaic:"🎨",templeBanner:"🚩"};
+const INVENTORY_LABELS={wood:"چوب",stone:"سنگ",iron:"آهن",crystal:"کریستال",potion:"معجون",egg:"تخم‌مرغ",milk:"شیر",carp:"کپور",perch:"ماهی سوف",trout:"قزل‌آلا",fiber:"الیاف",sand:"شن",marble:"مرمر",plank:"تخته چوب",brick:"آجر",rope:"طناب",nail:"میخ",glass:"شیشه",cloth:"پارچه",marbleSlab:"تخته مرمر",ironParts:"قطعه آهنی",templeFoundation:"پایه معبد",templeColumn:"ستون معبد",templeBeam:"تیر معبد",templeMosaic:"موزاییک",templeBanner:"پرچم معبد"};
+const INVENTORY_ICONS={wood:"🪵",stone:"🪨",iron:"⛓️",crystal:"💎",potion:"🧪",egg:"🥚",milk:"🥛",carp:"🐟",perch:"🐠",trout:"🐟",fiber:"🧵",sand:"🏖️",marble:"⬜",plank:"🪚",brick:"🧱",rope:"🪢",nail:"🔩",glass:"🪟",cloth:"🧶",marbleSlab:"◻️",ironParts:"⚙️",templeFoundation:"🏛️",templeColumn:"🏛️",templeBeam:"🪵",templeMosaic:"🎨",templeBanner:"🚩"};
 function inventoryItems(){
  const items=[];
  for(const [key,value] of Object.entries(bag)){
@@ -1324,6 +1342,7 @@ function inventoryItems(){
  const tiers=["چوبی","آهنی","کریستالی"];
  items.push(
   {id:"gear:hand",name:"دست خالی",icon:"🖐️",count:"",kind:"حالت",detail:"برای راه رفتن بدون ابزار",equip:"hand"},
+  ...(fishingRodOwned?[{id:"gear:fishingRod",name:"چوب ماهیگیری",icon:"🎣",count:"",kind:"ابزار",detail:"برای صید ماهی کنار آب",equip:"fishingRod"}]:[]),
   {id:"gear:axe",name:"تبر",icon:"🪓",count:tiers[toolLevels.axe]||"چوبی",kind:"ابزار",detail:"فقط برای درخت و الیاف",equip:"axe"},
   {id:"gear:pickaxe",name:"کلنگ",icon:"⛏️",count:tiers[toolLevels.pickaxe]||"چوبی",kind:"ابزار",detail:"برای سنگ و معدن",equip:"pickaxe"},
   {id:"gear:shovel",name:"بیل",icon:"🪏",count:tiers[toolLevels.shovel]||"چوبی",kind:"ابزار",detail:"برای شخم و شن",equip:"shovel"},
@@ -1502,11 +1521,12 @@ function buyCropSeed(type){
  updateUI();updateTownShop();updateFarmUI();saveQuietly();showToast("یک بسته بذر "+crop.name+" خریدی 🌱");
 }
 function sellFarmCrops(){let count=0,total=0;for(const [key,crop] of Object.entries(FARM_CROPS)){const n=bag[key]||0;count+=n;total+=n*crop.price;bag[key]=0;}if(!count){showToast("محصولی برای فروش نداری");return;}player.coins+=total;updateUI();updateTownShop();saveQuietly();showToast("آقای نادری محصولاتت رو خرید! +"+total+" سکه 🪙");}
+function sellFish(){const prices={carp:10,perch:16,trout:24};let total=0,count=0;for(const [k,v] of Object.entries(prices)){const n=bag[k]||0;count+=n;total+=n*v;bag[k]=0;}if(!count){showToast("ماهی برای فروش نداری");return;}player.coins+=total;updateUI();updateTownShop();saveQuietly();showToast(count+" ماهی فروختی؛ +"+total+" سکه 🪙");}
 function updateTownShop(){
  $("townShopHours").textContent="ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰ • ساعت بازی: "+String(Math.floor(worldClock/60)).padStart(2,"0")+":"+String(Math.floor(worldClock%60)).padStart(2,"0");
  $("townShopStock").textContent="موجودی بذر: "+Object.values(farmSeedStock).reduce((n,v)=>n+v,0)+" • ظرفیت کوله: "+bagUsed()+"/"+backpackCaps[backpackTier]+" • سکه: "+player.coins;
  if($("naderiStatus"))updateNaderiUI();
- const cropCount=Object.keys(FARM_CROPS).reduce((n,k)=>n+(bag[k]||0),0);
+ const cropCount=Object.keys(FARM_CROPS).reduce((n,k)=>n+(bag[k]||0),0);const fishCount=(bag.carp||0)+(bag.perch||0)+(bag.trout||0);$("sellFish").disabled=!fishCount;$("sellFish").textContent="فروش ماهی‌ها • موجودی: "+fishCount;
  $("sellCrops").disabled=!cropCount;$("sellCrops").textContent="فروش محصولات برداشت‌شده • موجودی: "+cropCount;
  $("seedShopList").innerHTML=Object.entries(FARM_CROPS).map(([k,c])=>{
   const disabled=c.season!==getFarmSeason()||player.coins<c.seed||!bagCanAdd(1);
@@ -2710,6 +2730,7 @@ function drawCaveEntrance(){
  ctx.fillStyle="#6ad5d0";ctx.fillRect(x-63,y-2,5,10);ctx.fillRect(x+58,y-2,5,10);ctx.fillStyle="#b6f3df";ctx.fillRect(x-62,y,3,4);ctx.fillRect(x+59,y,3,4);
  ctx.fillStyle="#d5c18c";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("غار جنگلی",x,y-100);ctx.textAlign="start";
 }
+function drawChest(){const x=CHEST_POS.x-camera.x,y=CHEST_POS.y-camera.y;if(x<-50||x>viewW+50||y<-50||y>viewH+50)return;ctx.fillStyle="rgba(12,12,10,.22)";ctx.fillRect(x-20,y+12,40,7);ctx.fillStyle="#684329";ctx.fillRect(x-19,y-12,38,25);ctx.fillStyle="#a97843";ctx.fillRect(x-17,y-10,34,8);ctx.fillStyle="#80532f";ctx.fillRect(x-17,y-1,34,12);ctx.fillStyle="#d6b66c";ctx.fillRect(x-3,y-5,6,9);ctx.fillStyle="#f1d994";ctx.fillRect(x-2,y-4,4,3);ctx.fillStyle="#f4e4bc";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText("صندوق",x,y-20);ctx.textAlign="start";}
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
   if (templeMode||townMode) releaseGroundCaches();
@@ -2717,7 +2738,7 @@ function draw() {
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
   if(townMode){drawTown();drawTownPeople();drawPlayer();drawParticles();drawNightOverlay();return;}
   if(caveMode){drawCaveGround();drawCaveDetails();drawCaveObjects();}else {drawGround();drawForestWaterFx();drawAncientBridge();}
-  if (!caveMode) { drawHouse(playerHome.x, playerHome.y, homeLevel, false); drawHouse(samanHome.x, samanHome.y, 1, true); drawLivestockPen(); drawFarmPlots(); drawStations(); }
+  if (!caveMode) { drawHouse(playerHome.x, playerHome.y, homeLevel, false); drawHouse(samanHome.x, samanHome.y, 1, true); drawChest(); drawLivestockPen(); drawFarmPlots(); drawStations(); }
   for (const r of activeNodes()) {
     if (r.x < camera.x - 60 || r.x > camera.x + viewW + 60 || r.y < camera.y - 60 || r.y > camera.y + viewH + 60) continue;
     if (r.type === "tree") drawTree(r);
