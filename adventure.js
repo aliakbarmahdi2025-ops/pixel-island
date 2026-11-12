@@ -1375,6 +1375,7 @@ function getFarmTileAt(x,y){return farmPlots.findIndex(p=>Math.hypot(p.x-x,p.y-y
 function openFarmPanel(){selectedFarmPlot=farmPlots.length?Math.max(0,farmPlots.reduce((best,p,i)=>Math.hypot(p.x-player.x,p.y-player.y)<Math.hypot(farmPlots[best].x-player.x,farmPlots[best].y-player.y)?i:best,0)):-1;$("farmPanel").hidden=false;updateFarmUI();syncXpPanel();}
 function onNewFarmDay(){
  ensureDailyMissions();
+ updateQuestUI();
  const season=getFarmSeason(),seasonChanged=getFarmSeasonDay()===1;
  for(const p of farmPlots){
   if(p.state==="growing"&&p.crop&&p.wateredDay===worldDay-1){
