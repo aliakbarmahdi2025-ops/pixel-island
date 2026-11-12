@@ -70,9 +70,9 @@ const forestNpc = { x: 1320, y: 1010, name: "سامان", role: "پیر دانا
 let enemies = [], caveEnemies = [], lootDrops = [];
 let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
 let move = { x: 0, y: 0 };
-let moveTarget = null, selectedTool = "axe", interactionTimer = 0;
+let moveTarget = null, selectedTool = "hand", interactionTimer = 0;
 const TOOL_INFO = {
- axe:{icon:"🪓",label:"تبر"}, pickaxe:{icon:"⛏️",label:"کلنگ"},
+ hand:{icon:"🖐️",label:"دست خالی"}, axe:{icon:"🪓",label:"تبر"}, pickaxe:{icon:"⛏️",label:"کلنگ"},
  shovel:{icon:"🪏",label:"بیل"}, watering:{icon:"💧",label:"آب‌پاش"},
  sword:{icon:"⚔️",label:"شمشیر"}, seeds:{icon:"🌱",label:"بذر"}
 };
@@ -246,7 +246,7 @@ function load() {
     if(Number.isFinite(data.worldClock))worldClock=data.worldClock;if(Number.isFinite(data.worldDay))worldDay=data.worldDay;
     if(data.farmSeedStock&&typeof data.farmSeedStock==="object")Object.keys(farmSeedStock).forEach(k=>farmSeedStock[k]=Math.max(0,Number(data.farmSeedStock[k])||0));
     if((bag.seeds||0)>0){farmSeedStock.carrot+=(bag.seeds||0);bag.seeds=0;}
-    if(Array.isArray(data.farmPlots)){farmPlots.length=0;data.farmPlots.forEach((p,i)=>{if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y))farmPlots.push({...p,id:Number.isFinite(p.id)?p.id:i});});}
+    if(Array.isArray(data.farmPlots)){farmPlots.length=0;data.farmPlots.forEach((p,i)=>{if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y)){const plot={...p,id:Number.isFinite(p.id)?p.id:i};if(Math.hypot(plot.x-LIVESTOCK_PEN.x,plot.y-LIVESTOCK_PEN.y)<150){plot.x+=220+(i%3)*64;plot.y+=Math.floor(i/3)*64;}farmPlots.push(plot);}});}
     if(data.livestock&&typeof data.livestock==="object")livestock={...livestock,...data.livestock};
     livestock.chickens=Math.max(0,Math.min(4,Number(livestock.chickens)||0));
     livestock.cows=Math.max(0,Math.min(2,Number(livestock.cows)||0));
@@ -524,6 +524,8 @@ function drawTempleEnemy(e){
  if(boss){ctx.fillStyle="#17191c";ctx.fillRect(x-42,y-62,84,8);ctx.fillStyle="#d85f59";ctx.fillRect(x-41,y-61,82*Math.max(0,e.hp/e.max),6);ctx.fillStyle="#f1d7aa";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText("فاز "+phase,x,y-70);}
 }
 
+function requiredToolForResource(node){return node.type==="tree"||node.type==="bush"?"axe":node.type==="sand"?"shovel":"pickaxe";}
+function removeTilledFarmPlot(index){const plot=farmPlots[index];if(!plot||!(plot.state==="tilled"||plot.state==="empty")){showToast("فقط زمین خالی یا شخم‌خورده رو می‌تونی با کلنگ جمع کنی");return;}farmPlots.splice(index,1);farmPlots.forEach((p,i)=>p.id=i);selectedFarmPlot=farmPlots.length?Math.min(index,farmPlots.length-1):-1;updateFarmUI();saveQuietly();showToast("زمین شخم‌خورده جمع شد ⛏️");}
 function harvest(targetId=null) {
   if(templeMode){templeInteract();return;}
   triggerPlayerAction("gather",0.36);
@@ -537,8 +539,9 @@ function harvest(targetId=null) {
     const d = Math.hypot(player.x - r.x, player.y - r.y);
     if (d < best) { best = d; nearest = r; }
   }
-  if (!nearest) { if(!targetId)showToast("به درخت یا سنگ نزدیک‌تر شو"); return; }
-  const toolType = nearest.type === "tree" || nearest.type === "bush" ? "axe" : nearest.type === "sand" ? "shovel" : "pickaxe";
+  if (!nearest) { if(!targetId)showToast("به منبع نزدیک‌تر شو"); return; }
+  const toolType = requiredToolForResource(nearest);
+  if(selectedTool!==toolType){showToast("برای "+(nearest.type==="tree"?"قطع درخت":nearest.type==="bush"?"جمع‌آوری الیاف":nearest.type==="sand"?"برداشتن شن":"استخراج سنگ و معدن")+" باید "+TOOL_INFO[toolType].label+" انتخاب کنی");moveTarget=null;return;}
   const damage=1+(toolLevels[toolType]||0);
   const amount=nearest.type==="tree"?3:(nearest.type==="stone"||nearest.type==="bush"||nearest.type==="sand")?2:1;
   if(nearest.hp-damage<=0&&!bagCanAdd(amount)){showToast("کوله‌پشتی پره! برای ظرفیت بیشتر برو پیش آقای نادری 🎒");return;}
@@ -704,12 +707,14 @@ function canvasWorldTap(e){
       selectedFarmPlot=farmPlots.indexOf(plot);
       if(selectedTool==="watering")setWorldTarget("farmWater",plot.x,plot.y,{id:plot.id});
       else if(selectedTool==="seeds")setWorldTarget("farmPlant",plot.x,plot.y,{id:plot.id});
+      else if(selectedTool==="pickaxe"&&(plot.state==="tilled"||plot.state==="empty"))setWorldTarget("farmRemove",plot.x,plot.y,{id:plot.id});
       else if(plot.state==="growing"&&plot.crop){
         const crop=FARM_CROPS[plot.crop],goal=plot.harvests>0&&crop.regrow?crop.regrow:crop.days;
         if(plot.growth>=goal)setWorldTarget("farmHarvest",plot.x,plot.y,{id:plot.id});
         else if(selectedTool==="shovel")setWorldTarget("farmTill",plot.x,plot.y,{id:plot.id});
         else setWorldTarget("ground",wx,wy);
       }else if(selectedTool==="shovel")setWorldTarget("farmTill",plot.x,plot.y,{id:plot.id});
+      else if(selectedTool==="pickaxe"&&(plot.state==="tilled"||plot.state==="empty"))setWorldTarget("farmRemove",plot.x,plot.y,{id:plot.id});
       else setWorldTarget("ground",wx,wy);
       return;
     }
@@ -759,6 +764,7 @@ function tickWorldInteraction(dt){
   else if(t.type==="farmPlant"){farmPlant();moveTarget=null;}
   else if(t.type==="farmHarvest"){farmHarvest();moveTarget=null;}
   else if(t.type==="farmTill"){farmTill(t.x,t.y);moveTarget=null;}
+  else if(t.type==="farmRemove"){removeTilledFarmPlot(farmPlots.findIndex(p=>p.id===t.id));moveTarget=null;}
   else if(t.type==="workshop"){openStationPanel();moveTarget=null;}
   else if(t.type==="temple"){templeInteract(t.rune??null);moveTarget=null;}
 }
@@ -1317,7 +1323,8 @@ function inventoryItems(){
  }
  const tiers=["چوبی","آهنی","کریستالی"];
  items.push(
-  {id:"gear:axe",name:"تبر",icon:"🪓",count:tiers[toolLevels.axe]||"چوبی",kind:"ابزار",detail:"برای درخت و الیاف",equip:"axe"},
+  {id:"gear:hand",name:"دست خالی",icon:"🖐️",count:"",kind:"حالت",detail:"برای راه رفتن بدون ابزار",equip:"hand"},
+  {id:"gear:axe",name:"تبر",icon:"🪓",count:tiers[toolLevels.axe]||"چوبی",kind:"ابزار",detail:"فقط برای درخت و الیاف",equip:"axe"},
   {id:"gear:pickaxe",name:"کلنگ",icon:"⛏️",count:tiers[toolLevels.pickaxe]||"چوبی",kind:"ابزار",detail:"برای سنگ و معدن",equip:"pickaxe"},
   {id:"gear:shovel",name:"بیل",icon:"🪏",count:tiers[toolLevels.shovel]||"چوبی",kind:"ابزار",detail:"برای شخم و شن",equip:"shovel"},
   {id:"gear:watering",name:"آب‌پاش",icon:"💧",count:"ابزار",kind:"ابزار",detail:"برای آبیاری",equip:"watering"},
@@ -1344,6 +1351,7 @@ function renderInventory(){
 function renderHotbar(){
  const bar=$("toolHotbar");if(!bar)return;
  const items=inventoryItems(),byId=new Map(items.map(v=>[v.id,v]));
+ if(!inventoryOrder.includes("gear:hand"))inventoryOrder.unshift("gear:hand");
  inventoryOrder=[...inventoryOrder.filter(id=>byId.has(id)),...items.map(v=>v.id).filter(id=>!inventoryOrder.includes(id))];
  const scroll=bar.scrollLeft;
  bar.innerHTML=inventoryOrder.map(id=>byId.get(id)).filter(Boolean).map(item=>{
@@ -1453,10 +1461,11 @@ function updateFarmUI(){
  $("farmPlant").textContent=crop.season===season?"🌱 کاشت "+crop.name:"🔒 مخصوص "+FARM_SEASONS[crop.season];
 }
 function farmTill(targetX=null,targetY=null){
+ if(selectedTool!=="shovel"){showToast("برای شخم‌زدن باید بیل دستت باشه 🪏");return;}
  const offsets={up:[0,-64],down:[0,64],left:[-64,0],right:[64,0]},o=offsets[playerFacing]||offsets.down;
  const rawX=Number.isFinite(targetX)?targetX:player.x+o[0],rawY=Number.isFinite(targetY)?targetY:player.y+o[1];
  const x=Math.max(64,Math.min(WORLD.w-64,Math.round(rawX/64)*64)),y=Math.max(64,Math.min(WORLD.h-64,Math.round(rawY/64)*64));
- if(Math.abs(x-2700)<115||Math.hypot(x-playerHome.x,y-playerHome.y)<145||Math.hypot(x-samanHome.x,y-samanHome.y)<105||resources.some(r=>Math.hypot(r.x-x,r.y-y)<48)){showToast("اینجا برای کشاورزی مناسب نیست؛ کمی دورتر زمین بزن 🌿");return;}
+ if(Math.abs(x-2700)<115||Math.hypot(x-playerHome.x,y-playerHome.y)<145||Math.hypot(x-samanHome.x,y-samanHome.y)<105||Math.hypot(x-LIVESTOCK_PEN.x,y-LIVESTOCK_PEN.y)<155||resources.some(r=>Math.hypot(r.x-x,r.y-y)<48)){showToast("اینجا جای مناسبی برای شخم نیست؛ از دامداری و ساختمان‌ها فاصله بگیر 🌿");return;}
  const existing=getFarmTileAt(x,y);
  if(existing>=0){if(farmPlots[existing].state==="empty"){selectedFarmPlot=existing;farmPlots[existing].state="tilled";}else{showToast("این زمین قبلاً آماده شده!");return;}}
  else{farmPlots.push({id:farmPlots.length,x,y,state:"tilled",crop:null,growth:0,wateredDay:-1,harvests:0});selectedFarmPlot=farmPlots.length-1;}
@@ -2383,7 +2392,7 @@ function drawPlayer(){
    ctx.restore();
  }
  const tool=TOOL_INFO[selectedTool];
- if(tool){ctx.save();ctx.font="16px Tahoma";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(tool.icon,x+(playerFacing==="left"?-17:17),y+3);ctx.restore();}
+ if(tool&&selectedTool!=="hand"){ctx.save();ctx.font="16px Tahoma";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(tool.icon,x+(playerFacing==="left"?-17:17),y+3);ctx.restore();}
  if(attackFlash>0){ctx.save();ctx.translate(x,y);ctx.scale(.82,.82);ctx.strokeStyle="#fff0a8";ctx.lineWidth=3;ctx.beginPath();const a=playerFacing==="left"?Math.PI:playerFacing==="up"?-Math.PI/2:playerFacing==="down"?Math.PI/2:0;ctx.arc(0,0,39,a-.75,a+.75);ctx.stroke();ctx.restore();}
 }
 
