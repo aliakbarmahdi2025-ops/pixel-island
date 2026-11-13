@@ -9,7 +9,7 @@ const SAVE_KEY = "pixelIsland_adventure_save_v1";
 let viewW = innerWidth, viewH = innerHeight, dpr = 1;
 const camera = { x: 0, y: 0 };
 const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, maxHealth: 5, level: 1, xp: 0, skillPoints: 0, attackPower: 1, armorLevel: 0, coins: 0 };
-const bag = { wood: 0, stone: 0, iron: 0, crystal: 0, copperOre: 0, coal: 0, ironOre: 0, goldOre: 0, steelOre: 0, adamantiteOre: 0, potion: 0, egg: 0, milk: 0, carp:0, perch:0, trout:0, seeds: 0, wheat: 0, carrot: 0, strawberry: 0, fiber: 0, sand: 0, marble: 0, plank: 0, brick: 0, rope: 0, nail: 0, glass: 0, cloth: 0, marbleSlab: 0, ironParts: 0, templeFoundation: 0, templeColumn: 0, templeBeam: 0, templeMosaic: 0, templeBanner: 0 };
+const bag = { wood: 0, stone: 0, iron: 0, crystal: 0, copperOre: 0, coal: 0, ironOre: 0, goldOre: 0, steelOre: 0, adamantiteOre: 0, copperIngot: 0, ironIngot: 0, goldIngot: 0, steelIngot: 0, adamantiteIngot: 0, furnaceItem: 0, potion: 0, egg: 0, milk: 0, carp:0, perch:0, trout:0, seeds: 0, wheat: 0, carrot: 0, strawberry: 0, fiber: 0, sand: 0, marble: 0, plank: 0, brick: 0, rope: 0, nail: 0, glass: 0, cloth: 0, marbleSlab: 0, ironParts: 0, templeFoundation: 0, templeColumn: 0, templeBeam: 0, templeMosaic: 0, templeBanner: 0 };
 const chestStorage={};let fishingRodOwned=false,fishingCooldown=0;const CHEST_CAPACITY=150;const CHEST_POS={x:555,y:585};
 const stations = { workbench: false, furnace: false, sawmill: false };
 const toolLevels = { axe: 0, pickaxe: 0, shovel: 0 };
@@ -19,7 +19,7 @@ const TEMPLE_TRAPS=[{x:520,y:740,r:78,phase:0},{x:1450,y:740,r:78,phase:1.7},{x:
 let templeMode=false,templeFloor=1,templeUnlocked=1,templePuzzleSolved={},templeBosses={},templeRuneProgress={},templeRuneSolved={},templeSecrets={},templeEnemies=[],templeReturn={x:3040,y:1710},templeTrapCooldown=0;
 let harvested = new Set(), caveHarvested = new Set();
 let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
-let caveResources = [], caveChests = [];
+let caveResources = [], caveChests = [];let furnaces=[];
 // Stage 51-A: mine state. caveMode stays true while inside the mine, so lighting, movement bounds and combat reuse the cave.
 const MINE_FLOORS=110;   // declared here (not further down) because load() runs at startup, before the mine block is evaluated
 let mineMode=false,mineFloor=1,mineMaxFloor=0,mineState={},mineData=null,templeKeyOwned=false,forestLootStash=null,mineBusy=false,mineBtnAction=null;
@@ -225,7 +225,7 @@ function load() {
     if(data.chestStorage&&typeof data.chestStorage==="object")Object.keys(data.chestStorage).forEach(k=>chestStorage[k]=Math.max(0,Number(data.chestStorage[k])||0));
     fishingRodOwned=!!data.fishingRodOwned;
     if(!Number.isFinite(Number(data.backpackTier))){const used=Object.values(bag).reduce((n,v)=>n+(Number(v)||0),0);backpackTier=used>45?2:used>30?1:0;}
-    if (data.stations) Object.assign(stations, data.stations);
+    if(Array.isArray(data.furnaces))furnaces=data.furnaces.filter(f=>f&&Number.isFinite(f.x)&&Number.isFinite(f.y)).map(f=>({...f,remaining:Math.max(0,Number(f.remaining)||0),ready:!!f.ready}));
     if (data.toolLevels) Object.keys(toolLevels).forEach(k => toolLevels[k] = Math.max(0, Math.min(2, Number(data.toolLevels[k]) || 0)));
     bridgeStage = Math.max(0, Math.min(3, Number(data.bridgeStage) || 0));
     templeMode=!!data.templeMode;templeFloor=Math.max(1,Math.min(TEMPLE.floors,Number(data.templeFloor)||1));templeUnlocked=Math.max(1,Math.min(TEMPLE.floors,Number(data.templeUnlocked)||1));
@@ -266,7 +266,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, stations, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
+      bag, chestStorage, fishingRodOwned, furnaces, stations, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -354,26 +354,15 @@ load();
 if(caveMode&&Math.hypot(player.x-800,player.y-1080)<8){player.x=800;player.y=1015;}
 makeWorld();
 makeCave();
+if(caveMode&&!mineMode){caveMode=false;player.x=caveReturn.x;player.y=caveReturn.y;}
 function makeEnemies() {
   // Slimes no longer spawn in the forest; they live in the cave now.
   enemies = [];
 }
 makeEnemies();
 if(templeMode)createTempleEnemies();
-function makeCave(){
- caveResources=[
- {id:"cs1",x:250,y:250,type:"stone",hp:4,max:4},{id:"cs2",x:1320,y:250,type:"stone",hp:4,max:4},
- {id:"cs3",x:1080,y:880,type:"stone",hp:4,max:4},{id:"cs4",x:360,y:930,type:"stone",hp:4,max:4},
- {id:"ci1",x:420,y:450,type:"iron",hp:5,max:5},{id:"ci2",x:1320,y:650,type:"iron",hp:5,max:5},
- {id:"ci3",x:760,y:1020,type:"iron",hp:5,max:5},{id:"cc1",x:760,y:360,type:"crystal",hp:4,max:4},
- {id:"cc2",x:300,y:680,type:"crystal",hp:4,max:4},{id:"cc3",x:1450,y:950,type:"crystal",hp:4,max:4},
- {id:"cm1",x:560,y:560,type:"marble",hp:5,max:5},{id:"cm2",x:980,y:860,type:"marble",hp:5,max:5},{id:"cm3",x:1450,y:300,type:"marble",hp:5,max:5},
- {id:"cm4",x:180,y:560,type:"marble",hp:5,max:5},{id:"cm5",x:880,y:170,type:"marble",hp:5,max:5},{id:"cm6",x:1180,y:180,type:"marble",hp:5,max:5},{id:"cm7",x:250,y:1040,type:"marble",hp:5,max:5},{id:"cm8",x:520,y:1080,type:"marble",hp:5,max:5},{id:"cm9",x:960,y:520,type:"marble",hp:5,max:5},{id:"cm10",x:1240,y:760,type:"marble",hp:5,max:5},{id:"cm11",x:1480,y:1080,type:"marble",hp:5,max:5},{id:"cm12",x:760,y:680,type:"marble",hp:5,max:5},{id:"cm13",x:1120,y:1040,type:"marble",hp:5,max:5},{id:"cm14",x:180,y:820,type:"marble",hp:5,max:5},{id:"cm15",x:1380,y:160,type:"marble",hp:5,max:5},{id:"cm16",x:1040,y:240,type:"marble",hp:5,max:5},{id:"cm17",x:400,y:180,type:"marble",hp:5,max:5},{id:"cm18",x:900,y:1120,type:"marble",hp:5,max:5}];
- caveChests=[{id:"cave-chest-0",x:590,y:230,opened:!!openedChests[0]},{id:"cave-chest-1",x:1370,y:420,opened:!!openedChests[1]},{id:"cave-chest-2",x:790,y:790,opened:!!openedChests[2]}];
- const slimeSpots=[[650,470],[960,470],[640,820],[980,820],[800,930]];
- caveEnemies=slimeSpots.map((p,i)=>({id:"cave-slime-"+i,kind:"slime",x:p[0],y:p[1],spawnX:p[0],spawnY:p[1],hp:3,max:3,alive:true,respawnTimer:0}));
- caveEnemies.push({id:"crystal-guardian",kind:"guardian",x:960,y:650,spawnX:960,spawnY:650,hp:5,max:5,alive:true,respawnTimer:0});
-}
+function makeCave(){caveResources=[];caveChests=[];caveEnemies=[];}
+
 function activeNodes(){return caveMode?caveResources.filter(r=>!caveHarvested.has(r.id)):resources.filter(r=>!harvested.has(r.id));}
 function syncCameraToPlayer(){
  const mw=caveMode?CAVE.w:WORLD.w,mh=caveMode?CAVE.h:WORLD.h;
@@ -698,14 +687,14 @@ const bridgeRecipes = [
  {name:"مهر باستانی معبد",cost:{crystal:3,glass:3,cloth:3,templeFoundation:1,templeColumn:1,templeBeam:1},hint:"۳ کریستال • ۳ شیشه • ۳ پارچه • ۱ پایه • ۱ ستون • ۱ تیر معبد"}
 ];
 function bridgeCanBuild(stage){
- const recipe=bridgeRecipes[stage];return !!recipe&&Object.values(stations).every(Boolean)&&Object.entries(recipe.cost).every(([k,v])=>(bag[k]||0)>=v);
+ const recipe=bridgeRecipes[stage];return !!recipe&&Object.entries(recipe.cost).every(([k,v])=>(bag[k]||0)>=v);
 }
 function updateBridgeUI(){
  const title=$("bridgeStatus"),btn=$("bridgeBuildBtn"),detail=$("bridgeRecipe");
  if(bridgeStage>=3){title.textContent="پل باستانی بازسازی شد؛ راه معبد باز است!";detail.textContent="آن‌سوی رودخانه، جاده سنگی تا دروازه معبد ادامه دارد.";btn.hidden=true;return;}
  const r=bridgeRecipes[bridgeStage];
  title.textContent="مرحله "+(bridgeStage+1)+" از ۳: "+r.name;
- detail.textContent="نیازمندی‌ها: "+r.hint+"\nبرای ساخت این بخش، هر سه ایستگاه کارگاه باید ساخته شده باشند.";
+ detail.textContent="نیازمندی‌ها: "+r.hint+"\nهمه‌ی مصالح را از منوی ساخت آماده کن.";
  btn.hidden=false;btn.disabled=!bridgeCanBuild(bridgeStage);
  btn.textContent=bridgeCanBuild(bridgeStage)?"ساخت این بخش از پل":"هنوز همه مصالح آماده نیست";
 }
@@ -714,7 +703,6 @@ function openBridgePanel(){
 }
 function buildBridgeStage(){
  if(bridgeStage>=3)return;
- if(!Object.values(stations).every(Boolean)){showToast("اول میزکار، کوره و اره‌کاری را بساز");return;}
  const r=bridgeRecipes[bridgeStage];
  if(!bridgeCanBuild(bridgeStage)){showToast("مصالح این مرحله هنوز کامل نیست");return;}
  Object.entries(r.cost).forEach(([k,v])=>bag[k]=(bag[k]||0)-v);
@@ -897,7 +885,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
+      bag, chestStorage, fishingRodOwned, furnaces, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
     }));
   } catch (e) {}
 }
@@ -963,26 +951,20 @@ function canvasWorldTap(e){
   if(document.querySelector(".panel:not([hidden])"))return;
   e.preventDefault();
   const wx=e.clientX+camera.x,wy=e.clientY+camera.y;
+  if(!caveMode&&!townMode&&!templeMode&&!homeInterior){const f=furnaces.find(v=>Math.hypot(wx-v.x,wy-v.y)<42);if(f){setWorldTarget("furnace",f.x,f.y,{id:f.id});return;}if(inventorySelected==="bag:furnaceItem"){placeFurnace(wx,wy);return;}}
   if(homeInterior){
     const doorY=Math.max(35,(viewH-520)/2)+Math.min(viewH-80,520)-81;
     if(Math.abs(e.clientX-viewW/2)<66&&Math.abs(e.clientY-doorY)<52)handleHomeButton();
     return;
   }
   if(townMode&&Math.hypot(wx-800,wy-1110)<90){transitionTown(false);return;}
-  if(mineMode){if(mineTap(wx,wy))return;}else if(caveMode&&Math.hypot(wx-800,wy-1080)<78){toggleCave();return;}
+  if(mineMode&&mineTap(wx,wy))return;
   if(!templeMode&&!townMode&&!caveMode&&!homeInterior){
-    if(Math.hypot(wx-2080,wy-1450)<88){toggleCave();return;}
     if(Math.hypot(wx-MINE_ENTRANCE.x,wy-MINE_ENTRANCE.y)<88){enterMine();return;}
     if(Math.hypot(wx-2310,wy-900)<92){transitionTown(true);return;}
     if(Math.hypot(wx-CHEST_POS.x,wy-CHEST_POS.y)<52){openChestPanel();return;}
     if(Math.hypot(wx-playerHome.x,wy-playerHome.y)<92){if(homeLevel>0)enterPlayerHome();else openHomePanel();return;}
     if(Math.hypot(wx-LIVESTOCK_PEN.x,wy-LIVESTOCK_PEN.y)<112){openLivestockPanel();return;}
-    const stationsHere=[];
-    if(stations.workbench)stationsHere.push({x:playerHome.x-108,y:playerHome.y+104});
-    if(stations.sawmill)stationsHere.push({x:playerHome.x+8,y:playerHome.y+145});
-    if(stations.furnace)stationsHere.push({x:playerHome.x+112,y:playerHome.y+104});
-    const station=stationsHere.find(p=>Math.hypot(wx-p.x,wy-p.y)<68);
-    if(station){setWorldTarget("workshop",station.x,station.y);return;}
   }
   const near=(items,radius,fn)=>items.find(o=>Math.hypot(wx-o.x,wy-o.y)<radius&&(!fn||fn(o)));
   if(templeMode){
@@ -1045,7 +1027,7 @@ function tickWorldInteraction(dt){
     if(person){t.x=person.x;t.y=person.y;}
   }else if(t.type==="forestNpc"){t.x=forestNpc.x;t.y=forestNpc.y;}
   const d=Math.hypot(player.x-t.x,player.y-t.y);
-  const stops={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,fish:22,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,workshop:48,mine:50};
+  const stops={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,fish:22,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,furnace:48,mine:50};
   if(d>(stops[t.type]??10))return;
   playerMoving=false;
   if(t.type==="ground"){moveTarget=null;return;}
@@ -1077,7 +1059,7 @@ function tickWorldInteraction(dt){
   else if(t.type==="farmTill"){farmTill(t.x,t.y);moveTarget=null;}
   else if(t.type==="farmRemove"){removeTilledFarmPlot(farmPlots.findIndex(p=>p.id===t.id));moveTarget=null;}
   else if(t.type==="fish"){catchFish();moveTarget=null;}
-  else if(t.type==="workshop"){openStationPanel();moveTarget=null;}
+  else if(t.type==="furnace"){const f=furnaces.find(v=>v.id===t.id);if(f)interactFurnace(f);moveTarget=null;}
   else if(t.type==="temple"){templeInteract(t.rune??null);moveTarget=null;}
 }
 
@@ -1111,7 +1093,7 @@ $("importSaveFile").addEventListener("change",e=>importSaveBackup(e.target.files
 
 $("bagBtn").addEventListener("click", () => { $("inventory").hidden = false; updateUI(); syncXpPanel(); });
 $("closeBag").addEventListener("click", () => { $("inventory").hidden = true; syncXpPanel(); });
-$("caveBtn").addEventListener("click",toggleCave);
+
 $("bridgeBtn").addEventListener("click",()=>{if(bridgeStage>=3)openTemplePanel();else openBridgePanel();});
 $("templeEnterBtn").addEventListener("click",enterTemple);
 $("templeClose").addEventListener("click",()=>{$("templePanel").hidden=true;syncXpPanel();});
@@ -1124,12 +1106,8 @@ $("craftBoots").addEventListener("click", () => craft("boots"));
 $("craftPotion").addEventListener("click", () => craft("potion"));
   $("craftIronArmor").addEventListener("click", () => craft("ironArmor"));
   $("craftCrystalArmor").addEventListener("click", () => craft("crystalArmor"));
-$("buildWorkbench").addEventListener("click",()=>buildStation("workbench"));
-$("buildFurnace").addEventListener("click",()=>buildStation("furnace"));
-$("buildSawmill").addEventListener("click",()=>buildStation("sawmill"));
-$("openStations").addEventListener("click",openStationPanel);
-$("workshopBtn").addEventListener("click",openStationPanel);
-$("closeStations").addEventListener("click",()=>{$("stationPanel").hidden=true;syncXpPanel();});$("make_fishingRod").addEventListener("click",craftFishingRod);$("closeChest").addEventListener("click",()=>{$("chestPanel").hidden=true;syncXpPanel();});$("chestItems").addEventListener("click",e=>{const d=e.target.closest("[data-deposit]"),w=e.target.closest("[data-withdraw]");if(d)moveChestItem(d.dataset.deposit,1);else if(w)moveChestItem(w.dataset.withdraw,-1);});
+$("craftFurnace").addEventListener("click",craftFurnace);
+$("make_fishingRod").addEventListener("click",craftFishingRod);$("closeChest").addEventListener("click",()=>{$("chestPanel").hidden=true;syncXpPanel();});$("chestItems").addEventListener("click",e=>{const d=e.target.closest("[data-deposit]"),w=e.target.closest("[data-withdraw]");if(d)moveChestItem(d.dataset.deposit,1);else if(w)moveChestItem(w.dataset.withdraw,-1);});
 ["planks","bricks","rope","nails","glass","cloth","marbleSlabs","ironParts","templeFoundation","templeColumn","templeBeam","templeMosaic","templeBanner"].forEach(type=>$("make_"+type).addEventListener("click",()=>craftWorkshopItem(type)));
 ["axe","pickaxe","shovel"].forEach(type=>$("upgradeTool_"+type).addEventListener("click",()=>upgradeTool(type)));
 $("usePotion").addEventListener("click", usePotion);
@@ -1385,12 +1363,9 @@ function claimQuest(key) {
   updateUI(); saveQuietly();
   showToast(leveled ? "مأموریت کامل شد! سطح جدید ⭐ +۲۰ سکه" : "مأموریت کامل شد! +۲۰ سکه و ۳۰ تجربه 🎉");
 }
-function craftFishingRod(){if(fishingRodOwned){showToast("چوب ماهیگیری رو قبلاً ساختی");return;}const cost={wood:5,fiber:3,rope:1};if(!stations.workbench){showToast("برای ساخت چوب ماهیگیری به میزکار نیاز داری");return;}if(Object.entries(cost).some(([k,v])=>(bag[k]||0)<v)){showToast("برای چوب ماهیگیری ۵ چوب، ۳ الیاف و ۱ طناب لازمه");return;}Object.entries(cost).forEach(([k,v])=>bag[k]-=v);fishingRodOwned=true;updateUI();updateStationUI();saveQuietly();showToast("چوب ماهیگیری ساخته شد! کنار برکه برو 🎣");}
+function craftFishingRod(){if(fishingRodOwned){showToast("چوب ماهیگیری رو قبلاً ساختی");return;}const cost={wood:5,fiber:3,rope:1};if(Object.entries(cost).some(([k,v])=>(bag[k]||0)<v)){showToast("برای چوب ماهیگیری ۵ چوب، ۳ الیاف و ۱ طناب لازمه");return;}Object.entries(cost).forEach(([k,v])=>bag[k]-=v);fishingRodOwned=true;updateUI();updateStationUI();saveQuietly();showToast("چوب ماهیگیری ساخته شد! کنار برکه برو 🎣");}
 function updateCraftUI() {
-  const wb=$("buildWorkbench"),fu=$("buildFurnace"),sm=$("buildSawmill");
-  wb.disabled=stations.workbench||bag.wood<8||bag.stone<4;wb.textContent=stations.workbench?"🪚 میزکار ساخته شده":"🪚 میزکار — ۸ چوب + ۴ سنگ";
-  fu.disabled=stations.furnace||bag.stone<8||bag.iron<3;fu.textContent=stations.furnace?"🔥 کوره ساخته شده":"🔥 کوره — ۸ سنگ + ۳ آهن";
-  sm.disabled=stations.sawmill||bag.wood<10||bag.iron<4;sm.textContent=stations.sawmill?"🪵 اره‌کاری ساخته شده":"🪵 اره‌کاری — ۱۰ چوب + ۴ آهن";
+  const furnaceButton=$("craftFurnace");if(furnaceButton){furnaceButton.disabled=bag.coal<20||bag.copperOre<8||!bagCanAdd(1);furnaceButton.textContent="🔥 ساخت کوره — ۲۰ ذغال‌سنگ + ۸ سنگ معدن مس";}
   $("craftSword").disabled = player.attackPower >= 5 || bag.iron < 5 || bag.wood < 3;
   $("craftBoots").disabled = player.speed >= 320 || bag.iron < 4 || bag.wood < 6;
   $("craftPotion").disabled = bag.crystal < 2 || bag.iron < 1;
@@ -1420,20 +1395,22 @@ function craft(type) {
   updateUI(); updateCraftUI(); saveQuietly(); showToast("ساخت وسیله با موفقیت انجام شد! 🛠️");
 }
 const workshopRecipes = {
-  planks:{station:"sawmill",cost:{wood:2},gain:{plank:3},label:"۳ تخته چوب"},
-  bricks:{station:"furnace",cost:{stone:2},gain:{brick:2},label:"۲ آجر سنگی"},
-  rope:{station:"workbench",cost:{fiber:2},gain:{rope:1},label:"۱ طناب"},
-  nails:{station:"workbench",cost:{iron:1},gain:{nail:4},label:"۴ میخ"},
-  glass:{station:"furnace",cost:{sand:2},gain:{glass:2},label:"۲ شیشه"},
-  cloth:{station:"workbench",cost:{fiber:3},gain:{cloth:1},label:"۱ پارچه"},
-  marbleSlabs:{station:"sawmill",cost:{marble:2},gain:{marbleSlab:1},label:"۱ تخته مرمر"},
-  ironParts:{station:"workbench",cost:{iron:2,nail:2},gain:{ironParts:1},label:"۱ قطعه آهنی"},
-  templeFoundation:{station:"furnace",cost:{brick:4,marbleSlab:1},gain:{templeFoundation:1},label:"۱ پایه معبد"},
-  templeColumn:{station:"workbench",cost:{marbleSlab:2,ironParts:2},gain:{templeColumn:1},label:"۱ ستون معبد"},
-  templeBeam:{station:"sawmill",cost:{plank:3,nail:2},gain:{templeBeam:1},label:"۱ تیر سقف"},
-  templeMosaic:{station:"furnace",cost:{glass:1,marbleSlab:1},gain:{templeMosaic:1},label:"۱ کاشی موزاییک"},
-  templeBanner:{station:"workbench",cost:{cloth:2,rope:1},gain:{templeBanner:1},label:"۱ پرچم تزئینی"}
+ planks:{cost:{wood:2},gain:{plank:3},label:"۳ تخته چوب"},bricks:{cost:{stone:2},gain:{brick:2},label:"۲ آجر سنگی"},rope:{cost:{fiber:2},gain:{rope:1},label:"۱ طناب"},nails:{cost:{iron:1},gain:{nail:4},label:"۴ میخ"},glass:{cost:{sand:2},gain:{glass:2},label:"۲ شیشه"},cloth:{cost:{fiber:3},gain:{cloth:1},label:"۱ پارچه"},marbleSlabs:{cost:{marble:2},gain:{marbleSlab:1},label:"۱ تخته مرمر"},ironParts:{cost:{iron:2,nail:2},gain:{ironParts:1},label:"۱ قطعه آهنی"},templeFoundation:{cost:{brick:4,marbleSlab:1},gain:{templeFoundation:1},label:"۱ پایه معبد"},templeColumn:{cost:{marbleSlab:2,ironParts:2},gain:{templeColumn:1},label:"۱ ستون معبد"},templeBeam:{cost:{plank:3,nail:2},gain:{templeBeam:1},label:"۱ تیر سقف"},templeMosaic:{cost:{glass:1,marbleSlab:1},gain:{templeMosaic:1},label:"۱ کاشی موزاییک"},templeBanner:{cost:{cloth:2,rope:1},gain:{templeBanner:1},label:"۱ پرچم تزئینی"}
 };
+function updateStationUI(){
+ const names={wood:"چوب",stone:"سنگ",iron:"آهن",fiber:"الیاف",sand:"شن",marble:"مرمر",plank:"تخته چوب",brick:"آجر",rope:"طناب",nail:"میخ",glass:"شیشه",cloth:"پارچه",marbleSlab:"تخته مرمر",ironParts:"قطعه آهنی"};
+ for(const [type,r] of Object.entries(workshopRecipes)){const b=$("make_"+type);if(!b)continue;const ready=Object.entries(r.cost).every(([k,v])=>(bag[k]||0)>=v);b.disabled=!ready;b.textContent="ساخت "+r.label+" — نیاز: "+Object.entries(r.cost).map(([k,v])=>v+" "+(names[k]||k)).join(" + ");}
+ const rod=$("make_fishingRod");if(rod){const ready=bag.wood>=5&&bag.fiber>=3&&bag.rope>=1;rod.disabled=fishingRodOwned||!ready;rod.textContent=fishingRodOwned?"🎣 چوب ماهیگیری ساخته شده":"🎣 چوب ماهیگیری — نیاز: ۵ چوب + ۳ الیاف + ۱ طناب";}
+ updateToolUI();
+}
+function craftFurnace(){if(bag.coal<20||bag.copperOre<8){showToast("برای ساخت کوره به ۲۰ ذغال‌سنگ و ۸ سنگ معدن مس نیاز داری");return;}if(!bagCanAdd(1)){showToast("کوله‌پشتی جا نداره؛ اول ظرفیتش رو بیشتر کن 🎒");return;}bag.coal-=20;bag.copperOre-=8;bag.furnaceItem=(bag.furnaceItem||0)+1;updateUI();saveQuietly();showToast("یک کوره ساختی! از نوار وسایل انتخابش کن و روی زمین بزن 🔥");}
+function craftWorkshopItem(type){const r=workshopRecipes[type];if(!r)return;if(Object.entries(r.cost).some(([k,v])=>(bag[k]||0)<v)){showToast("مواد اولیه کافی نداری");return;}Object.entries(r.cost).forEach(([k,v])=>bag[k]-=v);Object.entries(r.gain).forEach(([k,v])=>bag[k]=(bag[k]||0)+v);updateUI();saveQuietly();showToast("ساخته شد: "+r.label+" ✨");}
+const SMELT_RECIPES={copperOre:{ingot:"copperIngot",label:"مس",icon:"🟠",seconds:20},ironOre:{ingot:"ironIngot",label:"آهن",icon:"⚪",seconds:60},goldOre:{ingot:"goldIngot",label:"طلا",icon:"🟡",seconds:100},steelOre:{ingot:"steelIngot",label:"فولاد",icon:"🔵",seconds:180},adamantiteOre:{ingot:"adamantiteIngot",label:"آدامانتیوم",icon:"🟣",seconds:280}};
+function placeFurnace(x,y){if(!bag.furnaceItem){showToast("کوره‌ای برای جای‌گذاری نداری");return;}if(caveMode||townMode||templeMode||homeInterior||x<55||y<55||x>WORLD.w-55||y>WORLD.h-55||Math.abs(x-2700)<115||Math.hypot(x-playerHome.x,y-playerHome.y)<115||Math.hypot(x-samanHome.x,y-samanHome.y)<100||Math.hypot(x-CHEST_POS.x,y-CHEST_POS.y)<65||Math.hypot(x-LIVESTOCK_PEN.x,y-LIVESTOCK_PEN.y)<145||farmPlots.some(p=>Math.hypot(x-p.x,y-p.y)<44)||furnaces.some(f=>Math.hypot(x-f.x,y-f.y)<76)){showToast("اینجا جای مناسبی برای کوره نیست؛ کمی فضای خالی انتخاب کن");return;}bag.furnaceItem--;furnaces.push({id:"furnace-"+Date.now()+"-"+Math.random().toString(36).slice(2),x,y,activeOre:null,remaining:0,ready:false});inventorySelected=null;updateUI();saveQuietly();showToast("کوره در اینجا قرار گرفت 🔥");}
+function interactFurnace(f){if(f.ready){const r=SMELT_RECIPES[f.activeOre];if(!r)return;if(!bagCanAdd(1)){showToast("کوله‌پشتی پره؛ برای برداشتن شمش جا باز کن 🎒");return;}bag[r.ingot]=(bag[r.ingot]||0)+1;f.activeOre=null;f.remaining=0;f.ready=false;updateUI();saveQuietly();showToast("یک شمش "+r.label+" برداشتی! "+r.icon);return;}if(f.activeOre){showToast("کوره هنوز روشنه؛ "+Math.ceil(f.remaining)+" ثانیه دیگه آماده می‌شه");return;}const oreKey=inventorySelected&&inventorySelected.startsWith("bag:")?inventorySelected.slice(4):"",r=SMELT_RECIPES[oreKey];if(!r){showToast("اول سنگ معدن موردنظرت رو از نوار وسایل انتخاب کن");return;}if((bag[oreKey]||0)<5||bag.coal<1){showToast("برای یک شمش به ۵ سنگ معدن و ۱ ذغال‌سنگ نیاز داری");return;}bag[oreKey]-=5;bag.coal--;f.activeOre=oreKey;f.remaining=r.seconds;f.ready=false;updateUI();saveQuietly();showToast("کوره برای ذوب "+r.label+" روشن شد! 🔥");}
+function updateFurnaces(dt){let done=false;for(const f of furnaces){if(!f.activeOre||f.ready)continue;f.remaining=Math.max(0,(Number(f.remaining)||0)-dt);if(f.remaining<=0){f.ready=true;done=true;}}if(done){saveQuietly();showToast("ذوب فلز کامل شد؛ شمش آماده‌ی برداشتن است! ✨");}}
+function drawFurnaces(){for(const f of furnaces){const x=f.x-camera.x,y=f.y-camera.y;if(x<-55||x>viewW+55||y<-65||y>viewH+55)continue;ctx.fillStyle="rgba(0,0,0,.28)";ctx.beginPath();ctx.ellipse(x,y+18,24,8,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#393633";ctx.fillRect(x-20,y-25,40,43);ctx.fillStyle="#80513a";ctx.fillRect(x-16,y-21,32,34);ctx.fillStyle="#24201e";ctx.fillRect(x-10,y-7,20,18);if(f.activeOre&&!f.ready){ctx.fillStyle="#ff8b32";ctx.fillRect(x-7,y+1,14,8);ctx.fillStyle="#ffd36a";ctx.fillRect(x-4,y-4,8,6);}else{ctx.fillStyle="#4b4038";ctx.fillRect(x-7,y+1,14,8);}ctx.fillStyle="#aaa096";ctx.fillRect(x-8,y-31,16,7);if(f.ready){const r=SMELT_RECIPES[f.activeOre];if(r){ctx.fillStyle="rgba(20,18,15,.82)";ctx.fillRect(x-18,y-62,36,25);ctx.font="20px Tahoma";ctx.textAlign="center";ctx.fillText(r.icon,x,y-43);ctx.textAlign="start";}}}}
+
 function buildStation(type){
  const recipes={workbench:{wood:8,stone:4},furnace:{stone:8,iron:3},sawmill:{wood:10,iron:4}};
  const cost=recipes[type];if(!cost||stations[type])return;
@@ -1464,13 +1441,12 @@ function updateToolUI(){
  for(const type of Object.keys(names)){
   const b=$("upgradeTool_"+type);if(!b)continue;
   const level=toolLevels[type]||0,cost=toolUpgradeCost(type);
-  b.disabled=!stations.workbench||!cost||Object.entries(cost).some(([k,v])=>(bag[k]||0)<v);
+  b.disabled=!cost||Object.entries(cost).some(([k,v])=>(bag[k]||0)<v);
   b.textContent=level>=2?"✨ "+names[type]+" کریستالی (حداکثر)":(level===0?"⚒️ ارتقای "+names[type]+" چوبی به آهنی":"💎 ارتقای "+names[type]+" آهنی به کریستالی")+" — "+toolCostLabel(cost||{});
  }
 }
 function upgradeTool(type){
  if(!Object.prototype.hasOwnProperty.call(toolLevels,type))return;
- if(!stations.workbench){showToast("برای ارتقای ابزار به میزکار نیاز داری");return;}
  const cost=toolUpgradeCost(type);if(!cost){showToast("این ابزار به بالاترین سطح رسیده");return;}
  if(Object.entries(cost).some(([k,v])=>(bag[k]||0)<v)){showToast("برای ارتقای این ابزار مواد کافی نداری");return;}
  Object.entries(cost).forEach(([k,v])=>bag[k]-=v);toolLevels[type]++;
@@ -1516,6 +1492,7 @@ function buyUpgrade(type) {
 
 function update(dt) {
   fishingCooldown=Math.max(0,fishingCooldown-dt);
+  updateFurnaces(dt);
   worldClock += dt * 8;
   if(worldClock >= 1440){worldClock -= 1440;worldDay++;onNewFarmDay();saveQuietly();}
   if(townMode)townSchedule(dt);
@@ -1628,8 +1605,8 @@ function bagUsed(){return Object.values(bag).reduce((sum,v)=>sum+(Number(v)||0),
 function bagCanAdd(amount=1){return bagUsed()+amount<=backpackCaps[backpackTier];}
 function bagAdd(key,amount){if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره! پیش آقای نادری ظرفیتش رو ارتقا بده 🎒");return false;}bag[key]=(bag[key]||0)+amount;return true;}
 
-const INVENTORY_LABELS={copperOre:"سنگ معدن مس",coal:"زغال‌سنگ",ironOre:"سنگ معدن آهن",goldOre:"سنگ معدن طلا",steelOre:"سنگ معدن فولاد",adamantiteOre:"سنگ معدن آدمانتیوم",wood:"چوب",stone:"سنگ",iron:"آهن",crystal:"کریستال",potion:"معجون",egg:"تخم‌مرغ",milk:"شیر",carp:"کپور",perch:"ماهی سوف",trout:"قزل‌آلا",fiber:"الیاف",sand:"شن",marble:"مرمر",plank:"تخته چوب",brick:"آجر",rope:"طناب",nail:"میخ",glass:"شیشه",cloth:"پارچه",marbleSlab:"تخته مرمر",ironParts:"قطعه آهنی",templeFoundation:"پایه معبد",templeColumn:"ستون معبد",templeBeam:"تیر معبد",templeMosaic:"موزاییک",templeBanner:"پرچم معبد"};
-const INVENTORY_ICONS={copperOre:"🟠",coal:"⚫",ironOre:"⚪",goldOre:"🟡",steelOre:"🔵",adamantiteOre:"🟣",wood:"🪵",stone:"🪨",iron:"⛓️",crystal:"💎",potion:"🧪",egg:"🥚",milk:"🥛",carp:"🐟",perch:"🐠",trout:"🐟",fiber:"🧵",sand:"🏖️",marble:"⬜",plank:"🪚",brick:"🧱",rope:"🪢",nail:"🔩",glass:"🪟",cloth:"🧶",marbleSlab:"◻️",ironParts:"⚙️",templeFoundation:"🏛️",templeColumn:"🏛️",templeBeam:"🪵",templeMosaic:"🎨",templeBanner:"🚩"};
+const INVENTORY_LABELS={furnaceItem:"کوره",copperIngot:"شمش مس",ironIngot:"شمش آهن",goldIngot:"شمش طلا",steelIngot:"شمش فولاد",adamantiteIngot:"شمش آدامانتیوم",copperOre:"سنگ معدن مس",coal:"زغال‌سنگ",ironOre:"سنگ معدن آهن",goldOre:"سنگ معدن طلا",steelOre:"سنگ معدن فولاد",adamantiteOre:"سنگ معدن آدمانتیوم",wood:"چوب",stone:"سنگ",iron:"آهن",crystal:"کریستال",potion:"معجون",egg:"تخم‌مرغ",milk:"شیر",carp:"کپور",perch:"ماهی سوف",trout:"قزل‌آلا",fiber:"الیاف",sand:"شن",marble:"مرمر",plank:"تخته چوب",brick:"آجر",rope:"طناب",nail:"میخ",glass:"شیشه",cloth:"پارچه",marbleSlab:"تخته مرمر",ironParts:"قطعه آهنی",templeFoundation:"پایه معبد",templeColumn:"ستون معبد",templeBeam:"تیر معبد",templeMosaic:"موزاییک",templeBanner:"پرچم معبد"};
+const INVENTORY_ICONS={furnaceItem:"🔥",copperIngot:"🟠",ironIngot:"⚪",goldIngot:"🟡",steelIngot:"🔵",adamantiteIngot:"🟣",copperOre:"🟠",coal:"⚫",ironOre:"⚪",goldOre:"🟡",steelOre:"🔵",adamantiteOre:"🟣",wood:"🪵",stone:"🪨",iron:"⛓️",crystal:"💎",potion:"🧪",egg:"🥚",milk:"🥛",carp:"🐟",perch:"🐠",trout:"🐟",fiber:"🧵",sand:"🏖️",marble:"⬜",plank:"🪚",brick:"🧱",rope:"🪢",nail:"🔩",glass:"🪟",cloth:"🧶",marbleSlab:"◻️",ironParts:"⚙️",templeFoundation:"🏛️",templeColumn:"🏛️",templeBeam:"🪵",templeMosaic:"🎨",templeBanner:"🚩"};
 function inventoryItems(){
  const items=[];
  for(const [key,value] of Object.entries(bag)){
@@ -2485,18 +2462,7 @@ function drawCaveGround(){
   ctx.fillStyle="#e0c58a";ctx.font="bold 15px Tahoma";ctx.fillText(mineMode?mineLabel():"غار جنگلی • تالار کریستال",CAVE.w/2-camera.x,75-camera.y);
 }
 function drawCaveDetails(){}   // Stage 1: cave details are now part of the cached ground chunks
-function drawCaveObjects(){
- if(mineMode){drawMineObjects();return;}
- for(const c of caveChests){let x=c.x-camera.x,y=c.y-camera.y;ctx.fillStyle=c.opened?"#59452d":"#a66a32";ctx.fillRect(x-17,y-12,34,24);ctx.fillStyle=c.opened?"#76634b":"#e5b75b";ctx.fillRect(x-17,y-12,34,7);}
- const x=800-camera.x,y=1080-camera.y;
- ctx.fillStyle="rgba(0,0,0,.35)";ctx.beginPath();ctx.ellipse(x,y+28,58,13,0,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#343a3d";ctx.fillRect(x-43,y-58,86,84);ctx.fillStyle="#87908b";ctx.fillRect(x-37,y-53,74,73);
- ctx.fillStyle="#4a3830";ctx.fillRect(x-29,y-47,58,67);ctx.fillStyle="#171b1d";ctx.fillRect(x-23,y-40,46,60);
- ctx.fillStyle="#b5a078";ctx.fillRect(x-33,y-61,66,8);ctx.fillRect(x-46,y-55,10,79);ctx.fillRect(x+36,y-55,10,79);
- ctx.fillStyle="#d6bd82";ctx.fillRect(x-17,y-34,34,3);ctx.fillRect(x-17,y-34,3,45);ctx.fillRect(x+14,y-34,3,45);
- ctx.fillStyle="#e5c887";ctx.beginPath();ctx.arc(x+13,y-3,3,0,Math.PI*2);ctx.fill();
- ctx.fillStyle="#fff0c2";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText("در خروج",x,y-73);ctx.textAlign="start";
-}
+function drawCaveObjects(){if(mineMode)drawMineObjects();}
 function drawHouse(x,y,level,isSaman){
  const sx=x-camera.x,sy=y-camera.y;
  ctx.fillStyle="rgba(18,27,20,.32)";ctx.beginPath();ctx.ellipse(sx,sy+27,82,14,0,0,Math.PI*2);ctx.fill();
@@ -3041,7 +3007,7 @@ function draw() {
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
   if(townMode){drawTown();drawTownPeople();drawPlayer();drawParticles();drawNightOverlay();return;}
   if(caveMode){drawCaveGround();drawCaveDetails();drawCaveObjects();}else {drawGround();drawForestWaterFx();drawAncientBridge();}
-  if (!caveMode) { drawHouse(playerHome.x, playerHome.y, homeLevel, false); drawHouse(samanHome.x, samanHome.y, 1, true); drawChest(); drawLivestockPen(); drawFarmPlots(); drawStations(); }
+  if (!caveMode) { drawHouse(playerHome.x, playerHome.y, homeLevel, false); drawHouse(samanHome.x, samanHome.y, 1, true); drawChest(); drawLivestockPen(); drawFarmPlots(); drawFurnaces(); }
   for (const r of activeNodes()) {
     if (r.x < camera.x - 60 || r.x > camera.x + viewW + 60 || r.y < camera.y - 60 || r.y > camera.y + viewH + 60) continue;
     if (r.type === "tree") drawTree(r);
@@ -3063,7 +3029,7 @@ function draw() {
   drawNightOverlay();
   ctx.strokeStyle = "#d6f0a8"; ctx.lineWidth = 3;
   ctx.strokeRect(2-camera.x,2-camera.y,(caveMode?CAVE.w:WORLD.w)-4,(caveMode?CAVE.h:WORLD.h)-4);
-  if(!caveMode){drawCaveEntrance();drawMineEntrance();}
+  if(!caveMode){drawMineEntrance();}
 }
 function loop(time) {
   const dt = Math.min((time - lastTime) / 1000 || 0, 0.04);
