@@ -511,8 +511,8 @@ function mineActivate(what,id){
 }
 function mineOpenChest(id){
   const c=mineData&&mineData.chests.find(v=>v.id===id);if(!c||c.opened)return;
-  const rw=MINE_SPECIAL_REWARDS[mineFloor]||{coins:50,xp:30,items:{}},cnt=Object.values(rw.items||{}).reduce((a,v)=>a+v,0);
-  if(!bagCanAddBatch(Object.entries(rw.items||{}).map(([key,amount])=>({key,amount})))){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}
+  const rw=MINE_SPECIAL_REWARDS[mineFloor]||{coins:50,xp:30,items:{}},rewards=Object.entries(rw.items||{}).map(([key,amount])=>({key,amount}));
+  if(rewards.length&&!bagCanAddBatch(rewards)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}
   c.opened=true;mineState[mineFloor].c.push(id);
   for(const k of Object.keys(rw.items||{}))bag[k]=(bag[k]||0)+rw.items[k];
   player.coins+=rw.coins||0;const lv=addXP(rw.xp||0);
@@ -1809,7 +1809,7 @@ function updateTownShop(){
  $("buySeeds").textContent="🌱 خرید "+(crop?.name||"بذر")+" • "+(crop?.seed||0)+" سکه";$("buySeeds").hidden=false;
 }
 function consumeTownFood(type){if(!townStock[type]){showToast("از این خوراکی نداری!");return;}if(player.health>=player.maxHealth){showToast("جان تو کامله!");return;}townStock[type]--;player.health=Math.min(player.maxHealth,player.health+(type==="bread"?2:1));updateUI();updateTownShop();saveQuietly();showToast("خوراکی خوردی و جانت بیشتر شد ❤️");}
-function buyTownItem(type){const item={bread:{price:8,label:"نان"},seeds:{price:5,label:"بذر"},apple:{price:6,label:"سیب"}}[type];if(!item||player.coins<item.price){showToast("سکه کافی نداری! 🪙");return;}if(type==="seeds"&&!bagCanAdd(1,"seeds")){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}player.coins-=item.price;if(type==="seeds")bag.seeds=(bag.seeds||0)+1;else townStock[type]++;updateUI();updateTownShop();saveQuietly();showToast(item.label+" خریدی! 🛍️");}
+function buyTownItem(type){const item={bread:{price:8,label:"نان"},seeds:{price:5,label:"بذر"},apple:{price:6,label:"سیب"}}[type];if(!item||player.coins<item.price){showToast("سکه کافی نداری! 🪙");return;}if(type==="seeds"&&!bagCanAdd(1,"carrot",true)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}player.coins-=item.price;if(type==="seeds")farmSeedStock.carrot=(farmSeedStock.carrot||0)+1;else townStock[type]++;updateUI();updateTownShop();saveQuietly();showToast(item.label+" خریدی! 🛍️");}
 function updateCarpenterUI(){const title=homeLevel===0?"هنوز خانه‌ای نداری":homeLevel===1?"کلبه چوبی":homeLevel===2?"خانه بزرگ":"خانه لوکس";$("carpenterStatus").textContent=title+" • چوب "+bag.wood+" • سنگ "+bag.stone+" • تخته "+bag.plank+" • پارچه "+bag.cloth+" • سکه "+player.coins;$("carpenterBuild").hidden=homeLevel>0;$("carpenterUpgrade").hidden=homeLevel===0||homeLevel>=3;$("carpenterBuild").disabled=bag.wood<12||bag.stone<6;$("carpenterUpgrade").disabled=homeLevel===1?(bag.wood<18||bag.stone<10||player.coins<10):(bag.wood<30||bag.stone<20||player.coins<35);$("furnitureBed").disabled=furnitureOwned.bed||bag.plank<8||bag.cloth<3;$("furnitureTable").disabled=furnitureOwned.table||bag.plank<6||bag.nail<4;$("furnitureChair").disabled=furnitureOwned.chair||bag.plank<4||bag.nail<2;$("furnitureStatus").textContent="وسایل ساخته‌شده: "+Object.entries(furnitureOwned).filter(([k,v])=>v).map(([k])=>({bed:"تخت",table:"میز",chair:"صندلی"}[k])).join("، "||"") ;}
 function carpenterBuild(){buildPlayerHome();updateCarpenterUI();}
 function carpenterUpgrade(){upgradePlayerHome();updateCarpenterUI();}
