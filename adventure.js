@@ -224,7 +224,7 @@ function load() {
     if (data.bag) Object.assign(bag, data.bag);
     if(data.chestStorage&&typeof data.chestStorage==="object")Object.keys(data.chestStorage).forEach(k=>chestStorage[k]=Math.max(0,Number(data.chestStorage[k])||0));
     fishingRodOwned=!!data.fishingRodOwned;
-    if(!Number.isFinite(Number(data.backpackTier))){const used=Object.values(bag).reduce((n,v)=>n+(Number(v)||0),0);backpackTier=used>45?2:used>30?1:0;}
+    if(!Number.isFinite(Number(data.backpackTier)))backpackTier=0;
     if(Array.isArray(data.furnaces))furnaces=data.furnaces.filter(f=>f&&Number.isFinite(f.x)&&Number.isFinite(f.y)).map(f=>({...f,remaining:Math.max(0,Number(f.remaining)||0),ready:!!f.ready}));
     if (data.toolLevels) Object.keys(toolLevels).forEach(k => toolLevels[k] = Math.max(0, Math.min(2, Number(data.toolLevels[k]) || 0)));
     bridgeStage = Math.max(0, Math.min(3, Number(data.bridgeStage) || 0));
@@ -244,7 +244,7 @@ function load() {
     npcMet = !!data.npcMet; npcTalkIndex = Number.isInteger(data.npcTalkIndex) ? data.npcTalkIndex : 0;
     if (data.npcQuest) npcQuest = { ...npcQuest, ...data.npcQuest };
     homeLevel = Math.max(0, Math.min(3, Number(data.homeLevel) || 0));
-    if(Number.isFinite(Number(data.backpackTier))) backpackTier=Math.max(0,Math.min(2,Number(data.backpackTier))); else { const used=Object.values(bag).reduce((n,v)=>n+(Number(v)||0),0)+Object.values(farmSeedStock).reduce((n,v)=>n+(Number(v)||0),0); backpackTier=used>45?2:used>30?1:0; }
+    if(Number.isFinite(Number(data.backpackTier))) backpackTier=Math.max(0,Math.min(2,Number(data.backpackTier))); else backpackTier=0;
     if(Array.isArray(data.inventoryOrder))inventoryOrder=data.inventoryOrder.filter(v=>typeof v==="string");
     if(data.furnitureOwned) furnitureOwned={...furnitureOwned,...data.furnitureOwned};
     homeInterior = !!data.homeInterior; if (data.homeReturn) homeReturn = data.homeReturn;
@@ -1592,10 +1592,10 @@ function inventoryItems(){
  for(const [key,value] of Object.entries(bag)){
   if(key==="seeds"||!(Number(value)>0))continue;
   const crop=FARM_CROPS[key];
-  items.push({id:"bag:"+key,name:crop?crop.name:(INVENTORY_LABELS[key]||key),icon:crop?crop.icon:(INVENTORY_ICONS[key]||"📦"),count:value,kind:crop?"محصول":"منبع",detail:"در کوله‌پشتی • "+stackSlots(value)+" استک"});
+  items.push({id:"bag:"+key,name:crop?crop.name:(INVENTORY_LABELS[key]||key),icon:crop?crop.icon:(INVENTORY_ICONS[key]||"📦"),count:value,kind:crop?"محصول":"منبع",detail:"در کوله‌پشتی • "+stackSlots(value)+" استک (هر استک تا ۶۴)"});
  }
  for(const [key,value] of Object.entries(farmSeedStock)){
-  if(Number(value)>0){const crop=FARM_CROPS[key];items.push({id:"seed:"+key,name:"بذر "+crop.name,icon:crop.icon,count:value,kind:"بذر",detail:FARM_SEASONS[crop.season]+" • "+stackSlots(value)+" استک"});}
+  if(Number(value)>0){const crop=FARM_CROPS[key];items.push({id:"seed:"+key,name:"بذر "+crop.name,icon:crop.icon,count:value,kind:"بذر",detail:FARM_SEASONS[crop.season]+" • "+stackSlots(value)+" استک (هر استک تا ۶۴)"});}
  }
  const tiers=["چوبی","آهنی","کریستالی"];
  items.push(
