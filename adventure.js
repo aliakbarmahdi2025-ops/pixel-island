@@ -9,7 +9,7 @@ const SAVE_KEY = "pixelIsland_adventure_save_v1";
 let viewW = innerWidth, viewH = innerHeight, dpr = 1;
 const camera = { x: 0, y: 0 };
 const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, maxHealth: 5, level: 1, xp: 0, skillPoints: 0, attackPower: 1, armorLevel: 0, coins: 0 };
-const bag = { wood: 0, stone: 0, iron: 0, crystal: 0, potion: 0, egg: 0, milk: 0, carp:0, perch:0, trout:0, seeds: 0, wheat: 0, carrot: 0, strawberry: 0, fiber: 0, sand: 0, marble: 0, plank: 0, brick: 0, rope: 0, nail: 0, glass: 0, cloth: 0, marbleSlab: 0, ironParts: 0, templeFoundation: 0, templeColumn: 0, templeBeam: 0, templeMosaic: 0, templeBanner: 0 };
+const bag = { wood: 0, stone: 0, iron: 0, crystal: 0, copperOre: 0, coal: 0, ironOre: 0, goldOre: 0, steelOre: 0, adamantiteOre: 0, potion: 0, egg: 0, milk: 0, carp:0, perch:0, trout:0, seeds: 0, wheat: 0, carrot: 0, strawberry: 0, fiber: 0, sand: 0, marble: 0, plank: 0, brick: 0, rope: 0, nail: 0, glass: 0, cloth: 0, marbleSlab: 0, ironParts: 0, templeFoundation: 0, templeColumn: 0, templeBeam: 0, templeMosaic: 0, templeBanner: 0 };
 const chestStorage={};let fishingRodOwned=false,fishingCooldown=0;const CHEST_CAPACITY=150;const CHEST_POS={x:555,y:585};
 const stations = { workbench: false, furnace: false, sawmill: false };
 const toolLevels = { axe: 0, pickaxe: 0, shovel: 0 };
@@ -20,6 +20,9 @@ let templeMode=false,templeFloor=1,templeUnlocked=1,templePuzzleSolved={},temple
 let harvested = new Set(), caveHarvested = new Set();
 let caveMode = false, caveReturn = {x:1200,y:900}, openedChests = [];
 let caveResources = [], caveChests = [];
+// Stage 51-A: mine state. caveMode stays true while inside the mine, so lighting, movement bounds and combat reuse the cave.
+const MINE_FLOORS=110;   // declared here (not further down) because load() runs at startup, before the mine block is evaluated
+let mineMode=false,mineFloor=1,mineMaxFloor=0,mineState={},mineData=null,templeKeyOwned=false,forestLootStash=null,mineBusy=false,mineBtnAction=null;
 let resources = [];
 let quests = { wood: 0, slime: 0, iron: 0, claimed: { wood: false, slime: false, iron: false } };
 let dailyMissions = { day: 1, progress: { wood: 0, iron: 0, harvest: 0 }, claimed: { wood: false, iron: false, harvest: false } };
@@ -235,7 +238,7 @@ function load() {
     if (Array.isArray(data.harvested)) harvested = new Set(data.harvested);
     if (Array.isArray(data.caveHarvested)) caveHarvested = new Set(data.caveHarvested);
     if (Array.isArray(data.lootDrops)) lootDrops = data.lootDrops.filter(d => d && Number.isFinite(d.x) && Number.isFinite(d.y) && ["coin","stone","iron","crystal","potion"].includes(d.type));
-    caveMode = !!data.caveMode; if(data.caveReturn)caveReturn=data.caveReturn; if(Array.isArray(data.openedChests))openedChests=data.openedChests;
+    caveMode = !!data.caveMode; if(data.caveReturn)caveReturn=data.caveReturn; if(Array.isArray(data.openedChests))openedChests=data.openedChests; loadMineData(data.mine);
     if(data.quests)quests={...quests,...data.quests,claimed:{...quests.claimed,...(data.quests.claimed||{})}};
     if(data.dailyMissions&&typeof data.dailyMissions==="object")dailyMissions={...dailyMissions,...data.dailyMissions,progress:{...dailyMissions.progress,...(data.dailyMissions.progress||{})},claimed:{...dailyMissions.claimed,...(data.dailyMissions.claimed||{})}};
     npcMet = !!data.npcMet; npcTalkIndex = Number.isInteger(data.npcTalkIndex) ? data.npcTalkIndex : 0;
@@ -263,7 +266,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, stations, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
+      bag, chestStorage, fishingRodOwned, stations, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -381,8 +384,299 @@ function resetCaveMotion(){
  move.x=0;move.y=0;moveTarget=null;playerMoving=false;playerActionTimer=0;playerActionType="";
  if(typeof keys!=="undefined"&&keys&&typeof keys.clear==="function")keys.clear();
 }
+/* ===== Stage 51-A — 110-floor mine =====
+   Floors are generated on entry from a per-floor seed (nothing but progress is stored). The mine reuses the cave
+   (caveMode stays true) for movement, combat, lighting and chunk-cached ground, but keeps its own state so the
+   forest cave, its chests and its saved progress are never touched. Gameplay randomness elsewhere (rand()) is not used. */
+const MINE_SPAWN={x:800,y:990},MINE_UP={x:800,y:1085},MINE_LIFT={x:620,y:1040},MINE_ENTRANCE={x:1800,y:1640};
+const MINE_LADDER_BASE=.05,MINE_LADDER_STEP=.03;   // ladder chance per broken node = BASE + STEP*(breaks-1); guaranteed on the last node
+// Ore table: node type -> bag key, amount per node, hit points, display data. Edit here to rebalance.
+const MINE_ORES={
+ copper:{bag:"copperOre",qty:2,hp:4,name:"سنگ معدن مس",icon:"🟠",c1:"#d9803f",c2:"#f2b678"},
+ coal:{bag:"coal",qty:2,hp:4,name:"زغال‌سنگ",icon:"⚫",c1:"#17171b",c2:"#454552"},
+ ironore:{bag:"ironOre",qty:1,hp:5,name:"سنگ معدن آهن",icon:"⚪",c1:"#b7a89c",c2:"#e6d9cc"},
+ goldore:{bag:"goldOre",qty:1,hp:6,name:"سنگ معدن طلا",icon:"🟡",c1:"#f2c94c",c2:"#fff1a3",glint:true},
+ steelore:{bag:"steelOre",qty:1,hp:8,name:"سنگ معدن فولاد",icon:"🔵",c1:"#7fb4e0",c2:"#dcebf8",glint:true},
+ adamore:{bag:"adamantiteOre",qty:1,hp:10,name:"سنگ معدن آدمانتیوم",icon:"🟣",c1:"#b66cff",c2:"#e6c4ff",glint:true}
+};
+// Depth bands. stone/ores are [type,min,max] counts per floor. Floors 101-109 were not specified: treated as a richer adamantite band (assumption).
+const MINE_BANDS=[
+ {id:"copper",to:19,stone:[12,16],ores:[["copper",10,14],["coal",4,7]],pal:{stone:["#2b231f","#362c26","#42352c","#4f4034","#5e4c3d"],moss:["#3b3a24","#4b4a2c","#5c5b35"],glow:"#d9803f"}},
+ {id:"iron",to:39,stone:[14,18],ores:[["ironore",3,5]],pal:{stone:["#22262b","#2c3137","#373d45","#434b54","#515a64"],moss:["#26393c","#2e474a","#385558"],glow:"#9fb3c2"}},
+ {id:"gold",to:59,stone:[14,18],ores:[["goldore",2,4]],pal:{stone:["#2e2a1d","#3a3523","#47402b","#575032","#6a6039"],moss:["#4a4222","#5b5229","#6d6330"],glow:"#f2c94c"}},
+ {id:"steel",to:79,stone:[14,18],ores:[["steelore",1,3]],pal:{stone:["#1d2630","#26313e","#303e4d","#3c4d5f","#4a5e73"],moss:["#22404f","#2a4f61","#325f74"],glow:"#7fb4e0"}},
+ {id:"adamantite",to:99,stone:[14,18],ores:[["adamore",1,2]],pal:{stone:["#241f35","#2e2842","#393253","#463d66","#554a7a"],moss:["#3c2a58","#4a3470","#5a3f88"],glow:"#b66cff"}},
+ {id:"abyss",to:109,stone:[14,18],ores:[["adamore",2,3]],pal:{stone:["#1c1830","#241f3c","#2d2749","#383157","#443c68"],moss:["#32244e","#3f2d62","#4d3677"],glow:"#9a5cf0"}}
+];
+const MINE_VAULT_PAL={stone:["#2a2820","#353227","#413d2f","#504a38","#615a43"],moss:["#4a4222","#5b5229","#6d6330"],glow:"#e8c15a"};
+const MINE_KEY_PAL={stone:["#1e1b2a","#272336","#322d44","#3f3855","#4e4668"],moss:["#35284f","#43325f","#523d73"],glow:"#ffd86a"};
+const MINE_SPECIAL_ORE={20:["copper",3,4],40:["ironore",2,2],60:["goldore",2,2],80:["steelore",1,1],100:["adamore",1,1]};
+// Special floors (20,40,60,80,100) each hold 3 special chests. Every chest gives this reward; `items` is intentionally empty until the real rewards are decided.
+const MINE_SPECIAL_REWARDS={20:{coins:40,xp:30,items:{}},40:{coins:80,xp:50,items:{}},60:{coins:140,xp:80,items:{}},80:{coins:220,xp:120,items:{}},100:{coins:350,xp:180,items:{}}};
+
+function mineRng(seed){let a=seed>>>0;return function(){a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
+function mineBandFor(f){for(const b of MINE_BANDS)if(f<=b.to)return b;return MINE_BANDS[MINE_BANDS.length-1];}
+function mineLabel(){return "معدن • طبقه "+mineFloor+(mineData&&mineData.special?" • طبقه ویژه":mineData&&mineData.keyFloor?" • تالار کلید":"");}
+function mineDropToast(type){const o=MINE_ORES[type];return o.qty+" "+o.name+" جمع کردی "+o.icon;}
+function mineSolids(){const d=mineData;if(!d)return [];return d.chests.concat([d.up,d.lift,d.down,d.ladderSpot,d.pedestal].filter(Boolean));}
+
+function normalizeMineDrops(list){
+  if(!Array.isArray(list))return [];
+  return list.filter(d=>d&&Number.isFinite(d.x)&&Number.isFinite(d.y)&&["coin","stone","iron","crystal","potion"].includes(d.type))
+    .slice(0,100).map(d=>({...d}));
+}
+function storeMineFloorLoot(){
+  if(!mineMode||!mineData)return;
+  const st=mineState[mineFloor]||(mineState[mineFloor]={b:0,c:[],k:0});
+  st.d=normalizeMineDrops(lootDrops);
+}
+function buildMineFloor(f,opts){
+  opts=opts||{};
+  if(mineMode&&mineData)storeMineFloorLoot();
+  f=Math.max(1,Math.min(MINE_FLOORS,Math.floor(Number(f))||1));
+  mineFloor=f;mineMaxFloor=Math.max(mineMaxFloor,f);
+  const st=mineState[f]||(mineState[f]={b:0,c:[],k:0});
+  const rng=mineRng(f*2654435761+0x51A7);
+  const special=f%20===0&&f<=100,keyFloor=f===MINE_FLOORS,band=mineBandFor(f);
+  const pal=keyFloor?MINE_KEY_PAL:special?MINE_VAULT_PAL:band.pal;
+  const placed=[{x:MINE_SPAWN.x,y:MINE_SPAWN.y,r:150},{x:MINE_UP.x,y:MINE_UP.y,r:90},{x:MINE_LIFT.x,y:MINE_LIFT.y,r:95}];
+  const spot=r=>{let x=0,y=0;for(let t=0;t<60;t++){x=120+rng()*1360;y=130+rng()*930;if(placed.every(p=>Math.hypot(p.x-x,p.y-y)>=p.r+r))break;}x=Math.round(x);y=Math.round(y);placed.push({x,y,r});return {x,y};};
+  const ri=(a,b)=>a+Math.floor(rng()*(b-a+1));
+  const chests=[];let pedestal=null;
+  if(special)[[560,340],[800,290],[1040,340]].forEach((p,i)=>{placed.push({x:p[0],y:p[1],r:80});chests.push({id:"sp"+i,x:p[0],y:p[1],opened:st.c.indexOf("sp"+i)>=0});});
+  if(keyFloor){placed.push({x:800,y:330,r:110});pedestal={x:800,y:330,taken:!!(st.k||templeKeyOwned)};}
+  const ladderSpot=f<MINE_FLOORS?spot(70):null;
+  const plan=[["stone"].concat(special||keyFloor?[6,8]:band.stone)];
+  if(special)plan.push(MINE_SPECIAL_ORE[f]);else if(keyFloor)plan.push(["adamore",2,2]);else for(const o of band.ores)plan.push(o);
+  const nodes=[];let idx=0;
+  for(const pl of plan){const n=ri(pl[1],pl[2]);for(let k=0;k<n;k++){const p=spot(44),hp=pl[0]==="stone"?4:MINE_ORES[pl[0]].hp;nodes.push({id:"mine:"+f+":"+idx,x:p.x,y:p.y,type:pl[0],hp:hp,max:hp});idx++;}}
+  const enemies=[],nSl=f<=2?0:(special||keyFloor)?2:Math.min(5,1+Math.floor(f/15)),slHp=3+Math.floor(f/25);
+  for(let i=0;i<nSl;i++){let x=0,y=0;for(let t=0;t<30;t++){x=140+rng()*1320;y=150+rng()*880;if(Math.hypot(x-MINE_SPAWN.x,y-MINE_SPAWN.y)>280)break;}x=Math.round(x);y=Math.round(y);enemies.push({id:"mine-slime-"+i,kind:"slime",x:x,y:y,spawnX:x,spawnY:y,hp:slHp,max:slHp,alive:true,respawnTimer:0});}
+  const shelves=[],ns=5+Math.floor(rng()*4);
+  for(let i=0;i<ns;i++){let x=0,y=0;for(let t=0;t<20;t++){x=150+rng()*1300;y=170+rng()*860;if(Math.hypot(x-MINE_SPAWN.x,y-MINE_SPAWN.y)>240)break;}shelves.push([Math.round(x),Math.round(y)]);}
+  const glows=[],ng=3+Math.floor(rng()*2);
+  for(let i=0;i<ng;i++)glows.push([Math.round(140+rng()*1320),Math.round(150+rng()*880),Math.round(85+rng()*40)]);
+  // arrival: from above = spawn beside the up ladder; from below = standing on the (revealed) down ladder
+  let ax=MINE_SPAWN.x,ay=MINE_SPAWN.y;
+  if(opts.arrive==="down"&&ladderSpot){if(!st.l)st.l=[ladderSpot.x,ladderSpot.y];ax=st.l[0];ay=st.l[1]+46;}
+  const lift=(f===1||f%5===0)?{x:MINE_LIFT.x,y:MINE_LIFT.y}:null;
+  caveResources=nodes;caveChests=[];caveEnemies=enemies;lootDrops=normalizeMineDrops(st.d);
+  mineData={floor:f,band:band.id,special:special,keyFloor:keyFloor,up:{x:MINE_UP.x,y:MINE_UP.y},lift:lift,down:st.l?{x:st.l[0],y:st.l[1]}:null,ladderSpot:ladderSpot,chests:chests,pedestal:pedestal};
+  caveSeed=f*13+7;CAVE_STONE_RGB=pal.stone.map(hexRGB);CAVE_MOSS_RGB=pal.moss.map(hexRGB);
+  caveLayout={shelves:shelves,glows:glows,glowColor:pal.glow};CAVE_AMB.a=Math.min(.64,.5+f*.0013);
+  releaseGroundCaches();cavePuddleCache.clear();
+  if(opts.arrive!=="keep"){player.x=ax;player.y=ay;}
+  moveTarget=null;resetCaveMotion();syncCameraToPlayer();
+}
+function resetMinePalette(){CAVE_STONE_RGB=CAVE_STONE_DEF;CAVE_MOSS_RGB=CAVE_MOSS_DEF;caveSeed=0;caveLayout={shelves:null,glows:null,glowColor:null};CAVE_AMB.a=.52;releaseGroundCaches();cavePuddleCache.clear();}
+
+function mineFade(fn){
+  if(mineBusy)return;
+  mineBusy=true;moveTarget=null;$("townFade").classList.add("active");
+  setTimeout(()=>{try{fn();}finally{$("townFade").classList.remove("active");mineBusy=false;}saveQuietly();updateUI();},240);
+}
+function enterMine(){
+  if(templeMode||townMode||homeInterior||mineMode||mineBusy)return;
+  mineFade(()=>{caveReturn={x:player.x,y:player.y};forestLootStash=lootDrops;lootDrops=[];mineMode=true;caveMode=true;buildMineFloor(1,{arrive:"up"});showToast("وارد معدن شدی ⛏️ • طبقه ۱");});
+}
+function leaveMine(){
+  if(!mineMode)return;
+  mineFade(()=>{storeMineFloorLoot();mineMode=false;caveMode=false;mineData=null;lootDrops=forestLootStash||[];forestLootStash=null;resetMinePalette();makeCave();player.x=caveReturn.x;player.y=caveReturn.y;resetCaveMotion();syncCameraToPlayer();showToast("از معدن به جنگل برگشتی 🌲");});
+}
+function mineGoto(target,arrive){
+  if(!mineMode)return;
+  mineFade(()=>{buildMineFloor(target,{arrive:arrive});showToast(mineLabel());});
+}
+
+// ---- ladder discovery: every broken node may reveal the ladder to the next floor, with a growing chance (and a guarantee on the last node)
+function mineAfterBreak(node){
+  if(!mineData||mineFloor>=MINE_FLOORS)return;
+  const st=mineState[mineFloor];st.b=(st.b||0)+1;
+  if(mineData.down)return;
+  const remaining=caveResources.filter(r=>!caveHarvested.has(r.id)).length;
+  const p=Math.min(1,MINE_LADDER_BASE+MINE_LADDER_STEP*(st.b-1));
+  if(remaining===0||Math.random()<p){
+    mineData.down={x:node.x,y:node.y};st.l=[node.x,node.y];
+    spawnPickupFx(node.x,node.y-6,"iron");showToast("یه نردبان به طبقه‌ی بعد پیدا کردی! 🪜");
+  }
+}
+
+// ---- interaction
+function mineTap(wx,wy){
+  if(!mineMode||!mineData||mineBusy)return false;
+  const d=mineData,c=[];
+  const add=(o,what,id,rad)=>{if(o&&Math.hypot(wx-o.x,wy-o.y)<rad)c.push({what:what,id:id,x:o.x,y:o.y});};
+  add(d.up,"up",null,44);if(mineFloor<MINE_FLOORS)add(d.down,"down",null,44);add(d.lift,"lift",null,52);
+  for(const ch of d.chests)if(!ch.opened)add(ch,"chest",ch.id,44);
+  if(d.pedestal&&!d.pedestal.taken)add(d.pedestal,"key",null,50);
+  if(!c.length)return false;
+  setWorldTarget("mine",c[0].x,c[0].y,{what:c[0].what,id:c[0].id});return true;
+}
+function mineActivate(what,id){
+  if(!mineMode||!mineData||mineBusy)return;
+  if(what==="up"){if(mineFloor<=1)leaveMine();else mineGoto(mineFloor-1,"down");}
+  else if(what==="down"){if(mineData.down&&mineFloor<MINE_FLOORS)mineGoto(mineFloor+1,"up");}
+  else if(what==="lift")openElevatorPanel();
+  else if(what==="chest")mineOpenChest(id);
+  else if(what==="key")mineTakeKey();
+}
+function mineOpenChest(id){
+  const c=mineData&&mineData.chests.find(v=>v.id===id);if(!c||c.opened)return;
+  const rw=MINE_SPECIAL_REWARDS[mineFloor]||{coins:50,xp:30,items:{}},cnt=Object.values(rw.items||{}).reduce((a,v)=>a+v,0);
+  if(cnt&&!bagCanAdd(cnt)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}
+  c.opened=true;mineState[mineFloor].c.push(id);
+  for(const k of Object.keys(rw.items||{}))bag[k]=(bag[k]||0)+rw.items[k];
+  player.coins+=rw.coins||0;const lv=addXP(rw.xp||0);
+  spawnPickupFx(c.x,c.y-8,"coin");playGameSound("pickup");updateUI();saveQuietly();
+  showToast("صندوق ویژه باز شد! +"+rw.coins+" سکه و "+rw.xp+" تجربه"+(lv?" • سطح جدید ⭐":""));
+}
+function mineTakeKey(){
+  const p=mineData&&mineData.pedestal;if(!p||p.taken)return;
+  p.taken=true;templeKeyOwned=true;mineState[mineFloor].k=1;
+  const lv=addXP(100);spawnPickupFx(p.x,p.y-30,"crystal");playGameSound("pickup");updateUI();saveQuietly();
+  showToast("کلید معبد باستانی رو پیدا کردی! 🗝️ (آیتم ویژه)"+(lv?" • سطح جدید ⭐":""));
+}
+function openElevatorPanel(){
+  const list=$("elevatorList");list.innerHTML="";
+  const stops=[1];for(let f=5;f<=Math.min(MINE_FLOORS,mineMaxFloor);f+=5)stops.push(f);
+  $("elevatorInfo").textContent="عمیق‌ترین طبقه‌ای که رسیدی: "+mineMaxFloor+" • ایستگاه‌های باز: "+stops.length;
+  stops.forEach(f=>{
+    const b=document.createElement("button");b.type="button";
+    b.textContent=(f===1?"🚪 طبقه ۱ (ورودی معدن)":"🛗 طبقه "+f)+(f===mineFloor?" • اینجایی":"");b.disabled=f===mineFloor;
+    b.addEventListener("click",()=>{$("elevatorPanel").hidden=true;syncXpPanel();mineGoto(f,"up");});
+    list.appendChild(b);
+  });
+  $("elevatorPanel").hidden=false;syncXpPanel();
+}
+$("elevatorClose").addEventListener("click",()=>{$("elevatorPanel").hidden=true;syncXpPanel();});
+$("mineBtn").addEventListener("click",()=>{if(mineBtnAction)mineActivate(mineBtnAction.what,mineBtnAction.id);});
+function updateMineButton(){
+  const b=$("mineBtn");
+  if(!mineMode||!mineData){b.hidden=true;mineBtnAction=null;return;}
+  const clock=$("townClock");clock.hidden=false;clock.textContent="⛏️ طبقه "+mineFloor+" / "+MINE_FLOORS;
+  if(mineBusy||document.querySelector(".panel:not([hidden])")){b.hidden=true;mineBtnAction=null;return;}
+  const d=mineData;let best=null,bd=90;
+  const chk=(o,what,label,id)=>{if(!o)return;const dist=Math.hypot(player.x-o.x,player.y-o.y);if(dist<bd){bd=dist;best={what:what,id:id,label:label};}};
+  chk(d.up,"up",mineFloor<=1?"🚪 خروج به جنگل":"⬆️ نردبان به طبقه "+(mineFloor-1));
+  if(mineFloor<MINE_FLOORS)chk(d.down,"down","⬇️ نردبان به طبقه "+(mineFloor+1));
+  chk(d.lift,"lift","🛗 آسانسور معدن");
+  for(const c of d.chests)if(!c.opened)chk(c,"chest","🧰 باز کردن صندوق ویژه",c.id);
+  if(d.pedestal&&!d.pedestal.taken)chk(d.pedestal,"key","🗝️ برداشتن کلید معبد");
+  mineBtnAction=best;b.hidden=!best;if(best)b.textContent=best.label;
+}
+function mineMapState(){
+  const d=mineData,pts=[];
+  if(d){
+    pts.push({x:d.up.x,y:d.up.y,label:mineFloor<=1?"خروج":"نردبان بالا",color:"#d8c18c",kind:"exit"});
+    if(d.down&&mineFloor<MINE_FLOORS)pts.push({x:d.down.x,y:d.down.y,label:"نردبان پایین",color:"#9fe0a8",kind:"exit"});
+    if(d.lift)pts.push({x:d.lift.x,y:d.lift.y,label:"آسانسور",color:"#9fb8c6",kind:"exit"});
+    for(const c of d.chests)pts.push({x:c.x,y:c.y,label:c.opened?"صندوق باز":"صندوق ویژه",color:c.opened?"#8f9b86":"#e6c477",kind:"treasure"});
+    if(d.pedestal&&!d.pedestal.taken)pts.push({x:d.pedestal.x,y:d.pedestal.y,label:"کلید معبد",color:"#ffd86a",kind:"treasure"});
+  }
+  for(const e of caveEnemies)if(e.alive)pts.push({x:e.x,y:e.y,label:"موجود",color:"#ee7770",kind:"enemy"});
+  return {key:"cave",title:mineLabel(),w:CAVE.w,h:CAVE.h,points:pts,legend:"🟡 تو • 🔴 دشمن • 🟨 صندوق • 🚪 نردبان و آسانسور"};
+}
+function mineLights(){
+  const d=mineData;if(!d)return;
+  pushLight(d.up.x-camera.x,d.up.y-camera.y-20,95,.65,0);
+  if(d.lift)pushLight(d.lift.x-camera.x,d.lift.y-camera.y-30,115,.8,0);
+  if(d.down&&mineFloor<MINE_FLOORS)pushLight(d.down.x-camera.x,d.down.y-camera.y,85,.7,1);
+  for(const c of d.chests)if(!c.opened)pushLight(c.x-camera.x,c.y-camera.y,70,.7,0);
+  if(d.pedestal&&!d.pedestal.taken)pushLight(d.pedestal.x-camera.x,d.pedestal.y-camera.y-24,130,.9,0);
+  for(const r of caveResources){if(caveHarvested.has(r.id))continue;if(r.type==="adamore")pushLight(r.x-camera.x,r.y-camera.y-6,75,.55,1);else if(r.type==="goldore")pushLight(r.x-camera.x,r.y-camera.y-6,60,.45,0);}
+}
+
+// ---- saving: only progress is stored. Harvested mine nodes live in caveHarvested at runtime (ids "mine:floor:index") but are
+//      written to the mine block, so the forest cave's own list stays exactly as before.
+function forestCaveSaved(){const o=[];for(const id of caveHarvested){if(!(typeof id==="string"&&id.indexOf("mine:")===0))o.push(id);}return o;}
+function mineSaveData(){
+  storeMineFloorLoot();
+  const st={};
+  for(const f of Object.keys(mineState)){const s=mineState[f],o={b:s.b||0};if(s.l)o.l=s.l;if(s.c&&s.c.length)o.c=s.c;if(s.k)o.k=1;if(s.d&&s.d.length)o.d=normalizeMineDrops(s.d);st[f]=o;}
+  for(const id of caveHarvested){if(typeof id==="string"&&id.indexOf("mine:")===0){const p=id.split(":"),f=Number(p[1]),i=Number(p[2]);const o=st[f]||(st[f]={b:0});(o.h||(o.h=[])).push(i);}}
+  return {mf:mineMode?1:0,fl:mineFloor,mx:mineMaxFloor,st:st,key:templeKeyOwned?1:0};
+}
+function loadMineData(m){
+  if(!m||typeof m!=="object")return;
+  mineMaxFloor=Math.max(0,Math.min(MINE_FLOORS,Math.floor(Number(m.mx))||0));
+  mineFloor=Math.max(1,Math.min(MINE_FLOORS,Math.floor(Number(m.fl))||1));
+  templeKeyOwned=!!m.key;mineState={};
+  if(m.st&&typeof m.st==="object")for(const k of Object.keys(m.st)){
+    const f=Math.floor(Number(k));if(!(f>=1&&f<=MINE_FLOORS))continue;const s=m.st[k]||{};
+    const o=mineState[f]={b:Math.max(0,Math.floor(Number(s.b))||0),c:Array.isArray(s.c)?s.c.filter(v=>typeof v==="string").slice(0,8):[],k:s.k?1:0,d:normalizeMineDrops(s.d)};
+    if(Array.isArray(s.l)&&Number.isFinite(s.l[0])&&Number.isFinite(s.l[1]))o.l=[s.l[0],s.l[1]];
+    if(Array.isArray(s.h))for(const i of s.h){if(Number.isFinite(i))caveHarvested.add("mine:"+f+":"+i);}
+  }
+  if(mineMaxFloor<mineFloor)mineMaxFloor=mineFloor;
+  if(m.mf){mineMode=true;caveMode=true;forestLootStash=lootDrops;lootDrops=[];}
+}
+
+// ---- drawing
+function drawOreNode(r){
+  drawRock(r);
+  const o=MINE_ORES[r.type],cx=r.x-camera.x,cy=r.y-camera.y,s=(Math.abs(r.x*7+r.y*13))|0;
+  const sp=[[-12,-8,5,4],[3,-14,6,4],[10,-3,5,5],[-6,2,6,4],[1,-5,4,3]];
+  for(let i=0;i<sp.length;i++){const q=sp[i],j=((s>>i)&3)-1;ctx.fillStyle=o.c1;ctx.fillRect(cx+q[0]+j,cy+q[1],q[2],q[3]);ctx.fillStyle=o.c2;ctx.fillRect(cx+q[0]+j,cy+q[1],q[2]-2,1);}
+  if(o.glint&&Math.sin(animTime*2.2+r.x*.05)>.82){ctx.fillStyle="#ffffff";ctx.fillRect(cx+(s%9)-4,cy-10,2,2);}
+}
+function mineLadderSprite(p,up,label){
+  const x=p.x-camera.x,y=p.y-camera.y;if(x<-60||x>viewW+60||y<-100||y>viewH+60)return;
+  ctx.fillStyle="rgba(0,0,0,.35)";ctx.beginPath();ctx.ellipse(x,y+22,30,9,0,0,Math.PI*2);ctx.fill();
+  if(!up){ctx.fillStyle="#0b0e10";ctx.fillRect(x-26,y-12,52,34);ctx.fillStyle="#1d2427";ctx.fillRect(x-26,y-12,52,5);}
+  const top=up?y-58:y-12,len=up?82:32;
+  ctx.fillStyle="#7c5a38";ctx.fillRect(x-14,top,5,len);ctx.fillRect(x+9,top,5,len);
+  ctx.fillStyle="#b08455";for(let k=0;k<(up?6:3);k++)ctx.fillRect(x-14,top+6+k*13,28,4);
+  ctx.fillStyle="#e9d9a8";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText((up?"⬆ ":"⬇ ")+label,x,top-8);ctx.textAlign="start";
+}
+function mineLiftSprite(p){
+  const x=p.x-camera.x,y=p.y-camera.y;if(x<-70||x>viewW+70||y<-100||y>viewH+60)return;
+  ctx.fillStyle="rgba(0,0,0,.35)";ctx.beginPath();ctx.ellipse(x,y+24,44,10,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#2b3238";ctx.fillRect(x-34,y+4,68,18);ctx.fillStyle="#56626b";ctx.fillRect(x-34,y+4,68,5);
+  ctx.fillStyle="#7a8791";ctx.fillRect(x-32,y-52,6,58);ctx.fillRect(x+26,y-52,6,58);ctx.fillStyle="#4a555d";ctx.fillRect(x-36,y-58,72,9);
+  ctx.fillStyle="#9aa7b0";for(let k=-2;k<=2;k++)ctx.fillRect(x+k*10-1,y-34,2,34);
+  ctx.fillStyle="rgba(255,214,120,"+(.7+.3*Math.sin(animTime*5))+")";ctx.fillRect(x-4,y-49,8,8);
+  ctx.fillStyle="#e9d9a8";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText("آسانسور",x,y-66);ctx.textAlign="start";
+}
+function mineChestSprite(c){
+  const x=c.x-camera.x,y=c.y-camera.y;if(x<-50||x>viewW+50||y<-50||y>viewH+50)return;
+  ctx.fillStyle="rgba(0,0,0,.3)";ctx.fillRect(x-20,y+12,40,7);
+  ctx.fillStyle=c.opened?"#4a3a2a":"#6d4a8a";ctx.fillRect(x-19,y-13,38,26);
+  ctx.fillStyle=c.opened?"#6a5a46":"#e5b75b";ctx.fillRect(x-19,y-13,38,8);ctx.fillRect(x-3,y-13,6,26);
+  if(!c.opened){ctx.fillStyle="rgba(255,226,140,"+(.25+.2*Math.sin(animTime*3))+")";ctx.fillRect(x-22,y-16,44,3);}
+}
+function minePedestalSprite(p){
+  const x=p.x-camera.x,y=p.y-camera.y;if(x<-70||x>viewW+70||y<-120||y>viewH+60)return;
+  ctx.fillStyle="rgba(0,0,0,.35)";ctx.beginPath();ctx.ellipse(x,y+26,34,9,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#3a3548";ctx.fillRect(x-18,y-4,36,30);ctx.fillStyle="#5a5470";ctx.fillRect(x-22,y-10,44,9);ctx.fillStyle="#6f6888";ctx.fillRect(x-22,y-10,44,3);
+  if(p.taken)return;
+  const by=y-32+Math.sin(animTime*2.4)*4;
+  ctx.fillStyle="rgba(255,216,106,.22)";ctx.beginPath();ctx.arc(x,by,22,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#f2c94c";ctx.fillRect(x-4,by-12,8,8);ctx.fillStyle="#9a7a1f";ctx.fillRect(x-2,by-10,4,4);ctx.fillStyle="#f2c94c";ctx.fillRect(x-1,by-4,3,18);ctx.fillRect(x+2,by+5,6,3);ctx.fillRect(x+2,by+10,5,3);
+  ctx.fillStyle="#fff0c2";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText("کلید معبد باستانی",x,y-62);ctx.textAlign="start";
+}
+function drawMineObjects(){
+  const d=mineData;if(!d)return;
+  mineLadderSprite(d.up,true,mineFloor<=1?"خروج":"بالا");
+  if(d.down&&mineFloor<MINE_FLOORS)mineLadderSprite(d.down,false,"پایین");
+  if(d.lift)mineLiftSprite(d.lift);
+  for(const c of d.chests)mineChestSprite(c);
+  if(d.pedestal)minePedestalSprite(d.pedestal);
+}
+function drawMineEntrance(){
+  const x=MINE_ENTRANCE.x-camera.x,y=MINE_ENTRANCE.y-camera.y;
+  if(x<-130||x>viewW+130||y<-130||y>viewH+130)return;
+  ctx.fillStyle="rgba(0,0,0,.28)";ctx.beginPath();ctx.ellipse(x,y+36,86,20,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#3a3f3c";ctx.beginPath();ctx.moveTo(x-74,y+30);ctx.lineTo(x-68,y-20);ctx.lineTo(x-40,y-58);ctx.lineTo(x,y-70);ctx.lineTo(x+42,y-56);ctx.lineTo(x+70,y-18);ctx.lineTo(x+76,y+30);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#6b746d";ctx.beginPath();ctx.moveTo(x-62,y+24);ctx.lineTo(x-57,y-16);ctx.lineTo(x-32,y-48);ctx.lineTo(x,y-58);ctx.lineTo(x+34,y-46);ctx.lineTo(x+58,y-14);ctx.lineTo(x+63,y+24);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#0e1214";ctx.fillRect(x-30,y-28,60,54);ctx.fillRect(x-24,y-38,48,12);
+  ctx.fillStyle="#8a5f36";ctx.fillRect(x-36,y-34,8,62);ctx.fillRect(x+28,y-34,8,62);ctx.fillRect(x-40,y-40,80,9);
+  ctx.fillStyle="#b98a54";ctx.fillRect(x-36,y-34,3,62);ctx.fillRect(x-40,y-40,80,3);
+  ctx.fillStyle="#59514a";ctx.fillRect(x-22,y+26,44,4);ctx.fillRect(x-22,y+33,44,4);
+  ctx.fillStyle="#cdb37a";ctx.fillRect(x-4,y+20,8,3);
+  ctx.fillStyle="#e8d29b";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("معدن • ۱۱۰ طبقه",x,y-84);ctx.textAlign="start";
+}
 function toggleCave(){
- if(templeMode||townMode||homeInterior)return;
+ if(templeMode||townMode||homeInterior||mineMode)return;
  if(!caveMode){
   caveReturn={x:player.x,y:player.y};caveMode=true;player.x=800;player.y=1015;
   showToast("وارد غار جنگلی شدی 🕯️");
@@ -553,7 +847,7 @@ function harvest(targetId=null) {
   const toolType = requiredToolForResource(nearest);
   if(selectedTool!==toolType){showToast("برای "+(nearest.type==="tree"?"قطع درخت":nearest.type==="bush"?"جمع‌آوری الیاف":nearest.type==="sand"?"برداشتن شن":"استخراج سنگ و معدن")+" باید "+TOOL_INFO[toolType].label+" انتخاب کنی");moveTarget=null;return;}
   const damage=1+(toolLevels[toolType]||0);
-  const amount=nearest.type==="tree"?3:(nearest.type==="stone"||nearest.type==="bush"||nearest.type==="sand")?2:1;
+  const amount=MINE_ORES[nearest.type]?MINE_ORES[nearest.type].qty:nearest.type==="tree"?3:(nearest.type==="stone"||nearest.type==="bush"||nearest.type==="sand")?2:1;
   if(nearest.hp-damage<=0&&!bagCanAdd(amount)){showToast("کوله‌پشتی پره! برای ظرفیت بیشتر برو پیش آقای نادری 🎒");return;}
   nearest.hp -= damage;
   spawnGatherFx(nearest.type,nearest.x,nearest.y,nearest.hp<=0);
@@ -566,9 +860,11 @@ function harvest(targetId=null) {
     if (nearest.type === "bush") bag.fiber = (bag.fiber||0) + 2;
     if (nearest.type === "sand") bag.sand = (bag.sand||0) + 2;
     if (nearest.type === "marble") bag.marble = (bag.marble||0) + 1;
+    if (MINE_ORES[nearest.type]) bag[MINE_ORES[nearest.type].bag] = (bag[MINE_ORES[nearest.type].bag]||0) + MINE_ORES[nearest.type].qty;
     const leveled = addXP(10);
     if (leveled) showToast("سطح جدید! یک امتیاز مهارت گرفتی ⭐");
-    else showToast(nearest.type === "tree" ? "۳ چوب جمع کردی 🪵" : nearest.type === "stone" ? "۲ سنگ جمع کردی 🪨" : nearest.type === "iron" ? "۱ آهن جمع کردی ⛏️" : nearest.type === "crystal" ? "۱ کریستال جمع کردی 💎" : nearest.type === "bush" ? "۲ الیاف جمع کردی 🧵" : nearest.type === "sand" ? "۲ شن جمع کردی 🏖️" : "۱ مرمر استخراج کردی ⬜");
+    else showToast(MINE_ORES[nearest.type] ? mineDropToast(nearest.type) : nearest.type === "tree" ? "۳ چوب جمع کردی 🪵" : nearest.type === "stone" ? "۲ سنگ جمع کردی 🪨" : nearest.type === "iron" ? "۱ آهن جمع کردی ⛏️" : nearest.type === "crystal" ? "۱ کریستال جمع کردی 💎" : nearest.type === "bush" ? "۲ الیاف جمع کردی 🧵" : nearest.type === "sand" ? "۲ شن جمع کردی 🏖️" : "۱ مرمر استخراج کردی ⬜");
+    if(mineMode)mineAfterBreak(nearest);
     updateUI();
     saveQuietly();
     playGameSound("pickup");
@@ -601,7 +897,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: [...caveHarvested], lootDrops, caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
+      bag, chestStorage, fishingRodOwned, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
     }));
   } catch (e) {}
 }
@@ -673,9 +969,10 @@ function canvasWorldTap(e){
     return;
   }
   if(townMode&&Math.hypot(wx-800,wy-1110)<90){transitionTown(false);return;}
-  if(caveMode&&Math.hypot(wx-800,wy-1080)<78){toggleCave();return;}
+  if(mineMode){if(mineTap(wx,wy))return;}else if(caveMode&&Math.hypot(wx-800,wy-1080)<78){toggleCave();return;}
   if(!templeMode&&!townMode&&!caveMode&&!homeInterior){
     if(Math.hypot(wx-2080,wy-1450)<88){toggleCave();return;}
+    if(Math.hypot(wx-MINE_ENTRANCE.x,wy-MINE_ENTRANCE.y)<88){enterMine();return;}
     if(Math.hypot(wx-2310,wy-900)<92){transitionTown(true);return;}
     if(Math.hypot(wx-CHEST_POS.x,wy-CHEST_POS.y)<52){openChestPanel();return;}
     if(Math.hypot(wx-playerHome.x,wy-playerHome.y)<92){if(homeLevel>0)enterPlayerHome();else openHomePanel();return;}
@@ -711,8 +1008,8 @@ function canvasWorldTap(e){
     const chest=near(caveChests,40,o=>!o.opened);
     if(chest){setWorldTarget("chest",chest.x,chest.y,{id:chest.id});return;}
   }
-  if(!caveMode&&!townMode&&!homeInterior){
-    if(selectedTool==="fishingRod"){const pond=nearestPondAt(wx,wy);if(pond){setWorldTarget("fish",pond.x,pond.y);return;}showToast("برای ماهیگیری روی آب یک برکه بزن 🎣");return;}
+  if(caveMode){const node=near(activeNodes(),48);if(node){setWorldTarget("resource",node.x,node.y,{id:node.id});return;}}
+  if(!caveMode&&!townMode&&!homeInterior){    if(selectedTool==="fishingRod"){const pond=nearestPondAt(wx,wy);if(pond){setWorldTarget("fish",pond.x,pond.y);return;}showToast("برای ماهیگیری روی آب یک برکه بزن 🎣");return;}
     const node=near(activeNodes(),48);
     if(node){setWorldTarget("resource",node.x,node.y,{id:node.id});return;}
     const plot=near(farmPlots,38);
@@ -748,7 +1045,7 @@ function tickWorldInteraction(dt){
     if(person){t.x=person.x;t.y=person.y;}
   }else if(t.type==="forestNpc"){t.x=forestNpc.x;t.y=forestNpc.y;}
   const d=Math.hypot(player.x-t.x,player.y-t.y);
-  const stops={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,fish:22,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,workshop:48};
+  const stops={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,fish:22,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,workshop:48,mine:50};
   if(d>(stops[t.type]??10))return;
   playerMoving=false;
   if(t.type==="ground"){moveTarget=null;return;}
@@ -756,7 +1053,7 @@ function tickWorldInteraction(dt){
     const node=activeNodes().find(r=>r.id===t.id);
     if(!node){moveTarget=null;return;}
     if(interactionTimer<=0){
-      const amount=node.type==="tree"?3:(node.type==="stone"||node.type==="bush"||node.type==="sand")?2:1;
+      const amount=MINE_ORES[node.type]?MINE_ORES[node.type].qty:node.type==="tree"?3:(node.type==="stone"||node.type==="bush"||node.type==="sand")?2:1;
       if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره؛ اول ظرفیتش رو بیشتر کن 🎒");moveTarget=null;return;}
       harvest(t.id);interactionTimer=.48;
     }
@@ -765,6 +1062,7 @@ function tickWorldInteraction(dt){
     const target=(templeMode?templeEnemies:caveMode?caveEnemies:enemies).find(e=>e.id===t.id&&e.alive);
     if(!target){moveTarget=null;return;}
     if(interactionTimer<=0){attack(t.id);interactionTimer=.12;}
+  }else if(t.type==="mine"){mineActivate(t.what,t.id);moveTarget=null;
   }else if(t.type==="loot"||t.type==="chest"){
     harvest(t.id);moveTarget=null;
   }else if(t.type==="forestNpc"){
@@ -871,6 +1169,7 @@ function getWorldMapState(){
     points.push({x:800,y:1110,label:"خروج جنگل",color:"#d8c18c",kind:"exit"});
     return {key:"town",title:"شهر سبز",w:TOWN.w,h:TOWN.h,points,legend:"🟡 تو • 🔵 اهالی شهر • 🟨 فروشگاه‌ها و خروجی"};
   }
+  if(mineMode)return mineMapState();
   if(caveMode){
     const points=[
       {x:800,y:1080,label:"خروج",color:"#d8c18c",kind:"exit"},
@@ -885,6 +1184,7 @@ function getWorldMapState(){
     {x:1900,y:450,label:"سامان",color:"#91c99b",kind:"npc"},
     {x:2310,y:900,label:"شهر سبز",color:"#8fc5d4",kind:"town"},
     {x:2080,y:1450,label:"غار",color:"#80cbd4",kind:"cave"},
+    {x:MINE_ENTRANCE.x,y:MINE_ENTRANCE.y,label:"معدن",color:"#c9a56a",kind:"cave"},
     {x:bridgeStage>=3?3000:2525,y:1710,label:bridgeStage>=3?"دروازه معبد":"پل باستانی",color:"#e2bd78",kind:"temple"}
   ];
   return {key:"forest",title:"جنگل بزرگ",w:WORLD.w,h:WORLD.h,points,riverX:2700,legend:"🟡 تو • 🏡 خانه • 🧙 سامان • 🏘️ شهر • 🕳️ غار • 🌉 پل و معبد"};
@@ -934,7 +1234,7 @@ function drawWorldMap(){
 }
 
 function syncXpPanel() {
-  const panelIds = ["inventory", "upgradePanel", "craftPanel", "stationPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel", "livestockPanel", "bridgePanel", "templePanel", "mapPanel"];
+  const panelIds = ["inventory", "upgradePanel", "craftPanel", "stationPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel", "livestockPanel", "bridgePanel", "templePanel", "mapPanel", "elevatorPanel"];
   const hud = $("hud");
   const xp = $("xpPanel");
   xp.hidden = panelIds.some(id => !$(id).hidden);
@@ -1301,6 +1601,7 @@ function update(dt) {
   $("homeBtn").textContent = homeInterior ? "🚪 خروج از خانه" : "🏡 خانه";
   const nearWorkshop=!templeMode&&!townMode&&!caveMode&&!homeInterior&&Math.hypot(player.x-playerHome.x,player.y-playerHome.y)<235&&Object.values(stations).some(Boolean);
   $("workshopBtn").hidden=!nearWorkshop;
+  updateMineButton();
 }
 
 function transitionTown(enter){
@@ -1327,8 +1628,8 @@ function bagUsed(){return Object.values(bag).reduce((sum,v)=>sum+(Number(v)||0),
 function bagCanAdd(amount=1){return bagUsed()+amount<=backpackCaps[backpackTier];}
 function bagAdd(key,amount){if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره! پیش آقای نادری ظرفیتش رو ارتقا بده 🎒");return false;}bag[key]=(bag[key]||0)+amount;return true;}
 
-const INVENTORY_LABELS={wood:"چوب",stone:"سنگ",iron:"آهن",crystal:"کریستال",potion:"معجون",egg:"تخم‌مرغ",milk:"شیر",carp:"کپور",perch:"ماهی سوف",trout:"قزل‌آلا",fiber:"الیاف",sand:"شن",marble:"مرمر",plank:"تخته چوب",brick:"آجر",rope:"طناب",nail:"میخ",glass:"شیشه",cloth:"پارچه",marbleSlab:"تخته مرمر",ironParts:"قطعه آهنی",templeFoundation:"پایه معبد",templeColumn:"ستون معبد",templeBeam:"تیر معبد",templeMosaic:"موزاییک",templeBanner:"پرچم معبد"};
-const INVENTORY_ICONS={wood:"🪵",stone:"🪨",iron:"⛓️",crystal:"💎",potion:"🧪",egg:"🥚",milk:"🥛",carp:"🐟",perch:"🐠",trout:"🐟",fiber:"🧵",sand:"🏖️",marble:"⬜",plank:"🪚",brick:"🧱",rope:"🪢",nail:"🔩",glass:"🪟",cloth:"🧶",marbleSlab:"◻️",ironParts:"⚙️",templeFoundation:"🏛️",templeColumn:"🏛️",templeBeam:"🪵",templeMosaic:"🎨",templeBanner:"🚩"};
+const INVENTORY_LABELS={copperOre:"سنگ معدن مس",coal:"زغال‌سنگ",ironOre:"سنگ معدن آهن",goldOre:"سنگ معدن طلا",steelOre:"سنگ معدن فولاد",adamantiteOre:"سنگ معدن آدمانتیوم",wood:"چوب",stone:"سنگ",iron:"آهن",crystal:"کریستال",potion:"معجون",egg:"تخم‌مرغ",milk:"شیر",carp:"کپور",perch:"ماهی سوف",trout:"قزل‌آلا",fiber:"الیاف",sand:"شن",marble:"مرمر",plank:"تخته چوب",brick:"آجر",rope:"طناب",nail:"میخ",glass:"شیشه",cloth:"پارچه",marbleSlab:"تخته مرمر",ironParts:"قطعه آهنی",templeFoundation:"پایه معبد",templeColumn:"ستون معبد",templeBeam:"تیر معبد",templeMosaic:"موزاییک",templeBanner:"پرچم معبد"};
+const INVENTORY_ICONS={copperOre:"🟠",coal:"⚫",ironOre:"⚪",goldOre:"🟡",steelOre:"🔵",adamantiteOre:"🟣",wood:"🪵",stone:"🪨",iron:"⛓️",crystal:"💎",potion:"🧪",egg:"🥚",milk:"🥛",carp:"🐟",perch:"🐠",trout:"🐟",fiber:"🧵",sand:"🏖️",marble:"⬜",plank:"🪚",brick:"🧱",rope:"🪢",nail:"🔩",glass:"🪟",cloth:"🧶",marbleSlab:"◻️",ironParts:"⚙️",templeFoundation:"🏛️",templeColumn:"🏛️",templeBeam:"🪵",templeMosaic:"🎨",templeBanner:"🚩"};
 function inventoryItems(){
  const items=[];
  for(const [key,value] of Object.entries(bag)){
@@ -1707,8 +2008,7 @@ function drawTownBuilding(x,y,label,roof,kind){
   }
   // small clay pots and step
   ctx.fillStyle="#70412f";ctx.fillRect(sx-31,sy+95,14,10);ctx.fillRect(sx+19,sy+95,14,10);ctx.fillStyle="#c17a53";ctx.fillRect(sx-30,sy+93,12,8);ctx.fillRect(sx+20,sy+93,12,8);ctx.fillStyle="#356c40";ctx.fillRect(sx-27,sy+83,3,12);ctx.fillRect(sx-23,sy+86,4,9);ctx.fillRect(sx+23,sy+83,3,12);ctx.fillRect(sx+27,sy+86,4,9);ctx.fillStyle="#80a85b";ctx.fillRect(sx-28,sy+82,4,3);ctx.fillRect(sx+24,sy+82,4,3);
-}
-const townSpriteCache = {};
+}const townSpriteCache = {};
 function makePixelTownSprite(id, frame) {
  const c=document.createElement("canvas");c.width=80;c.height=112;
  const g=c.getContext("2d");
@@ -2017,7 +2317,7 @@ function vnoise(x,y){
 }
 // One pond per chunk at most, always fully inside its chunk. Never near houses, the river, the cave entrance, the town sign,
 // the temple gate, the big mounds, or any tree / rock / bush that makeWorld() already placed.
-const FOREST_NO_POND = [[700,520,240],[1900,450,240],[1320,1010,120],[1200,900,130],[2310,900,150],[2080,1450,130],[3000,1710,200]];
+const FOREST_NO_POND = [[700,520,240],[1900,450,240],[1320,1010,120],[1200,900,130],[2310,900,150],[2080,1450,130],[3000,1710,200],[1800,1640,150]];
 const forestPondCache = new Map();
 function forestPondForChunk(cx,cy){
   const key=cx+","+cy;
@@ -2155,7 +2455,7 @@ function paintCaveChunk(g,cx,cy,size){
   const puddle=cavePuddleForChunk(cx,cy);
   paintCaveField(g,ox,oy,size,puddle);   // Stage 3: flagstone floor, moss and puddles replace the repeating tile blocks
   // layered rock shelves and shadowed ledges
-  for(let i=0;i<8;i++){const x=170+i*185,y=180+(i%3)*290,sx=x-ox,sy=y-oy;if(sx>-180&&sx<size+180&&sy>-100&&sy<size+100){g.fillStyle="#20252b";g.beginPath();g.ellipse(sx,sy,105,35,.12,0,Math.PI*2);g.fill();g.fillStyle="#555d63";g.beginPath();g.ellipse(sx-5,sy-10,92,27,.12,0,Math.PI*2);g.fill();g.fillStyle="#858b8b";g.fillRect(sx-35,sy-25,28,5);}}
+  const shv=caveLayout.shelves;for(let i=0;i<(shv?shv.length:8);i++){const x=shv?shv[i][0]:170+i*185,y=shv?shv[i][1]:180+(i%3)*290,sx=x-ox,sy=y-oy;if(sx>-180&&sx<size+180&&sy>-100&&sy<size+100){g.fillStyle="#20252b";g.beginPath();g.ellipse(sx,sy,105,35,.12,0,Math.PI*2);g.fill();g.fillStyle="#555d63";g.beginPath();g.ellipse(sx-5,sy-10,92,27,.12,0,Math.PI*2);g.fill();g.fillStyle="#858b8b";g.fillRect(sx-35,sy-25,28,5);}}
   g.fillStyle="#17191b";g.fillRect(-ox,-oy,CAVE.w,38);g.fillRect(-ox,CAVE.h-38-oy,CAVE.w,38);g.fillRect(-ox,-oy,38,CAVE.h);g.fillRect(CAVE.w-38-ox,-oy,38,CAVE.h);
   // Mineral seams, floor cracks and small stones
   const cells=size/96;
@@ -2171,7 +2471,7 @@ function paintCaveChunk(g,cx,cy,size){
     }
   }
   // Gentle crystal pools add depth while keeping the cave readable on mobile screens.
-  const glows=[[330,390,105,"#3ab9c6"],[1130,720,125,"#56d9d0"],[1450,1030,95,"#5c9ec7"],[650,120,85,"#4b9da9"]];
+  const glows=caveLayout.glows?caveLayout.glows.map(g=>[g[0],g[1],g[2],caveLayout.glowColor||"#3ab9c6"]):[[330,390,105,"#3ab9c6"],[1130,720,125,"#56d9d0"],[1450,1030,95,"#5c9ec7"],[650,120,85,"#4b9da9"]];
   for(const gl of glows){
     const x=gl[0]-ox,y=gl[1]-oy;
     if(x<-gl[2]||x>size+gl[2]||y<-gl[2]||y>size+gl[2])continue;
@@ -2182,10 +2482,11 @@ function paintCaveChunk(g,cx,cy,size){
 function drawCaveGround(){
   drawGroundChunks("cave",paintCaveChunk);
   drawCaveWaterFx();
-  ctx.fillStyle="#e0c58a";ctx.font="bold 15px Tahoma";ctx.fillText("غار جنگلی • تالار کریستال",CAVE.w/2-camera.x,75-camera.y);
+  ctx.fillStyle="#e0c58a";ctx.font="bold 15px Tahoma";ctx.fillText(mineMode?mineLabel():"غار جنگلی • تالار کریستال",CAVE.w/2-camera.x,75-camera.y);
 }
 function drawCaveDetails(){}   // Stage 1: cave details are now part of the cached ground chunks
 function drawCaveObjects(){
+ if(mineMode){drawMineObjects();return;}
  for(const c of caveChests){let x=c.x-camera.x,y=c.y-camera.y;ctx.fillStyle=c.opened?"#59452d":"#a66a32";ctx.fillRect(x-17,y-12,34,24);ctx.fillStyle=c.opened?"#76634b":"#e5b75b";ctx.fillRect(x-17,y-12,34,7);}
  const x=800-camera.x,y=1080-camera.y;
  ctx.fillStyle="rgba(0,0,0,.35)";ctx.beginPath();ctx.ellipse(x,y+28,58,13,0,0,Math.PI*2);ctx.fill();
@@ -2476,8 +2777,9 @@ function gatherCaveLights(){
   const fl=1+Math.sin(animTime*6.1)*.02+Math.sin(animTime*11.7)*.012;
   pushLight(player.x-camera.x,player.y-camera.y-6,215*fl,.95,0);
   for(const r of caveResources){if(r.type!=="crystal"||caveHarvested.has(r.id))continue;pushLight(r.x-camera.x,r.y-camera.y-10,125,.8,1);}
-  for(const g of CAVE_GLOWS)pushLight(g[0]-camera.x,g[1]-camera.y,g[2]*1.15,.55,1);
+  for(const g of (caveLayout.glows||CAVE_GLOWS))pushLight(g[0]-camera.x,g[1]-camera.y,g[2]*1.15,.55,1);
   for(const c of caveChests){if(!c.opened)pushLight(c.x-camera.x,c.y-camera.y,52,.5,0);}
+  if(mineMode)mineLights();
 }
 function drawLightLayer(amb){
   if(amb.a<.004)return;
@@ -2607,23 +2909,25 @@ function drawFireflies(){
 }
 
 // ---- Cave floor: irregular flagstones (jittered-cell seams), mossy patches and a few puddles, painted once into cached chunks.
-const CAVE_STONE_RGB=["#20252b","#292f36","#323941","#3c444d","#474f58"].map(hexRGB);
-const CAVE_MOSS_RGB=["#26393c","#2e474a","#385558"].map(hexRGB);
+let CAVE_STONE_RGB=["#20252b","#292f36","#323941","#3c444d","#474f58"].map(hexRGB);
+let CAVE_MOSS_RGB=["#26393c","#2e474a","#385558"].map(hexRGB);
 const CAVE_SEAM_RGB=hexRGB("#171c21");
 const CAVE_WATER_RGB=["#10303d","#1a4859","#2b6f80","#8fb8b4","#1b2a30"].map(hexRGB);
-const CAVE_CELL=72;   // 72 * 4 = 288 = one chunk, so seam cells line up with chunk borders
+const CAVE_CELL=72;
+const CAVE_STONE_DEF=CAVE_STONE_RGB,CAVE_MOSS_DEF=CAVE_MOSS_RGB;
+let caveSeed=0,caveLayout={shelves:null,glows:null,glowColor:null};   // 72 * 4 = 288 = one chunk, so seam cells line up with chunk borders
 const cavePuddleCache=new Map();
 function cavePuddleForChunk(cx,cy){
   const key=cx+","+cy;
   if(cavePuddleCache.has(key))return cavePuddleCache.get(key);
   let p=null;const size=GROUND_CHUNK_TILES*WORLD.tile;
-  if(terrainHash(cx+311,cy+523)>.55){
+  if(terrainHash(cx+311+caveSeed,cy+523)>.55){
     const rx=24+terrainHash(cx+13,cy+71)*22,ry=rx*(.5+terrainHash(cx+97,cy+5)*.3),ext=Math.max(rx,ry)*1.38+4;
     if(ext*2<size){
       const px=cx*size+ext+terrainHash(cx+43,cy+61)*(size-2*ext),py=cy*size+ext+terrainHash(cx+79,cy+29)*(size-2*ext);
       let ok=px>100&&py>100&&px<CAVE.w-100&&py<CAVE.h-100&&Math.hypot(px-800,py-650)>120+rx&&Math.hypot(px-800,py-1080)>130+rx;
       for(const r of caveResources){if(!ok)break;if(((r.x-px)/(rx*1.4+24))**2+((r.y-py)/(ry*1.4+24))**2<1)ok=false;}
-      for(const c of caveChests){if(!ok)break;if(((c.x-px)/(rx*1.4+30))**2+((c.y-py)/(ry*1.4+30))**2<1)ok=false;}
+      for(const c of (mineData?mineSolids():caveChests)){if(!ok)break;if(((c.x-px)/(rx*1.4+30))**2+((c.y-py)/(ry*1.4+30))**2<1)ok=false;}
       if(ok)p={x:Math.round(px),y:Math.round(py),rx,ry,seed:cx*23+cy*41};
     }
   }
@@ -2635,7 +2939,7 @@ function paintCaveField(g,ox,oy,size,puddle){
   if(fieldN!==n){fieldCanvas=document.createElement("canvas");fieldCanvas.width=fieldCanvas.height=n;fieldCtx=fieldCanvas.getContext("2d");fieldImg=fieldCtx.createImageData(n,n);fieldN=n;}
   for(let j=0;j<cn;j++)for(let i=0;i<cn;i++){
     const gi=c0x+i,gj=c0y+j,k=j*cn+i;
-    caveFx[k]=(gi+.15+.7*terrainHash(gi+401,gj+17))*CAVE_CELL;caveFy[k]=(gj+.15+.7*terrainHash(gi+29,gj+433))*CAVE_CELL;caveFh[k]=terrainHash(gi+601,gj+77);
+    caveFx[k]=(gi+.15+.7*terrainHash(gi+401+caveSeed,gj+17))*CAVE_CELL;caveFy[k]=(gj+.15+.7*terrainHash(gi+29+caveSeed,gj+433))*CAVE_CELL;caveFh[k]=terrainHash(gi+601+caveSeed,gj+77);
   }
   const d=fieldImg.data;
   for(let ay=0;ay<n;ay++)for(let ax=0;ax<n;ax++){
@@ -2647,14 +2951,14 @@ function paintCaveField(g,ox,oy,size,puddle){
       if(dd<m1){m2=m1;m1=dd;sh=caveFh[k];}else if(dd<m2)m2=dd;
     }
     const edge=Math.sqrt(m2)-Math.sqrt(m1);
-    const v=(.55*vnoise(wx/200+5,wy/200+9)+.45*vnoise(wx/50+17,wy/50+3)-.5)*1.7+.5;
+    const v=(.55*vnoise(wx/200+5+caveSeed*.37,wy/200+9+caveSeed*.23)+.45*vnoise(wx/50+17,wy/50+3)-.5)*1.7+.5;
     let si=Math.floor(v*5+(sh-.5)*.7+(b-.5)*.8);si=si<0?0:si>4?4:si;
     let c;
     if(edge<2.2)c=CAVE_SEAM_RGB;
     else{
       if(edge<6&&b<.5)si=si>0?si-1:0;
       c=CAVE_STONE_RGB[si];
-      if(edge>2.2&&vnoise(wx/120+211,wy/120+57)+(b-.5)*.08>.74){let mi=Math.floor(vnoise(wx/24+9,wy/24+31)*3+(b-.5)*.8);mi=mi<0?0:mi>2?2:mi;c=CAVE_MOSS_RGB[mi];}
+      if(edge>2.2&&vnoise(wx/120+211+caveSeed*.41,wy/120+57)+(b-.5)*.08>.74){let mi=Math.floor(vnoise(wx/24+9,wy/24+31)*3+(b-.5)*.8);mi=mi<0?0:mi>2?2:mi;c=CAVE_MOSS_RGB[mi];}
     }
     if(puddle){
       const dx=(wx-puddle.x)/puddle.rx,dy=(wy-puddle.y)/puddle.ry;let dd=Math.sqrt(dx*dx+dy*dy);
@@ -2703,8 +3007,7 @@ function drawAncientBridge(){
   ctx.fillStyle="#69452b";ctx.fillRect(rx-150,by-19,300,38);
   for(let i=0;i<12;i++){const x=rx-145+i*25;ctx.fillStyle=i%2?"#a87945":"#bd8d52";ctx.fillRect(x,by-17,20,34);ctx.fillStyle="#e0b879";ctx.fillRect(x+2,by-15,15,3);}
   ctx.fillStyle="#523a27";ctx.fillRect(rx-153,by-25,306,6);ctx.fillRect(rx-153,by+19,306,6);
-  for(const side of [-1,1]){ctx.fillStyle="#8d6238";ctx.fillRect(rx+side*139,by-47,8,70);ctx.fillStyle="#d4ad70";ctx.fillRect(rx+side*136,by-49,14,5);}
- }else{
+  for(const side of [-1,1]){ctx.fillStyle="#8d6238";ctx.fillRect(rx+side*139,by-47,8,70);ctx.fillStyle="#d4ad70";ctx.fillRect(rx+side*136,by-49,14,5);} }else{
   ctx.fillStyle="#9b7043";ctx.fillRect(rx-130,by-9,92,8);ctx.fillRect(rx+34,by+4,86,8);ctx.fillStyle="#4b3021";ctx.fillRect(rx-44,by-24,8,50);ctx.fillRect(rx+58,by-28,8,49);
  }
  if(bridgeStage>=3){
@@ -2748,6 +3051,7 @@ function draw() {
     else if(r.type==="bush") drawFiberBush(r);
     else if(r.type==="sand") drawSandPile(r);
     else if(r.type==="marble") drawMarbleNode(r);
+    else if(MINE_ORES[r.type]) drawOreNode(r);
   }
   const visibleEnemies = caveMode ? caveEnemies : enemies;
   for(const e of visibleEnemies){if(!e.alive)continue;if(e.x<camera.x-60||e.x>camera.x+viewW+60||e.y<camera.y-60||e.y>camera.y+viewH+60)continue;if(e.kind==="slime")drawSlime(e);else drawCrystalGuardian(e);}
@@ -2759,7 +3063,7 @@ function draw() {
   drawNightOverlay();
   ctx.strokeStyle = "#d6f0a8"; ctx.lineWidth = 3;
   ctx.strokeRect(2-camera.x,2-camera.y,(caveMode?CAVE.w:WORLD.w)-4,(caveMode?CAVE.h:WORLD.h)-4);
-  if(!caveMode)drawCaveEntrance();
+  if(!caveMode){drawCaveEntrance();drawMineEntrance();}
 }
 function loop(time) {
   const dt = Math.min((time - lastTime) / 1000 || 0, 0.04);
@@ -2770,6 +3074,7 @@ function loop(time) {
   if (!$("mapPanel").hidden) drawWorldMap();
   requestAnimationFrame(loop);
 }
+if(mineMode)buildMineFloor(mineFloor,{arrive:"keep"});
 updateUI();
 updateHotbar();
 syncXpPanel();
