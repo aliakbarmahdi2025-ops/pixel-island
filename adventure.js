@@ -11,7 +11,7 @@ const camera = { x: 0, y: 0 };
 const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, maxHealth: 5, level: 1, xp: 0, skillPoints: 0, attackPower: 1, armorLevel: 0, coins: 0 };
 const bag = { wood: 0, stone: 0, iron: 0, crystal: 0, copperOre: 0, coal: 0, ironOre: 0, goldOre: 0, steelOre: 0, adamantiteOre: 0, copperIngot: 0, ironIngot: 0, goldIngot: 0, steelIngot: 0, adamantiteIngot: 0, furnaceItem: 0, potion: 0, egg: 0, milk: 0, carp:0, perch:0, trout:0, seeds: 0, wheat: 0, carrot: 0, strawberry: 0, fiber: 0, sand: 0, marble: 0, plank: 0, brick: 0, rope: 0, nail: 0, glass: 0, cloth: 0, marbleSlab: 0, ironParts: 0, templeFoundation: 0, templeColumn: 0, templeBeam: 0, templeMosaic: 0, templeBanner: 0 };
 const chestStorage={};let fishingRodOwned=false,fishingCooldown=0;const CHEST_CAPACITY=150;const CHEST_POS={x:555,y:585};
-const stations = { workbench: false, furnace: false, sawmill: false };
+
 const toolLevels = { axe: 0, pickaxe: 0, shovel: 0 };
 let bridgeStage = 0; // 0 broken, 1 stone piers, 2 timber deck, 3 ancient seal complete
 const TEMPLE={w:2200,h:1500,floors:5};
@@ -266,7 +266,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, furnaces, stations, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
+      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -348,7 +348,7 @@ function updateUI() {
   updateQuestUI();
   if ($("npcQuestStatus")) updateNpcQuestUI();
   if ($("craftPanel")) updateCraftUI();
-  if ($("stationPanel")) updateToolUI();
+
 }
 load();
 if(caveMode&&Math.hypot(player.x-800,player.y-1080)<8){player.x=800;player.y=1015;}
@@ -868,7 +868,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, furnaces, stations, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
+      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
     }));
   } catch (e) {}
 }
@@ -1097,7 +1097,7 @@ $("usePotion").addEventListener("click", usePotion);
 $("questBtn").addEventListener("click", () => { $("questPanel").hidden = false; updateQuestUI(); syncXpPanel(); });
 $("closeQuests").addEventListener("click", () => { $("questPanel").hidden = true; syncXpPanel(); });
 $("claimWood").addEventListener("click", () => claimQuest("wood"));
-$("claimSlime").addEventListener("click", () => claimQuest("slime"));
+
 $("claimIron").addEventListener("click", () => claimQuest("iron"));
 $("claimDailyWood").addEventListener("click",()=>claimDailyMission("wood"));
 $("claimDailyIron").addEventListener("click",()=>claimDailyMission("iron"));
@@ -1195,7 +1195,7 @@ function drawWorldMap(){
 }
 
 function syncXpPanel() {
-  const panelIds = ["inventory", "upgradePanel", "craftPanel", "stationPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel", "livestockPanel", "bridgePanel", "templePanel", "mapPanel", "elevatorPanel"];
+  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel", "livestockPanel", "bridgePanel", "templePanel", "mapPanel", "elevatorPanel"];
   const hud = $("hud");
   const xp = $("xpPanel");
   xp.hidden = panelIds.some(id => !$(id).hidden);
@@ -1327,7 +1327,6 @@ function claimDailyMission(key) {
 function updateQuestUI() {
   const rows = [
     { key: "wood", text: "questWoodText", button: "claimWood", goal: 10, unit: "چوب" },
-    { key: "slime", text: "questSlimeText", button: "claimSlime", goal: 3, unit: "موجود" },
     { key: "iron", text: "questIronText", button: "claimIron", goal: 5, unit: "آهن" }
   ];
   for (const q of rows) {
@@ -1338,7 +1337,7 @@ function updateQuestUI() {
   updateDailyMissionUI();
 }
 function claimQuest(key) {
-  const goals = { wood: 10, slime: 3, iron: 5 };
+  const goals = { wood: 10, iron: 5 };
   if (!goals[key] || quests.claimed[key] || quests[key] < goals[key]) { showToast("این مأموریت هنوز کامل نشده"); return; }
   quests.claimed[key] = true;
   player.coins += 20;
@@ -1417,11 +1416,6 @@ function upgradeTool(type){
  if(Object.entries(cost).some(([k,v])=>(bag[k]||0)<v)){showToast("برای ارتقای این ابزار مواد کافی نداری");return;}
  Object.entries(cost).forEach(([k,v])=>bag[k]-=v);toolLevels[type]++;
  updateUI();saveQuietly();showToast(({axe:"تبر",pickaxe:"کلنگ",shovel:"بیل"})[type]+" به سطح "+toolLevelName(type)+" ارتقا پیدا کرد! 🛠️");
-}
-function openStationPanel(){
- if(caveMode||townMode||homeInterior||Math.hypot(player.x-playerHome.x,player.y-playerHome.y)>235){showToast("برای کار با ایستگاه‌ها کنار خانه‌ات بیا");return;}
- if(!Object.values(stations).some(Boolean)){showToast("اول از بخش ساخت، یک ایستگاه بساز");return;}
- $("stationPanel").hidden=false;updateStationUI();syncXpPanel();
 }
 function craftWorkshopItem(type){
  const r=workshopRecipes[type];if(!r)return;
@@ -2451,12 +2445,7 @@ function drawHouse(x,y,level,isSaman){
  if(!isSaman&&level>=3){ctx.fillStyle="#e9cf76";ctx.fillRect(sx-3,sy-h/2-30,6,6);ctx.fillStyle="#6c9a55";ctx.fillRect(sx-82,sy+12,13,22);ctx.fillRect(sx+69,sy+12,13,22);}
 }
 
-function drawStations(){
- const sx=playerHome.x-camera.x,sy=playerHome.y-camera.y;
- if(stations.workbench){const x=sx-108,y=sy+104;ctx.fillStyle="#33271d";ctx.fillRect(x-30,y+8,60,8);ctx.fillStyle="#9b693b";ctx.fillRect(x-34,y-7,68,17);ctx.fillStyle="#d4a568";ctx.fillRect(x-29,y-10,58,5);ctx.fillStyle="#6b492d";ctx.fillRect(x-25,y+17,6,16);ctx.fillRect(x+19,y+17,6,16);ctx.fillStyle="#c6c7b8";ctx.fillRect(x+9,y-17,13,7);}
- if(stations.sawmill){const x=sx+8,y=sy+145;ctx.fillStyle="#45301f";ctx.fillRect(x-34,y-8,68,24);ctx.fillStyle="#a77743";ctx.fillRect(x-30,y-15,60,9);ctx.fillStyle="#d4b17a";ctx.fillRect(x-26,y-22,52,5);ctx.fillStyle="#59666a";ctx.fillRect(x-3,y-30,6,16);ctx.fillStyle="#d6d9d1";ctx.fillRect(x-1,y-33,2,22);}
- if(stations.furnace){const x=sx+112,y=sy+104;ctx.fillStyle="#3b3430";ctx.fillRect(x-25,y-26,50,50);ctx.fillStyle="#85523a";ctx.fillRect(x-20,y-22,40,40);ctx.fillStyle="#2b2422";ctx.fillRect(x-12,y-8,24,24);ctx.fillStyle="#ff9a42";ctx.fillRect(x-8,y+2,16,10);ctx.fillStyle="#ffd36c";ctx.fillRect(x-4,y-3,8,7);ctx.fillStyle="#5b5149";ctx.fillRect(x-8,y-35,16,8);}
-}
+
 function drawInterior() {
   ctx.fillStyle="#69472f"; ctx.fillRect(0,0,viewW,viewH);
   const ox=(viewW- Math.min(viewW-24,760))/2, oy= Math.max(35,(viewH-520)/2), w=Math.min(viewW-24,760), h=Math.min(viewH-80,520);
