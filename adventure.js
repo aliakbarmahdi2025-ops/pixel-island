@@ -664,23 +664,6 @@ function drawMineEntrance(){
   ctx.fillStyle="#cdb37a";ctx.fillRect(x-4,y+20,8,3);
   ctx.fillStyle="#e8d29b";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("معدن • ۱۱۰ طبقه",x,y-84);ctx.textAlign="start";
 }
-function toggleCave(){
- if(templeMode||townMode||homeInterior||mineMode)return;
- if(!caveMode){
-  caveReturn={x:player.x,y:player.y};caveMode=true;player.x=800;player.y=1015;
-  showToast("وارد غار جنگلی شدی 🕯️");
- }else{
-  caveMode=false;player.x=caveReturn.x;player.y=caveReturn.y;
-  showToast("به جنگل برگشتی 🌲");
- }
- resetCaveMotion();
- syncCameraToPlayer();
- $("caveBtn").textContent=caveMode?"🚪 خروج از غار":"🕳️ ورود به غار";
- $("caveBtn").hidden=true;
- saveQuietly();updateUI();
-}
-
-
 const bridgeRecipes = [
  {name:"پایه‌های سنگی",cost:{brick:18,marbleSlab:3,ironParts:2},hint:"۱۸ آجر سنگی • ۳ تخته مرمر • ۲ قطعه آهنی"},
  {name:"عرشه چوبی و مهارها",cost:{plank:24,nail:10,rope:6},hint:"۲۴ تخته • ۱۰ میخ • ۶ طناب"},
@@ -1411,23 +1394,6 @@ function interactFurnace(f){if(f.ready){const r=SMELT_RECIPES[f.activeOre];if(!r
 function updateFurnaces(dt){let done=false;for(const f of furnaces){if(!f.activeOre||f.ready)continue;f.remaining=Math.max(0,(Number(f.remaining)||0)-dt);if(f.remaining<=0){f.ready=true;done=true;}}if(done){saveQuietly();showToast("ذوب فلز کامل شد؛ شمش آماده‌ی برداشتن است! ✨");}}
 function drawFurnaces(){for(const f of furnaces){const x=f.x-camera.x,y=f.y-camera.y;if(x<-55||x>viewW+55||y<-65||y>viewH+55)continue;ctx.fillStyle="rgba(0,0,0,.28)";ctx.beginPath();ctx.ellipse(x,y+18,24,8,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#393633";ctx.fillRect(x-20,y-25,40,43);ctx.fillStyle="#80513a";ctx.fillRect(x-16,y-21,32,34);ctx.fillStyle="#24201e";ctx.fillRect(x-10,y-7,20,18);if(f.activeOre&&!f.ready){ctx.fillStyle="#ff8b32";ctx.fillRect(x-7,y+1,14,8);ctx.fillStyle="#ffd36a";ctx.fillRect(x-4,y-4,8,6);}else{ctx.fillStyle="#4b4038";ctx.fillRect(x-7,y+1,14,8);}ctx.fillStyle="#aaa096";ctx.fillRect(x-8,y-31,16,7);if(f.ready){const r=SMELT_RECIPES[f.activeOre];if(r){ctx.fillStyle="rgba(20,18,15,.82)";ctx.fillRect(x-18,y-62,36,25);ctx.font="20px Tahoma";ctx.textAlign="center";ctx.fillText(r.icon,x,y-43);ctx.textAlign="start";}}}}
 
-function buildStation(type){
- const recipes={workbench:{wood:8,stone:4},furnace:{stone:8,iron:3},sawmill:{wood:10,iron:4}};
- const cost=recipes[type];if(!cost||stations[type])return;
- if(Object.entries(cost).some(([k,v])=>(bag[k]||0)<v)){showToast("مواد کافی برای ساخت این ایستگاه نداری");return;}
- Object.entries(cost).forEach(([k,v])=>bag[k]-=v);stations[type]=true;
- updateUI();saveQuietly();showToast(({workbench:"میزکار",furnace:"کوره",sawmill:"اره‌کاری"})[type]+" کنار خانه ساخته شد! 🛠️");
-}
-function updateStationUI(){
- const labels={planks:"تخته چوب",bricks:"آجر سنگی",rope:"طناب",nails:"میخ",glass:"شیشه",cloth:"پارچه",marbleSlabs:"تخته مرمر",ironParts:"قطعه آهنی",templeFoundation:"پایه معبد",templeColumn:"ستون معبد",templeBeam:"تیر سقف معبد",templeMosaic:"کاشی موزاییک",templeBanner:"پرچم تزئینی"};
- const materialNames={wood:"چوب",stone:"سنگ",iron:"آهن",crystal:"کریستال",fiber:"الیاف",sand:"شن",marble:"مرمر",plank:"تخته چوب",brick:"آجر",rope:"طناب",nail:"میخ",glass:"شیشه",cloth:"پارچه",marbleSlab:"تخته مرمر",ironParts:"قطعه آهنی",templeFoundation:"پایه معبد",templeColumn:"ستون معبد",templeBeam:"تیر معبد",templeMosaic:"موزاییک",templeBanner:"پرچم"};
- for(const [type,r] of Object.entries(workshopRecipes)){
-  const b=$("make_"+type);if(!b)continue;
-  const ready=!!stations[r.station]&&Object.entries(r.cost).every(([k,v])=>(bag[k]||0)>=v);
-  b.disabled=!ready;b.textContent=(stations[r.station]?"":"🔒 ")+"ساخت "+r.label+" — نیاز: "+Object.entries(r.cost).map(([k,v])=>v+" "+(materialNames[k]||k)).join(" + ");
- }
- const rod=$("make_fishingRod");if(rod){const ready=stations.workbench&&bag.wood>=5&&bag.fiber>=3&&bag.rope>=1;rod.disabled=fishingRodOwned||!ready;rod.textContent=fishingRodOwned?"🎣 چوب ماهیگیری ساخته شده":"🎣 چوب ماهیگیری — نیاز: ۵ چوب + ۳ الیاف + ۱ طناب";}
-}
 function toolLevelName(type){return ["چوبی","آهنی","کریستالی"][Math.max(0,Math.min(2,toolLevels[type]||0))];}
 function toolUpgradeCost(type){
  const level=toolLevels[type]||0;
@@ -1562,7 +1528,7 @@ function update(dt) {
   player.y=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mh-((caveMode || homeInterior || townMode)?55:24),player.y));
   camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
-  $("caveBtn").hidden=true;$("homeBtn").hidden=true;$("townBtn").hidden=true;$("townExitBtn").hidden=true;$("workshopBtn").hidden=true;
+  $("homeBtn").hidden=true;$("townBtn").hidden=true;$("townExitBtn").hidden=true;
   const bridgeDistance=Math.hypot(player.x-2525,player.y-1710),gateDistance=Math.hypot(player.x-3000,player.y-1710);
   $("bridgeBtn").hidden=templeMode||townMode||caveMode||homeInterior||(bridgeStage>=3?gateDistance>125:bridgeDistance>145);
   $("bridgeBtn").textContent=bridgeStage>=3?"🏛️ دروازه معبد":"🌉 پل باستانی";
@@ -1572,12 +1538,9 @@ function update(dt) {
   const nearTownPerson=townMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
   $("townNpcBtn").hidden=true;
   $("townNpcBtn").textContent=nearTownPerson?"💬 صحبت با "+nearTownPerson.name:"💬 صحبت با اهالی";
-  $("caveBtn").textContent=caveMode?"🚪 خروج از غار":"🕳️ ورود به غار";
   $("npcBtn").hidden = true;
   $("homeBtn").hidden = templeMode || townMode || caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
   $("homeBtn").textContent = homeInterior ? "🚪 خروج از خانه" : "🏡 خانه";
-  const nearWorkshop=!templeMode&&!townMode&&!caveMode&&!homeInterior&&Math.hypot(player.x-playerHome.x,player.y-playerHome.y)<235&&Object.values(stations).some(Boolean);
-  $("workshopBtn").hidden=!nearWorkshop;
   updateMineButton();
 }
 
@@ -2730,7 +2693,6 @@ function gatherForestLights(){
   pushLight(player.x-camera.x,player.y-camera.y-8,168*fl,.95,0);                                   // player's lantern
   if(homeLevel>0)pushLight(playerHome.x-camera.x,playerHome.y-camera.y+36,125,.8,0);               // own house
   pushLight(samanHome.x-camera.x,samanHome.y-camera.y+36,125,.8,0);                                // Saman's house
-  if(stations.furnace)pushLight(playerHome.x+112-camera.x,playerHome.y+98-camera.y,95+Math.sin(animTime*9)*6,.85,2);
 }
 function gatherTownLights(){
   lightN=0;
