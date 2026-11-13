@@ -1424,7 +1424,7 @@ function openStationPanel(){
  $("stationPanel").hidden=false;updateStationUI();syncXpPanel();
 }
 function craftWorkshopItem(type){
- const r=workshopRecipes[type];if(!r||!stations[r.station]){showToast("برای این دستور به ایستگاه مناسب نیاز داری");return;}
+ const r=workshopRecipes[type];if(!r)return;
  if(Object.entries(r.cost).some(([k,v])=>(bag[k]||0)<v)){showToast("مواد اولیه کافی نداری");return;}
  Object.entries(r.cost).forEach(([k,v])=>bag[k]-=v);
  Object.entries(r.gain).forEach(([k,v])=>bag[k]=(bag[k]||0)+v);
