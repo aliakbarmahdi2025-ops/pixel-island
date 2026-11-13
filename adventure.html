@@ -116,22 +116,15 @@
       <button id="craftIronArmor">🛡️ زره آهنی — ۸ آهن + ۱۰ چوب</button>
       <button id="craftCrystalArmor">💎 زره کریستالی — ۵ کریستال + ۱۰ آهن</button>
     </div>
-    <h3>🏗️ ساخت ایستگاه‌ها</h3><div class="upgrade-list"><button id="buildWorkbench">🪚 میزکار — ۸ چوب + ۴ سنگ</button><button id="buildFurnace">🔥 کوره — ۸ سنگ + ۳ آهن</button><button id="buildSawmill">🪵 اره‌کاری — ۱۰ چوب + ۴ آهن</button><button id="openStations">باز کردن کارگاه نزدیک خانه</button></div>
+    <h3>🔥 ساخت و استفاده از کوره</h3><div class="upgrade-list"><button id="craftFurnace">🔥 ساخت کوره — ۲۰ ذغال‌سنگ + ۸ سنگ معدن مس</button></div>
+    <p class="station-note">کوره را از نوار وسایل انتخاب کن و روی زمین بگذار. برای ذوب، سنگ معدن را از نوار انتخاب کن و روی کوره بزن؛ هر نوبت ۵ سنگ معدن + ۱ ذغال‌سنگ مصرف می‌کند و ۱ شمش می‌دهد.</p>
+    <h3>⚒️ ارتقای ابزارها</h3><div class="upgrade-list"><button id="upgradeTool_axe">ارتقای تبر</button><button id="upgradeTool_pickaxe">ارتقای کلنگ</button><button id="upgradeTool_shovel">ارتقای بیل</button></div>
+    <h3>🧰 ساخت وسایل و مصالح</h3><div class="upgrade-list">
+      <button id="make_fishingRod" type="button">🎣 چوب ماهیگیری — ۵ چوب + ۳ الیاف + ۱ طناب</button><button id="make_planks">تخته چوب — ۲ چوب</button><button id="make_bricks">آجر سنگی — ۲ سنگ</button><button id="make_rope">طناب — ۲ الیاف</button><button id="make_nails">میخ — ۱ آهن</button>
+      <button id="make_glass">شیشه — ۲ شن</button><button id="make_cloth">پارچه — ۳ الیاف</button><button id="make_marbleSlabs">تخته مرمر — ۲ مرمر</button><button id="make_ironParts">قطعه آهنی — ۲ آهن + ۲ میخ</button>
+      <button id="make_templeFoundation">پایه معبد — ۴ آجر + ۱ تخته مرمر</button><button id="make_templeColumn">ستون معبد — ۲ تخته مرمر + ۲ قطعه آهنی</button><button id="make_templeBeam">تیر سقف معبد — ۳ تخته + ۲ میخ</button><button id="make_templeMosaic">کاشی موزاییک — ۱ شیشه + ۱ تخته مرمر</button><button id="make_templeBanner">پرچم معبد — ۲ پارچه + ۱ طناب</button>
+    </div>
     <button id="closeCraft">بستن</button>
-  </section>
-  <section id="stationPanel" class="panel" hidden>
-    <h2>🏗️ کارگاه ساخت‌وساز</h2><p class="station-note">برای استفاده از هر دستور، ایستگاه مربوط به آن را بساز.</p>
-    <h3>⚒️ ارتقای ابزارها</h3><p class="station-note">ابزار آهنی و کریستالی تعداد ضربه‌های لازم برای جمع‌آوری منابع را کمتر می‌کند.</p><div class="upgrade-list"><button id="upgradeTool_axe">ارتقای تبر</button><button id="upgradeTool_pickaxe">ارتقای کلنگ</button><button id="upgradeTool_shovel">ارتقای بیل</button></div>
-    <h3>🪚 میزکار</h3><div class="upgrade-list"><button id="make_fishingRod" type="button">🎣 چوب ماهیگیری — ۵ چوب + ۳ الیاف + ۱ طناب</button>
-      <button id="make_rope">طناب — ۲ الیاف</button><button id="make_nails">میخ — ۱ آهن</button><button id="make_cloth">پارچه — ۳ الیاف</button><button id="make_ironParts">قطعه آهنی — ۲ آهن + ۲ میخ</button><button id="make_templeColumn">ستون معبد — ۲ تخته مرمر + ۲ قطعه آهنی</button><button id="make_templeBanner">پرچم معبد — ۲ پارچه + ۱ طناب</button>
-    </div>
-    <h3>🔥 کوره</h3><div class="upgrade-list">
-      <button id="make_bricks">آجر سنگی — ۲ سنگ</button><button id="make_glass">شیشه — ۲ شن</button><button id="make_templeFoundation">پایه معبد — ۴ آجر + ۱ تخته مرمر</button><button id="make_templeMosaic">کاشی موزاییک — ۱ شیشه + ۱ تخته مرمر</button>
-    </div>
-    <h3>🪵 اره‌کاری</h3><div class="upgrade-list">
-      <button id="make_planks">تخته چوب — ۲ چوب</button><button id="make_marbleSlabs">تخته مرمر — ۲ مرمر</button><button id="make_templeBeam">تیر سقف معبد — ۳ تخته + ۲ میخ</button>
-    </div>
-    <button id="closeStations">بستن کارگاه</button>
   </section>
   <section id="chestPanel" class="panel" hidden><h2>🧰 صندوق وسایل</h2><p id="chestSummary" class="station-note"></p><p class="station-note">با دکمه‌های + و − هر بار یک عدد وسیله جابه‌جا کن. ظرفیت صندوق ۱۵۰ عدد است؛ بذرها هم قابل نگهداری‌اند.</p><div id="chestItems" class="upgrade-list"></div><button id="closeChest" type="button">بستن صندوق</button></section>
   <section id="bridgePanel" class="panel" hidden><h2>🌉 بازسازی پل باستانی</h2><p class="bridge-story">رودخانه راه معبد را بلعیده. سامان می‌گوید این پل فقط با سه مرحله بازسازی و مهر کریستالی دوباره استوار می‌شود.</p><div id="bridgeStatus" class="bridge-status"></div><p id="bridgeRecipe" class="bridge-recipe"></p><p class="bridge-warning">برای بازسازی، میزکار، کوره و اره‌کاری باید هر سه ساخته شده باشند. مصالح هر مرحله یک‌جا مصرف می‌شوند.</p><button id="bridgeBuildBtn">ساخت این بخش از پل</button><button id="bridgeClose">بستن</button></section>
@@ -141,10 +134,9 @@
   <section id="townNpcPanel" class="panel" hidden><h2 id="townNpcTitle">اهالی شهر سبز</h2><p id="townNpcDialogue"></p><p id="townNpcHeart"></p><div class="npc-actions"><button id="townNpcTalk">گفتگوی بعدی</button><button id="townNpcShop" hidden>🛍️ دیدن اجناس مغازه</button><button id="townNpcClose">خداحافظ</button></div></section><section id="townShopPanel" class="panel" hidden><h2>🛒 فروشگاه آقای نادری</h2><p>بذر تازه و لوازم مزرعه؛ کوله‌پشتی‌ات رو هم می‌تونیم ارتقا بدیم!</p><p id="naderiStatus" class="station-note"></p><div class="upgrade-list"><button id="backpackUpgrade">🎒 ارتقای کوله‌پشتی</button></div><div id="seedShopList" class="seed-shop-list"></div><div class="upgrade-list"><button id="buyBread" hidden>نان</button><button id="buyApple" hidden>سیب</button><button id="eatBread" hidden>خوردن نان</button><button id="eatApple" hidden>خوردن سیب</button><button id="buySeeds">🌱 خرید بذر انتخاب‌شده</button><button id="sellCrops">🌾 فروش محصولات برداشت‌شده</button><button id="sellFish" type="button" disabled>🐟 فروش ماهی‌ها</button></div><p id="townShopHours">ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰</p><p id="townShopStock"></p><button id="townShopClose">بستن مغازه</button></section><section id="elevatorPanel" class="panel" hidden><h2>🛗 آسانسور معدن</h2><p id="elevatorInfo" class="station-note"></p><div id="elevatorList" class="upgrade-list"></div><button id="elevatorClose" type="button">بستن</button></section><div id="townClock" hidden>☀️ ۰۹:۰۰</div><div id="townFade"></div><div id="toast" role="status"></div>
   <div id="controls">
     <div id="toolHotbar" aria-label="نوار ابزار و آیتم‌های کوله"></div>
-    <button id="homeBtn" hidden>🏡 خانه</button><button id="farmBtn" hidden>🌱 مزرعه</button><button id="workshopBtn" hidden>🏗️ کارگاه</button>
+    <button id="homeBtn" hidden>🏡 خانه</button><button id="farmBtn" hidden>🌱 مزرعه</button>
     <button id="npcBtn" hidden>💬 صحبت</button><button id="townBtn" hidden>🏘️ ورود به شهر</button><button id="townNpcBtn" hidden>💬 صحبت با اهالی</button><button id="townExitBtn" hidden>🌲 بازگشت به جنگل</button><button id="bridgeBtn" hidden>🌉 پل باستانی</button>
   </div>
-  <button id="caveBtn" hidden>🕳️ ورود به غار</button>
   <button id="mineBtn" type="button" hidden>⛏️ تعامل</button>
   <div id="help">روی زمین بزن تا حرکت کنی؛ روی منابع و اهالی بزن تا تعامل کنی.</div>
   <script src="adventure.js"></script>
