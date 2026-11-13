@@ -752,6 +752,7 @@ function templeInteract(runeIndex=null){
   if(!templeBosses[templeFloor]){showToast("اول نگهبان این طبقه را شکست بده!");return;}
   if(!templePuzzleSolved[templeFloor]){showToast("اول مهر مرکزی را فعال کن.");return;}
   if(templeFloor===TEMPLE.floors){
+   if(!bagCanAddBatch([{key:"crystal",amount:12},{key:"templeMosaic",amount:5}])){showToast("برای دریافت گنج نهایی، اول در کوله جا باز کن 🎒");return;}
    player.coins+=250;bag.crystal=(bag.crystal||0)+12;bag.templeMosaic=(bag.templeMosaic||0)+5;templeMode=false;player.x=templeReturn.x;player.y=templeReturn.y;updateUI();saveQuietly();showToast("راز معبد را کشف کردی! +۲۵۰ سکه و ۱۲ کریستال 🏆");return;
   }
   templeFloor++;templeUnlocked=Math.max(templeUnlocked,templeFloor);player.x=160;player.y=750;createTempleEnemies();saveQuietly();showToast("طبقه‌ی "+templeFloor+" از ۵ باز شد؛ ماجراجویی ادامه دارد…");return;
@@ -853,13 +854,15 @@ function attack(targetId=null) {
   const targets = templeMode ? templeEnemies : caveMode ? caveEnemies : enemies;
   for (const e of targets) { if (!e.alive || (targetId&&e.id!==targetId)) continue; const d=Math.hypot(player.x-e.x,player.y-e.y); if(d<best){best=d;target=e;} }
   if (!target) { showToast("برای حمله به موجود نزدیک‌تر شو"); return; }
+  if(target.hp-player.attackPower<=0&&target.kind==="templeBoss"&&!bagCanAddBatch([{key:"crystal",amount:2+templeFloor},{key:"templeMosaic",amount:1}])){showToast("برای غنیمت نگهبان معبد، اول در کوله جا باز کن 🎒");return;}
+  if(target.hp-player.attackPower<=0&&target.kind==="guardian"&&!bagCanAdd(2,"crystal")){showToast("برای برداشتن کریستال نگهبان، اول در کوله جا باز کن 🎒");return;}
   target.hp -= player.attackPower;
   if (target.hp <= 0) {
     target.alive=false;
     target.respawnTimer=target.kind==="guardian"?28:18;
     const roll=Math.random();
     if(target.kind==="templeBoss"){templeBosses[templeFloor]=true;player.coins+=25+templeFloor*10;bag.crystal=(bag.crystal||0)+2+templeFloor;bag.templeMosaic=(bag.templeMosaic||0)+1;progressNpcCrystal(2+templeFloor);addXP(35+templeFloor*10);updateUI();saveQuietly();showToast("نگهبان معبد شکست خورد! غنیمت کمیاب گرفتی 🏛️");}
-    else if(target.kind==="templeSentinel"){addXP(10+templeFloor*2);if(Math.random()<.45)bag.crystal=(bag.crystal||0)+1;updateUI();saveQuietly();showToast("نگهبان تالار شکست خورد!");}
+    else if(target.kind==="templeSentinel"){addXP(10+templeFloor*2);if(Math.random()<.45&&bagCanAdd(1,"crystal"))bag.crystal=(bag.crystal||0)+1;updateUI();saveQuietly();showToast("نگهبان تالار شکست خورد!");}
     else if(target.kind==="guardian"){lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+18,y:target.y+12,type:"crystal",qty:2,rarity:"rare"});player.coins+=10;bag.crystal=(bag.crystal||0)+2;progressNpcCrystal(2);const leveled=addXP(25);updateUI();saveQuietly();showToast(leveled?"نگهبان کریستالی شکست خورد! +۱۰ سکه و ۲ کریستال؛ سطح جدید ⭐":"نگهبان کریستالی شکست خورد! +۱۰ سکه، ۲ کریستال و ۲۵ تجربه 💎");}
     else {quests.slime=Math.min(3,quests.slime+1);const leveled=addXP(15);if(roll<0.38)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"coin",qty:3+Math.floor(Math.random()*5),rarity:"common"});else if(roll<0.62)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"stone",qty:1,rarity:"common"});else if(roll<0.82)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"iron",qty:1,rarity:"uncommon"});else if(roll<0.94)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"potion",qty:1,rarity:"rare"});else lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"crystal",qty:1,rarity:"rare"});updateUI();saveQuietly();showToast(leveled?"اسلایم غار شکست خورد! سطح جدید ⭐":"اسلایم غار شکست خورد! +۱۵ تجربه؛ شاید غنیمت انداخته باشد 💎");}
   } else showToast("ضربه زدی! ❤️ جان دشمن: "+target.hp);
@@ -1349,10 +1352,10 @@ function claimQuest(key) {
 }
 function craftFishingRod(){if(fishingRodOwned){showToast("چوب ماهیگیری رو قبلاً ساختی");return;}const cost={wood:5,fiber:3,rope:1};if(Object.entries(cost).some(([k,v])=>(bag[k]||0)<v)){showToast("برای چوب ماهیگیری ۵ چوب، ۳ الیاف و ۱ طناب لازمه");return;}Object.entries(cost).forEach(([k,v])=>bag[k]-=v);fishingRodOwned=true;updateUI();updateStationUI();saveQuietly();showToast("چوب ماهیگیری ساخته شد! کنار برکه برو 🎣");}
 function updateCraftUI() {
-  const furnaceButton=$("craftFurnace");if(furnaceButton){furnaceButton.disabled=bag.coal<20||bag.copperOre<8||!bagCanAdd(1,"furnaceItem");furnaceButton.textContent="🔥 ساخت کوره — ۲۰ ذغال‌سنگ + ۸ سنگ معدن مس";}
+  const furnaceButton=$("craftFurnace");if(furnaceButton){furnaceButton.disabled=bag.coal<20||bag.copperOre<8||!bagCanTransform({coal:20,copperOre:8},{furnaceItem:1});furnaceButton.textContent="🔥 ساخت کوره — ۲۰ ذغال‌سنگ + ۸ سنگ معدن مس";}
   $("craftSword").disabled = player.attackPower >= 5 || bag.iron < 5 || bag.wood < 3;
   $("craftBoots").disabled = player.speed >= 320 || bag.iron < 4 || bag.wood < 6;
-  $("craftPotion").disabled = bag.crystal < 2 || bag.iron < 1;
+  $("craftPotion").disabled = bag.crystal < 2 || bag.iron < 1 || !bagCanTransform({crystal:2,iron:1},{potion:1});
   $("craftIronArmor").disabled = (player.armorLevel||0) >= 1 || bag.iron < 8 || bag.wood < 10;
   $("craftCrystalArmor").disabled = (player.armorLevel||0) >= 2 || (player.armorLevel||0) < 1 || bag.crystal < 5 || bag.iron < 10;
   $("craftSword").textContent = player.attackPower >= 5 ? "⚔️ شمشیر فولادی (حداکثر)" : "⚔️ شمشیر فولادی — ۵ آهن + ۳ چوب";
@@ -1369,7 +1372,7 @@ function craft(type) {
     bag.iron -= 5; bag.wood -= 3; player.attackPower++;
   } else if (type === "boots" && player.speed < 320 && bag.iron >= 4 && bag.wood >= 6) {
     bag.iron -= 4; bag.wood -= 6; player.speed = Math.min(320, player.speed + 20);
-  } else if (type === "potion" && bag.crystal >= 2 && bag.iron >= 1) {
+  } else if (type === "potion" && bag.crystal >= 2 && bag.iron >= 1 && bagCanTransform({crystal:2,iron:1},{potion:1})) {
     bag.crystal -= 2; bag.iron -= 1; bag.potion = (bag.potion || 0) + 1;
   } else if (type === "ironArmor" && (player.armorLevel||0) < 1 && bag.iron >= 8 && bag.wood >= 10) {
     bag.iron -= 8; bag.wood -= 10; player.armorLevel = 1;
@@ -1383,12 +1386,12 @@ const workshopRecipes = {
 };
 function updateStationUI(){
  const names={wood:"چوب",stone:"سنگ",iron:"آهن",fiber:"الیاف",sand:"شن",marble:"مرمر",plank:"تخته چوب",brick:"آجر",rope:"طناب",nail:"میخ",glass:"شیشه",cloth:"پارچه",marbleSlab:"تخته مرمر",ironParts:"قطعه آهنی"};
- for(const [type,r] of Object.entries(workshopRecipes)){const b=$("make_"+type);if(!b)continue;const ready=Object.entries(r.cost).every(([k,v])=>(bag[k]||0)>=v);b.disabled=!ready;b.textContent="ساخت "+r.label+" — نیاز: "+Object.entries(r.cost).map(([k,v])=>v+" "+(names[k]||k)).join(" + ");}
+ for(const [type,r] of Object.entries(workshopRecipes)){const b=$("make_"+type);if(!b)continue;const ready=Object.entries(r.cost).every(([k,v])=>(bag[k]||0)>=v)&&bagCanTransform(r.cost,r.gain);b.disabled=!ready;b.textContent="ساخت "+r.label+" — نیاز: "+Object.entries(r.cost).map(([k,v])=>v+" "+(names[k]||k)).join(" + ");}
  const rod=$("make_fishingRod");if(rod){const ready=bag.wood>=5&&bag.fiber>=3&&bag.rope>=1;rod.disabled=fishingRodOwned||!ready;rod.textContent=fishingRodOwned?"🎣 چوب ماهیگیری ساخته شده":"🎣 چوب ماهیگیری — نیاز: ۵ چوب + ۳ الیاف + ۱ طناب";}
  updateToolUI();
 }
-function craftFurnace(){if(bag.coal<20||bag.copperOre<8){showToast("برای ساخت کوره به ۲۰ ذغال‌سنگ و ۸ سنگ معدن مس نیاز داری");return;}if(!bagCanAdd(1,"furnaceItem")){showToast("کوله‌پشتی جا نداره؛ اول ظرفیتش رو بیشتر کن 🎒");return;}bag.coal-=20;bag.copperOre-=8;bag.furnaceItem=(bag.furnaceItem||0)+1;updateUI();saveQuietly();showToast("یک کوره ساختی! از نوار وسایل انتخابش کن و روی زمین بزن 🔥");}
-function craftWorkshopItem(type){const r=workshopRecipes[type];if(!r)return;if(Object.entries(r.cost).some(([k,v])=>(bag[k]||0)<v)){showToast("مواد اولیه کافی نداری");return;}Object.entries(r.cost).forEach(([k,v])=>bag[k]-=v);Object.entries(r.gain).forEach(([k,v])=>bag[k]=(bag[k]||0)+v);updateUI();saveQuietly();showToast("ساخته شد: "+r.label+" ✨");}
+function craftFurnace(){if(bag.coal<20||bag.copperOre<8){showToast("برای ساخت کوره به ۲۰ ذغال‌سنگ و ۸ سنگ معدن مس نیاز داری");return;}if(!bagCanTransform({coal:20,copperOre:8},{furnaceItem:1})){showToast("برای کوره یا مواد مصرفی در کوله جا کافی نداری 🎒");return;}bag.coal-=20;bag.copperOre-=8;bag.furnaceItem=(bag.furnaceItem||0)+1;updateUI();saveQuietly();showToast("یک کوره ساختی! از نوار وسایل انتخابش کن و روی زمین بزن 🔥");}
+function craftWorkshopItem(type){const r=workshopRecipes[type];if(!r)return;if(Object.entries(r.cost).some(([k,v])=>(bag[k]||0)<v)){showToast("مواد اولیه کافی نداری");return;}if(!bagCanTransform(r.cost,r.gain)){showToast("برای وسایل ساخته‌شده در کوله جا نداری؛ اول جا باز کن 🎒");return;}Object.entries(r.cost).forEach(([k,v])=>bag[k]-=v);Object.entries(r.gain).forEach(([k,v])=>bag[k]=(bag[k]||0)+v);updateUI();saveQuietly();showToast("ساخته شد: "+r.label+" ✨");}
 const SMELT_RECIPES={copperOre:{ingot:"copperIngot",label:"مس",icon:"🟠",seconds:20},ironOre:{ingot:"ironIngot",label:"آهن",icon:"⚪",seconds:60},goldOre:{ingot:"goldIngot",label:"طلا",icon:"🟡",seconds:100},steelOre:{ingot:"steelIngot",label:"فولاد",icon:"🔵",seconds:180},adamantiteOre:{ingot:"adamantiteIngot",label:"آدامانتیوم",icon:"🟣",seconds:280}};
 function placeFurnace(x,y){if(!bag.furnaceItem){showToast("کوره‌ای برای جای‌گذاری نداری");return;}if(caveMode||townMode||templeMode||homeInterior||x<55||y<55||x>WORLD.w-55||y>WORLD.h-55||Math.abs(x-2700)<115||Math.hypot(x-playerHome.x,y-playerHome.y)<115||Math.hypot(x-samanHome.x,y-samanHome.y)<100||Math.hypot(x-CHEST_POS.x,y-CHEST_POS.y)<65||Math.hypot(x-LIVESTOCK_PEN.x,y-LIVESTOCK_PEN.y)<145||farmPlots.some(p=>Math.hypot(x-p.x,y-p.y)<44)||furnaces.some(f=>Math.hypot(x-f.x,y-f.y)<76)){showToast("اینجا جای مناسبی برای کوره نیست؛ کمی فضای خالی انتخاب کن");return;}bag.furnaceItem--;furnaces.push({id:"furnace-"+Date.now()+"-"+Math.random().toString(36).slice(2),x,y,activeOre:null,remaining:0,ready:false});inventorySelected=null;updateUI();saveQuietly();showToast("کوره در اینجا قرار گرفت 🔥");}
 function interactFurnace(f){if(f.ready){const r=SMELT_RECIPES[f.activeOre];if(!r)return;if(!bagCanAdd(1,r.ingot)){showToast("کوله‌پشتی پره؛ برای برداشتن شمش جا باز کن 🎒");return;}bag[r.ingot]=(bag[r.ingot]||0)+1;f.activeOre=null;f.remaining=0;f.ready=false;updateUI();saveQuietly();showToast("یک شمش "+r.label+" برداشتی! "+r.icon);return;}if(f.activeOre){showToast("کوره هنوز روشنه؛ "+Math.ceil(f.remaining)+" ثانیه دیگه آماده می‌شه");return;}const oreKey=inventorySelected&&inventorySelected.startsWith("bag:")?inventorySelected.slice(4):"",r=SMELT_RECIPES[oreKey];if(!r){showToast("اول سنگ معدن موردنظرت رو از نوار وسایل انتخاب کن");return;}if((bag[oreKey]||0)<5||bag.coal<1){showToast("برای یک شمش به ۵ سنگ معدن و ۱ ذغال‌سنگ نیاز داری");return;}bag[oreKey]-=5;bag.coal--;f.activeOre=oreKey;f.remaining=r.seconds;f.ready=false;updateUI();saveQuietly();showToast("کوره برای ذوب "+r.label+" روشن شد! 🔥");}
@@ -1573,6 +1576,16 @@ function bagCanAdd(amount=1,key=null,isSeed=false){
  const current=isSeed?(farmSeedStock[key]||0):(bag[key]||0);
  const extra=stackSlots(current+amount)-stackSlots(current);
  return bagUsed()+extra<=backpackCaps[backpackTier];
+}
+function bagCanTransform(cost,gain){
+ const projected={...bag};
+ for(const [key,amount] of Object.entries(cost||{}))projected[key]=Math.max(0,(projected[key]||0)-amount);
+ for(const [key,amount] of Object.entries(gain||{}))projected[key]=(projected[key]||0)+amount;
+ let slots=0;
+ for(const [key,value] of Object.entries(projected)){if(key!=="seeds")slots+=stackSlots(value);}
+ for(const value of Object.values(farmSeedStock))slots+=stackSlots(value);
+ slots+=stackSlots(projected.seeds||0);
+ return slots<=backpackCaps[backpackTier];
 }
 function bagCanAddBatch(entries){
  const projected={...bag},seeds={...farmSeedStock};
