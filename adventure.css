@@ -241,3 +241,10 @@ button:disabled{opacity:.38;filter:grayscale(.65)}
 .livestock-panel button{min-height:42px}
 #openLivestock{width:100%;margin-top:9px;background:linear-gradient(180deg,#496b46,#2b4732);border-color:#b8d49a}
 #sellAnimalProducts{width:100%;margin:10px 0;background:linear-gradient(180deg,#79623c,#493a27);border-color:#e4c887}
+
+/* Stage 51-A — 110-floor mine: contextual interaction button and elevator panel. */
+#mineBtn{position:fixed;z-index:24;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 88px);transform:translateX(-50%);min-height:44px;padding:9px 16px;background:linear-gradient(180deg,#80633d,#59442d);border:2px solid #e2c58f;border-radius:12px;color:#fff4d9;font:700 14px Tahoma;pointer-events:auto;touch-action:manipulation;white-space:nowrap;box-shadow:0 3px 0 #211a13}
+#mineBtn[hidden]{display:none}
+#mineBtn:active{transform:translateX(-50%) translateY(2px)}
+#elevatorPanel .upgrade-list button{min-height:46px;border-radius:12px;background:linear-gradient(180deg,#4a5b66,#2c3943);border-color:#9fb8c6}
+#elevatorPanel .upgrade-list button:disabled{opacity:.5;filter:grayscale(.6)}
