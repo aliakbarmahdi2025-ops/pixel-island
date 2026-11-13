@@ -32,7 +32,7 @@ let homeLevel = 0, homeInterior = false, homeReturn = { x: 760, y: 590 };
 
 let townMode = false, townReturn = {x:2240,y:900}, townNpcIndex = 0;
 let backpackTier = 0, furnitureOwned = {bed:false,table:false,chair:false};
-const backpackCaps = [30,45,60];
+const backpackCaps = [15,20,30];
 const townFriendship = {mina:0,hana:0,nahid:0,saeed:0,rezaei:0,naderi:0};
 const townStock = {bread:0,seeds:0,apple:0};
 const TOWN = {w:1600,h:1200};
@@ -512,7 +512,7 @@ function mineActivate(what,id){
 function mineOpenChest(id){
   const c=mineData&&mineData.chests.find(v=>v.id===id);if(!c||c.opened)return;
   const rw=MINE_SPECIAL_REWARDS[mineFloor]||{coins:50,xp:30,items:{}},cnt=Object.values(rw.items||{}).reduce((a,v)=>a+v,0);
-  if(cnt&&!bagCanAdd(cnt)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}
+  if(!bagCanAddBatch(Object.entries(rw.items||{}).map(([key,amount])=>({key,amount})))){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}
   c.opened=true;mineState[mineFloor].c.push(id);
   for(const k of Object.keys(rw.items||{}))bag[k]=(bag[k]||0)+rw.items[k];
   player.coins+=rw.coins||0;const lv=addXP(rw.xp||0);
@@ -730,7 +730,7 @@ function templeInteract(runeIndex=null){
  if(runeIndex==="secret"){
   if(!templeRuneSolved[templeFloor]){showToast("اتاقک هنوز قفل است؛ اول سه نقش را درست فعال کن.");return;}
   if(templeSecrets[templeFloor]){showToast("این صندوق باستانی قبلاً گشوده شده است.");return;}
-  if(!bagCanAdd(templeFloor+2)){showToast("برای برداشتن گنج، کمی جای خالی در کوله‌پشتی باز کن 🎒");return;}
+  if(!bagCanAddBatch([{key:"crystal",amount:1+templeFloor},{key:"templeMosaic",amount:1}])){showToast("برای برداشتن گنج، کمی جای خالی در کوله‌پشتی باز کن 🎒");return;}
   templeSecrets[templeFloor]=true;const coins=30+templeFloor*15,crystals=1+templeFloor;player.coins+=coins;bag.crystal=(bag.crystal||0)+crystals;bag.templeMosaic=(bag.templeMosaic||0)+1;addXP(20+templeFloor*10);updateUI();saveQuietly();showToast("گنج پنهان طبقه "+templeFloor+"! +"+coins+" سکه، "+crystals+" کریستال و یک موزاییک ✨");return;
  }
  if(Number.isInteger(runeIndex)&&runeIndex>=0&&runeIndex<3){
@@ -799,15 +799,15 @@ function chestItemName(key){if(key.startsWith("seed:")){const crop=FARM_CROPS[ke
 function chestItemIcon(key){if(key.startsWith("seed:"))return FARM_CROPS[key.slice(5)]?.icon||"🌱";const crop=FARM_CROPS[key];return crop?crop.icon:(INVENTORY_ICONS[key]||"📦");}
 function openChestPanel(){if(caveMode||townMode||homeInterior||templeMode)return;$("chestPanel").hidden=false;updateChestUI();syncXpPanel();}
 function updateChestUI(){const keys=[...new Set([...Object.keys(bag).filter(k=>k!=="seeds"),...Object.keys(farmSeedStock).map(k=>"seed:"+k),...Object.keys(chestStorage)])].filter(k=>(bag[k]||0)>0||(k.startsWith("seed:")?(farmSeedStock[k.slice(5)]||0)>0:false)||(chestStorage[k]||0)>0);$("chestSummary").textContent="ظرفیت صندوق: "+chestUsed()+" / "+CHEST_CAPACITY+" • فضای خالی: "+(CHEST_CAPACITY-chestUsed());$("chestItems").innerHTML=keys.map(k=>{const source=k.startsWith("seed:")?(farmSeedStock[k.slice(5)]||0):(bag[k]||0),stored=chestStorage[k]||0;return '<div class="chest-item"><span>'+chestItemIcon(k)+" "+chestItemName(k)+"<br><small>کوله: "+source+" • صندوق: "+stored+"</small></span><button type=\"button\" data-deposit=\""+k+"\" "+(source<1||chestUsed()>=CHEST_CAPACITY?"disabled":"")+">＋</button><button type=\"button\" data-withdraw=\""+k+"\" "+(stored<1?"disabled":"")+">−</button></div>";}).join("")||"<p>صندوق و کوله فعلاً خالی هستند.</p>";}
-function moveChestItem(key,dir){const isSeed=key.startsWith("seed:"),item=isSeed?key.slice(5):key;if(dir>0){const available=isSeed?(farmSeedStock[item]||0):(bag[item]||0);if(available<1||chestUsed()>=CHEST_CAPACITY)return;if(isSeed)farmSeedStock[item]--;else bag[item]--;chestStorage[key]=(chestStorage[key]||0)+1;}else{if((chestStorage[key]||0)<1)return;if(!bagCanAdd(1)){showToast("کوله جا نداره؛ اول چند وسیله رو داخل صندوق بذار");return;}chestStorage[key]--;if(isSeed)farmSeedStock[item]=(farmSeedStock[item]||0)+1;else bag[item]=(bag[item]||0)+1;}updateUI();updateChestUI();saveQuietly();}
-function catchFish(){if(!fishingRodOwned||selectedTool!=="fishingRod"){showToast("اول چوب ماهیگیری رو انتخاب کن");return;}if(fishingCooldown>0){showToast("کمی صبر کن تا دوباره قلاب بندازی");return;}fishingCooldown=2.2;if(Math.random()<.16){showToast("این بار ماهی نگرفتی؛ دوباره امتحان کن 🎣");return;}const roll=Math.random(),type=roll<.52?"carp":roll<.86?"perch":"trout";if(!bagCanAdd(1)){showToast("کوله‌پشتی پره؛ اول وسایلت رو مرتب کن");return;}bag[type]=(bag[type]||0)+1;updateUI();saveQuietly();showToast(({carp:"کپور",perch:"ماهی سوف",trout:"قزل‌آلا"})[type]+" گرفتی! 🎣");}
+function moveChestItem(key,dir){const isSeed=key.startsWith("seed:"),item=isSeed?key.slice(5):key;if(dir>0){const available=isSeed?(farmSeedStock[item]||0):(bag[item]||0);if(available<1||chestUsed()>=CHEST_CAPACITY)return;if(isSeed)farmSeedStock[item]--;else bag[item]--;chestStorage[key]=(chestStorage[key]||0)+1;}else{if((chestStorage[key]||0)<1)return;if(!bagCanAdd(1,item,isSeed)){showToast("کوله جا نداره؛ اول چند وسیله رو داخل صندوق بذار");return;}chestStorage[key]--;if(isSeed)farmSeedStock[item]=(farmSeedStock[item]||0)+1;else bag[item]=(bag[item]||0)+1;}updateUI();updateChestUI();saveQuietly();}
+function catchFish(){if(!fishingRodOwned||selectedTool!=="fishingRod"){showToast("اول چوب ماهیگیری رو انتخاب کن");return;}if(fishingCooldown>0){showToast("کمی صبر کن تا دوباره قلاب بندازی");return;}fishingCooldown=2.2;if(Math.random()<.16){showToast("این بار ماهی نگرفتی؛ دوباره امتحان کن 🎣");return;}const roll=Math.random(),type=roll<.52?"carp":roll<.86?"perch":"trout";if(!bagCanAdd(1,type)){showToast("کوله‌پشتی پره؛ اول وسایلت رو مرتب کن");return;}bag[type]=(bag[type]||0)+1;updateUI();saveQuietly();showToast(({carp:"کپور",perch:"ماهی سوف",trout:"قزل‌آلا"})[type]+" گرفتی! 🎣");}
 function harvest(targetId=null) {
   if(templeMode){templeInteract();return;}
   triggerPlayerAction("gather",0.36);
   playGameSound("gather");
-  if(caveMode){const chest=caveChests.find(c=>!c.opened&&(targetId?c.id===targetId:Math.hypot(player.x-c.x,player.y-c.y)<76));if(chest){if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;const leveled=addXP(25);bag.crystal=(bag.crystal||0)+1;progressNpcCrystal(1);updateUI();saveQuietly();showToast(leveled?"سطح جدید! یک امتیاز مهارت گرفتی ⭐":"صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
+  if(caveMode){const chest=caveChests.find(c=>!c.opened&&(targetId?c.id===targetId:Math.hypot(player.x-c.x,player.y-c.y)<76));if(chest){if(!bagCanAdd(1,"crystal")){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}chest.opened=true;openedChests=caveChests.map(c=>c.opened);player.coins+=15;const leveled=addXP(25);bag.crystal=(bag.crystal||0)+1;progressNpcCrystal(1);updateUI();saveQuietly();showToast(leveled?"سطح جدید! یک امتیاز مهارت گرفتی ⭐":"صندوق گنج! +۱۵ سکه، ۲۵ تجربه و کریستال 💎");return;}}
   const dropIndex=lootDrops.findIndex(d=>targetId?d.id===targetId:Math.hypot(player.x-d.x,player.y-d.y)<62);
-  if(dropIndex>=0){const preview=lootDrops[dropIndex];if(preview.type!=="coin"&&!bagCanAdd(preview.qty)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}const drop=lootDrops.splice(dropIndex,1)[0];spawnPickupFx(drop.x,drop.y,drop.type);if(drop.type==="coin")player.coins+=drop.qty;else if(drop.type==="stone")bag.stone=(bag.stone||0)+drop.qty;else if(drop.type==="iron")bag.iron=(bag.iron||0)+drop.qty;else if(drop.type==="crystal"){bag.crystal=(bag.crystal||0)+drop.qty;progressNpcCrystal(drop.qty);}else if(drop.type==="potion")bag.potion=(bag.potion||0)+drop.qty;updateUI();saveQuietly();playGameSound("pickup");showToast(({coin:"🪙 سکه",stone:"🪨 سنگ",iron:"⛏️ آهن",crystal:"💎 کریستال",potion:"🧪 معجون"})[drop.type]+" ×"+drop.qty+" برداشتی!");return;}
+  if(dropIndex>=0){const preview=lootDrops[dropIndex];const dropKey={stone:"stone",iron:"iron",crystal:"crystal",potion:"potion"}[preview.type];if(preview.type!=="coin"&&!bagCanAdd(preview.qty,dropKey)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}const drop=lootDrops.splice(dropIndex,1)[0];spawnPickupFx(drop.x,drop.y,drop.type);if(drop.type==="coin")player.coins+=drop.qty;else if(drop.type==="stone")bag.stone=(bag.stone||0)+drop.qty;else if(drop.type==="iron")bag.iron=(bag.iron||0)+drop.qty;else if(drop.type==="crystal"){bag.crystal=(bag.crystal||0)+drop.qty;progressNpcCrystal(drop.qty);}else if(drop.type==="potion")bag.potion=(bag.potion||0)+drop.qty;updateUI();saveQuietly();playGameSound("pickup");showToast(({coin:"🪙 سکه",stone:"🪨 سنگ",iron:"⛏️ آهن",crystal:"💎 کریستال",potion:"🧪 معجون"})[drop.type]+" ×"+drop.qty+" برداشتی!");return;}
   let nearest = null, best = 76;
   for (const r of activeNodes()) {
     if(targetId&&r.id!==targetId)continue;
@@ -819,7 +819,8 @@ function harvest(targetId=null) {
   if(selectedTool!==toolType){showToast("برای "+(nearest.type==="tree"?"قطع درخت":nearest.type==="bush"?"جمع‌آوری الیاف":nearest.type==="sand"?"برداشتن شن":"استخراج سنگ و معدن")+" باید "+TOOL_INFO[toolType].label+" انتخاب کنی");moveTarget=null;return;}
   const damage=1+(toolLevels[toolType]||0);
   const amount=MINE_ORES[nearest.type]?MINE_ORES[nearest.type].qty:nearest.type==="tree"?3:(nearest.type==="stone"||nearest.type==="bush"||nearest.type==="sand")?2:1;
-  if(nearest.hp-damage<=0&&!bagCanAdd(amount)){showToast("کوله‌پشتی پره! برای ظرفیت بیشتر برو پیش آقای نادری 🎒");return;}
+  const rewardKey=MINE_ORES[nearest.type]?.bag||({tree:"wood",stone:"stone",iron:"iron",crystal:"crystal",bush:"fiber",sand:"sand",marble:"marble"})[nearest.type];
+  if(nearest.hp-damage<=0&&!bagCanAdd(amount,rewardKey)){showToast("کوله‌پشتی پره! برای ظرفیت بیشتر برو پیش آقای نادری 🎒");return;}
   nearest.hp -= damage;
   spawnGatherFx(nearest.type,nearest.x,nearest.y,nearest.hp<=0);
   if (nearest.hp <= 0) {
@@ -1019,7 +1020,8 @@ function tickWorldInteraction(dt){
     if(!node){moveTarget=null;return;}
     if(interactionTimer<=0){
       const amount=MINE_ORES[node.type]?MINE_ORES[node.type].qty:node.type==="tree"?3:(node.type==="stone"||node.type==="bush"||node.type==="sand")?2:1;
-      if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره؛ اول ظرفیتش رو بیشتر کن 🎒");moveTarget=null;return;}
+      const rewardKey=MINE_ORES[node.type]?.bag||({tree:"wood",stone:"stone",iron:"iron",crystal:"crystal",bush:"fiber",sand:"sand",marble:"marble"})[node.type];
+      if(!bagCanAdd(amount,rewardKey)){showToast("کوله‌پشتی پره؛ اول ظرفیتش رو بیشتر کن 🎒");moveTarget=null;return;}
       harvest(t.id);interactionTimer=.48;
     }
     if(!activeNodes().some(r=>r.id===t.id))moveTarget=null;
@@ -1347,7 +1349,7 @@ function claimQuest(key) {
 }
 function craftFishingRod(){if(fishingRodOwned){showToast("چوب ماهیگیری رو قبلاً ساختی");return;}const cost={wood:5,fiber:3,rope:1};if(Object.entries(cost).some(([k,v])=>(bag[k]||0)<v)){showToast("برای چوب ماهیگیری ۵ چوب، ۳ الیاف و ۱ طناب لازمه");return;}Object.entries(cost).forEach(([k,v])=>bag[k]-=v);fishingRodOwned=true;updateUI();updateStationUI();saveQuietly();showToast("چوب ماهیگیری ساخته شد! کنار برکه برو 🎣");}
 function updateCraftUI() {
-  const furnaceButton=$("craftFurnace");if(furnaceButton){furnaceButton.disabled=bag.coal<20||bag.copperOre<8||!bagCanAdd(1);furnaceButton.textContent="🔥 ساخت کوره — ۲۰ ذغال‌سنگ + ۸ سنگ معدن مس";}
+  const furnaceButton=$("craftFurnace");if(furnaceButton){furnaceButton.disabled=bag.coal<20||bag.copperOre<8||!bagCanAdd(1,"furnaceItem");furnaceButton.textContent="🔥 ساخت کوره — ۲۰ ذغال‌سنگ + ۸ سنگ معدن مس";}
   $("craftSword").disabled = player.attackPower >= 5 || bag.iron < 5 || bag.wood < 3;
   $("craftBoots").disabled = player.speed >= 320 || bag.iron < 4 || bag.wood < 6;
   $("craftPotion").disabled = bag.crystal < 2 || bag.iron < 1;
@@ -1385,11 +1387,11 @@ function updateStationUI(){
  const rod=$("make_fishingRod");if(rod){const ready=bag.wood>=5&&bag.fiber>=3&&bag.rope>=1;rod.disabled=fishingRodOwned||!ready;rod.textContent=fishingRodOwned?"🎣 چوب ماهیگیری ساخته شده":"🎣 چوب ماهیگیری — نیاز: ۵ چوب + ۳ الیاف + ۱ طناب";}
  updateToolUI();
 }
-function craftFurnace(){if(bag.coal<20||bag.copperOre<8){showToast("برای ساخت کوره به ۲۰ ذغال‌سنگ و ۸ سنگ معدن مس نیاز داری");return;}if(!bagCanAdd(1)){showToast("کوله‌پشتی جا نداره؛ اول ظرفیتش رو بیشتر کن 🎒");return;}bag.coal-=20;bag.copperOre-=8;bag.furnaceItem=(bag.furnaceItem||0)+1;updateUI();saveQuietly();showToast("یک کوره ساختی! از نوار وسایل انتخابش کن و روی زمین بزن 🔥");}
+function craftFurnace(){if(bag.coal<20||bag.copperOre<8){showToast("برای ساخت کوره به ۲۰ ذغال‌سنگ و ۸ سنگ معدن مس نیاز داری");return;}if(!bagCanAdd(1,"furnaceItem")){showToast("کوله‌پشتی جا نداره؛ اول ظرفیتش رو بیشتر کن 🎒");return;}bag.coal-=20;bag.copperOre-=8;bag.furnaceItem=(bag.furnaceItem||0)+1;updateUI();saveQuietly();showToast("یک کوره ساختی! از نوار وسایل انتخابش کن و روی زمین بزن 🔥");}
 function craftWorkshopItem(type){const r=workshopRecipes[type];if(!r)return;if(Object.entries(r.cost).some(([k,v])=>(bag[k]||0)<v)){showToast("مواد اولیه کافی نداری");return;}Object.entries(r.cost).forEach(([k,v])=>bag[k]-=v);Object.entries(r.gain).forEach(([k,v])=>bag[k]=(bag[k]||0)+v);updateUI();saveQuietly();showToast("ساخته شد: "+r.label+" ✨");}
 const SMELT_RECIPES={copperOre:{ingot:"copperIngot",label:"مس",icon:"🟠",seconds:20},ironOre:{ingot:"ironIngot",label:"آهن",icon:"⚪",seconds:60},goldOre:{ingot:"goldIngot",label:"طلا",icon:"🟡",seconds:100},steelOre:{ingot:"steelIngot",label:"فولاد",icon:"🔵",seconds:180},adamantiteOre:{ingot:"adamantiteIngot",label:"آدامانتیوم",icon:"🟣",seconds:280}};
 function placeFurnace(x,y){if(!bag.furnaceItem){showToast("کوره‌ای برای جای‌گذاری نداری");return;}if(caveMode||townMode||templeMode||homeInterior||x<55||y<55||x>WORLD.w-55||y>WORLD.h-55||Math.abs(x-2700)<115||Math.hypot(x-playerHome.x,y-playerHome.y)<115||Math.hypot(x-samanHome.x,y-samanHome.y)<100||Math.hypot(x-CHEST_POS.x,y-CHEST_POS.y)<65||Math.hypot(x-LIVESTOCK_PEN.x,y-LIVESTOCK_PEN.y)<145||farmPlots.some(p=>Math.hypot(x-p.x,y-p.y)<44)||furnaces.some(f=>Math.hypot(x-f.x,y-f.y)<76)){showToast("اینجا جای مناسبی برای کوره نیست؛ کمی فضای خالی انتخاب کن");return;}bag.furnaceItem--;furnaces.push({id:"furnace-"+Date.now()+"-"+Math.random().toString(36).slice(2),x,y,activeOre:null,remaining:0,ready:false});inventorySelected=null;updateUI();saveQuietly();showToast("کوره در اینجا قرار گرفت 🔥");}
-function interactFurnace(f){if(f.ready){const r=SMELT_RECIPES[f.activeOre];if(!r)return;if(!bagCanAdd(1)){showToast("کوله‌پشتی پره؛ برای برداشتن شمش جا باز کن 🎒");return;}bag[r.ingot]=(bag[r.ingot]||0)+1;f.activeOre=null;f.remaining=0;f.ready=false;updateUI();saveQuietly();showToast("یک شمش "+r.label+" برداشتی! "+r.icon);return;}if(f.activeOre){showToast("کوره هنوز روشنه؛ "+Math.ceil(f.remaining)+" ثانیه دیگه آماده می‌شه");return;}const oreKey=inventorySelected&&inventorySelected.startsWith("bag:")?inventorySelected.slice(4):"",r=SMELT_RECIPES[oreKey];if(!r){showToast("اول سنگ معدن موردنظرت رو از نوار وسایل انتخاب کن");return;}if((bag[oreKey]||0)<5||bag.coal<1){showToast("برای یک شمش به ۵ سنگ معدن و ۱ ذغال‌سنگ نیاز داری");return;}bag[oreKey]-=5;bag.coal--;f.activeOre=oreKey;f.remaining=r.seconds;f.ready=false;updateUI();saveQuietly();showToast("کوره برای ذوب "+r.label+" روشن شد! 🔥");}
+function interactFurnace(f){if(f.ready){const r=SMELT_RECIPES[f.activeOre];if(!r)return;if(!bagCanAdd(1,r.ingot)){showToast("کوله‌پشتی پره؛ برای برداشتن شمش جا باز کن 🎒");return;}bag[r.ingot]=(bag[r.ingot]||0)+1;f.activeOre=null;f.remaining=0;f.ready=false;updateUI();saveQuietly();showToast("یک شمش "+r.label+" برداشتی! "+r.icon);return;}if(f.activeOre){showToast("کوره هنوز روشنه؛ "+Math.ceil(f.remaining)+" ثانیه دیگه آماده می‌شه");return;}const oreKey=inventorySelected&&inventorySelected.startsWith("bag:")?inventorySelected.slice(4):"",r=SMELT_RECIPES[oreKey];if(!r){showToast("اول سنگ معدن موردنظرت رو از نوار وسایل انتخاب کن");return;}if((bag[oreKey]||0)<5||bag.coal<1){showToast("برای یک شمش به ۵ سنگ معدن و ۱ ذغال‌سنگ نیاز داری");return;}bag[oreKey]-=5;bag.coal--;f.activeOre=oreKey;f.remaining=r.seconds;f.ready=false;updateUI();saveQuietly();showToast("کوره برای ذوب "+r.label+" روشن شد! 🔥");}
 function updateFurnaces(dt){let done=false;for(const f of furnaces){if(!f.activeOre||f.ready)continue;f.remaining=Math.max(0,(Number(f.remaining)||0)-dt);if(f.remaining<=0){f.ready=true;done=true;}}if(done){saveQuietly();showToast("ذوب فلز کامل شد؛ شمش آماده‌ی برداشتن است! ✨");}}
 function drawFurnaces(){for(const f of furnaces){const x=f.x-camera.x,y=f.y-camera.y;if(x<-55||x>viewW+55||y<-65||y>viewH+55)continue;ctx.fillStyle="rgba(0,0,0,.28)";ctx.beginPath();ctx.ellipse(x,y+18,24,8,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#393633";ctx.fillRect(x-20,y-25,40,43);ctx.fillStyle="#80513a";ctx.fillRect(x-16,y-21,32,34);ctx.fillStyle="#24201e";ctx.fillRect(x-10,y-7,20,18);if(f.activeOre&&!f.ready){ctx.fillStyle="#ff8b32";ctx.fillRect(x-7,y+1,14,8);ctx.fillStyle="#ffd36a";ctx.fillRect(x-4,y-4,8,6);}else{ctx.fillStyle="#4b4038";ctx.fillRect(x-7,y+1,14,8);}ctx.fillStyle="#aaa096";ctx.fillRect(x-8,y-31,16,7);if(f.ready){const r=SMELT_RECIPES[f.activeOre];if(r){ctx.fillStyle="rgba(20,18,15,.82)";ctx.fillRect(x-18,y-62,36,25);ctx.font="20px Tahoma";ctx.textAlign="center";ctx.fillText(r.icon,x,y-43);ctx.textAlign="start";}}}}
 
@@ -1558,9 +1560,30 @@ function townSchedule(dt=0){
   if(d>0&&d<44){const push=(44-d)*0.5;p.x-=dx/d*push;p.y-=dy/d*push;q.x+=dx/d*push;q.y+=dy/d*push;}
  }
 }
-function bagUsed(){return Object.values(bag).reduce((sum,v)=>sum+(Number(v)||0),0)+Object.values(farmSeedStock).reduce((sum,v)=>sum+(Number(v)||0),0);}
-function bagCanAdd(amount=1){return bagUsed()+amount<=backpackCaps[backpackTier];}
-function bagAdd(key,amount){if(!bagCanAdd(amount)){showToast("کوله‌پشتی پره! پیش آقای نادری ظرفیتش رو ارتقا بده 🎒");return false;}bag[key]=(bag[key]||0)+amount;return true;}
+const STACK_LIMIT=64;
+function stackSlots(amount){return Math.max(0,Math.ceil(Math.max(0,Number(amount)||0)/STACK_LIMIT));}
+function bagUsed(){
+ let slots=0;
+ for(const [key,value] of Object.entries(bag)){if(key!=="seeds")slots+=stackSlots(value);}
+ for(const value of Object.values(farmSeedStock))slots+=stackSlots(value);
+ slots+=stackSlots(bag.seeds||0);
+ return slots;
+}
+function bagCanAdd(amount=1,key=null,isSeed=false){
+ const current=isSeed?(farmSeedStock[key]||0):(bag[key]||0);
+ const extra=stackSlots(current+amount)-stackSlots(current);
+ return bagUsed()+extra<=backpackCaps[backpackTier];
+}
+function bagCanAddBatch(entries){
+ const projected={...bag},seeds={...farmSeedStock};
+ for(const entry of entries){const target=entry.seed?seeds:projected;target[entry.key]=(target[entry.key]||0)+entry.amount;}
+ let slots=0;
+ for(const [key,value] of Object.entries(projected)){if(key!=="seeds")slots+=stackSlots(value);}
+ for(const value of Object.values(seeds))slots+=stackSlots(value);
+ slots+=stackSlots(projected.seeds||0);
+ return slots<=backpackCaps[backpackTier];
+}
+function bagAdd(key,amount){if(!bagCanAdd(amount,key)){showToast("کوله‌پشتی پره! پیش آقای نادری ظرفیتش رو ارتقا بده 🎒");return false;}bag[key]=(bag[key]||0)+amount;return true;}
 
 const INVENTORY_LABELS={furnaceItem:"کوره",copperIngot:"شمش مس",ironIngot:"شمش آهن",goldIngot:"شمش طلا",steelIngot:"شمش فولاد",adamantiteIngot:"شمش آدامانتیوم",copperOre:"سنگ معدن مس",coal:"زغال‌سنگ",ironOre:"سنگ معدن آهن",goldOre:"سنگ معدن طلا",steelOre:"سنگ معدن فولاد",adamantiteOre:"سنگ معدن آدمانتیوم",wood:"چوب",stone:"سنگ",iron:"آهن",crystal:"کریستال",potion:"معجون",egg:"تخم‌مرغ",milk:"شیر",carp:"کپور",perch:"ماهی سوف",trout:"قزل‌آلا",fiber:"الیاف",sand:"شن",marble:"مرمر",plank:"تخته چوب",brick:"آجر",rope:"طناب",nail:"میخ",glass:"شیشه",cloth:"پارچه",marbleSlab:"تخته مرمر",ironParts:"قطعه آهنی",templeFoundation:"پایه معبد",templeColumn:"ستون معبد",templeBeam:"تیر معبد",templeMosaic:"موزاییک",templeBanner:"پرچم معبد"};
 const INVENTORY_ICONS={furnaceItem:"🔥",copperIngot:"🟠",ironIngot:"⚪",goldIngot:"🟡",steelIngot:"🔵",adamantiteIngot:"🟣",copperOre:"🟠",coal:"⚫",ironOre:"⚪",goldOre:"🟡",steelOre:"🔵",adamantiteOre:"🟣",wood:"🪵",stone:"🪨",iron:"⛓️",crystal:"💎",potion:"🧪",egg:"🥚",milk:"🥛",carp:"🐟",perch:"🐠",trout:"🐟",fiber:"🧵",sand:"🏖️",marble:"⬜",plank:"🪚",brick:"🧱",rope:"🪢",nail:"🔩",glass:"🪟",cloth:"🧶",marbleSlab:"◻️",ironParts:"⚙️",templeFoundation:"🏛️",templeColumn:"🏛️",templeBeam:"🪵",templeMosaic:"🎨",templeBanner:"🚩"};
@@ -1569,10 +1592,10 @@ function inventoryItems(){
  for(const [key,value] of Object.entries(bag)){
   if(key==="seeds"||!(Number(value)>0))continue;
   const crop=FARM_CROPS[key];
-  items.push({id:"bag:"+key,name:crop?crop.name:(INVENTORY_LABELS[key]||key),icon:crop?crop.icon:(INVENTORY_ICONS[key]||"📦"),count:value,kind:crop?"محصول":"منبع",detail:"در کوله‌پشتی"});
+  items.push({id:"bag:"+key,name:crop?crop.name:(INVENTORY_LABELS[key]||key),icon:crop?crop.icon:(INVENTORY_ICONS[key]||"📦"),count:value,kind:crop?"محصول":"منبع",detail:"در کوله‌پشتی • "+stackSlots(value)+" استک"});
  }
  for(const [key,value] of Object.entries(farmSeedStock)){
-  if(Number(value)>0){const crop=FARM_CROPS[key];items.push({id:"seed:"+key,name:"بذر "+crop.name,icon:crop.icon,count:value,kind:"بذر",detail:FARM_SEASONS[crop.season]});}
+  if(Number(value)>0){const crop=FARM_CROPS[key];items.push({id:"seed:"+key,name:"بذر "+crop.name,icon:crop.icon,count:value,kind:"بذر",detail:FARM_SEASONS[crop.season]+" • "+stackSlots(value)+" استک"});}
  }
  const tiers=["چوبی","آهنی","کریستالی"];
  items.push(
@@ -1691,7 +1714,7 @@ function feedLivestock(type){
 function collectAnimalProduct(type){
  const egg=type==="egg",ready=egg?"eggsReady":"milkReady",key=egg?"egg":"milk",label=egg?"تخم‌مرغ":"شیر";
  if(livestock[ready]<1)return;
- if(!bagCanAdd(livestock[ready])){showToast("کوله‌پشتی جا نداره؛ اول چند وسیله بفروش یا حذف کن 🎒");return;}
+ if(!bagCanAdd(livestock[ready],key)){showToast("کوله‌پشتی جا نداره؛ اول چند وسیله بفروش یا حذف کن 🎒");return;}
  const amount=livestock[ready];livestock[ready]=0;bag[key]=(bag[key]||0)+amount;
  updateUI();updateLivestockUI();saveQuietly();showToast(amount+" "+label+" جمع کردی! 🧺");
 }
@@ -1741,7 +1764,7 @@ function farmHarvest(){
  const p=farmPlots[selectedFarmPlot];if(!p||p.state!=="growing")return;
  const crop=FARM_CROPS[p.crop],target=p.harvests>0&&crop.regrow?crop.regrow:crop.days;
  if(p.growth<target)return;
- if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}
+ if(!bagCanAdd(1,p.crop)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}
  bag[p.crop]=(bag[p.crop]||0)+1;progressDailyMission("harvest",1);
  if(crop.regrow){p.harvests=(p.harvests||0)+1;p.growth=0;p.wateredDay=-1;}
  else{p.state="tilled";p.crop=null;p.growth=0;p.harvests=0;p.wateredDay=-1;}
@@ -1751,7 +1774,7 @@ function buyCropSeed(type){
  const crop=FARM_CROPS[type];if(!crop)return;
  if(crop.season!==getFarmSeason()){showToast("بذر "+crop.name+" فقط در فصل "+FARM_SEASONS[crop.season]+" فروخته می‌شه.");return;}
  if(player.coins<crop.seed){showToast("برای خرید "+crop.name+" به "+crop.seed+" سکه نیاز داری.");return;}
- if(!bagCanAdd(1)){showToast("کوله‌پشتی پره! ظرفیت فعلی "+bagUsed()+" از "+backpackCaps[backpackTier]+" است.");return;}
+ if(!bagCanAdd(1,type,true)){showToast("کوله‌پشتی پره! ظرفیت فعلی "+bagUsed()+" از "+backpackCaps[backpackTier]+" است.");return;}
  player.coins-=crop.seed;farmSeedStock[type]=(farmSeedStock[type]||0)+1;selectedCrop=type;
  updateUI();updateTownShop();updateFarmUI();saveQuietly();showToast("یک بسته بذر "+crop.name+" خریدی 🌱");
 }
@@ -1764,38 +1787,37 @@ function updateTownShop(){
  const cropCount=Object.keys(FARM_CROPS).reduce((n,k)=>n+(bag[k]||0),0);const fishCount=(bag.carp||0)+(bag.perch||0)+(bag.trout||0);$("sellFish").disabled=!fishCount;$("sellFish").textContent="فروش ماهی‌ها • موجودی: "+fishCount;
  $("sellCrops").disabled=!cropCount;$("sellCrops").textContent="فروش محصولات برداشت‌شده • موجودی: "+cropCount;
  $("seedShopList").innerHTML=Object.entries(FARM_CROPS).map(([k,c])=>{
-  const disabled=c.season!==getFarmSeason()||player.coins<c.seed||!bagCanAdd(1);
+  const disabled=c.season!==getFarmSeason()||player.coins<c.seed||!bagCanAdd(1,k,true);
   return '<button type="button" data-seed="'+k+'" class="'+(selectedCrop===k?"selected":"")+'" '+(disabled?'disabled':'')+'><span>'+c.icon+" "+c.name+'</span><small>'+c.seed+" سکه • "+FARM_SEASONS[c.season]+'</small></button>';
  }).join("");
  $("buyBread").hidden=true;$("buyApple").hidden=true;$("eatBread").hidden=true;$("eatApple").hidden=true;
  const crop=FARM_CROPS[selectedCrop];
- $("buySeeds").disabled=!crop||crop.season!==getFarmSeason()||player.coins<crop.seed||!bagCanAdd(1);
+ $("buySeeds").disabled=!crop||crop.season!==getFarmSeason()||player.coins<crop.seed||!bagCanAdd(1,selectedCrop,true);
  $("buySeeds").textContent="🌱 خرید "+(crop?.name||"بذر")+" • "+(crop?.seed||0)+" سکه";$("buySeeds").hidden=false;
 }
 function consumeTownFood(type){if(!townStock[type]){showToast("از این خوراکی نداری!");return;}if(player.health>=player.maxHealth){showToast("جان تو کامله!");return;}townStock[type]--;player.health=Math.min(player.maxHealth,player.health+(type==="bread"?2:1));updateUI();updateTownShop();saveQuietly();showToast("خوراکی خوردی و جانت بیشتر شد ❤️");}
-function buyTownItem(type){const item={bread:{price:8,label:"نان"},seeds:{price:5,label:"بذر"},apple:{price:6,label:"سیب"}}[type];if(!item||player.coins<item.price){showToast("سکه کافی نداری! 🪙");return;}if(type==="seeds"&&!bagCanAdd(1)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}player.coins-=item.price;if(type==="seeds")bag.seeds=(bag.seeds||0)+1;else townStock[type]++;updateUI();updateTownShop();saveQuietly();showToast(item.label+" خریدی! 🛍️");}
+function buyTownItem(type){const item={bread:{price:8,label:"نان"},seeds:{price:5,label:"بذر"},apple:{price:6,label:"سیب"}}[type];if(!item||player.coins<item.price){showToast("سکه کافی نداری! 🪙");return;}if(type==="seeds"&&!bagCanAdd(1,"seeds")){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}player.coins-=item.price;if(type==="seeds")bag.seeds=(bag.seeds||0)+1;else townStock[type]++;updateUI();updateTownShop();saveQuietly();showToast(item.label+" خریدی! 🛍️");}
 function updateCarpenterUI(){const title=homeLevel===0?"هنوز خانه‌ای نداری":homeLevel===1?"کلبه چوبی":homeLevel===2?"خانه بزرگ":"خانه لوکس";$("carpenterStatus").textContent=title+" • چوب "+bag.wood+" • سنگ "+bag.stone+" • تخته "+bag.plank+" • پارچه "+bag.cloth+" • سکه "+player.coins;$("carpenterBuild").hidden=homeLevel>0;$("carpenterUpgrade").hidden=homeLevel===0||homeLevel>=3;$("carpenterBuild").disabled=bag.wood<12||bag.stone<6;$("carpenterUpgrade").disabled=homeLevel===1?(bag.wood<18||bag.stone<10||player.coins<10):(bag.wood<30||bag.stone<20||player.coins<35);$("furnitureBed").disabled=furnitureOwned.bed||bag.plank<8||bag.cloth<3;$("furnitureTable").disabled=furnitureOwned.table||bag.plank<6||bag.nail<4;$("furnitureChair").disabled=furnitureOwned.chair||bag.plank<4||bag.nail<2;$("furnitureStatus").textContent="وسایل ساخته‌شده: "+Object.entries(furnitureOwned).filter(([k,v])=>v).map(([k])=>({bed:"تخت",table:"میز",chair:"صندلی"}[k])).join("، "||"") ;}
 function carpenterBuild(){buildPlayerHome();updateCarpenterUI();}
 function carpenterUpgrade(){upgradePlayerHome();updateCarpenterUI();}
 function buildFurniture(type){const recipes={bed:{cost:{plank:8,cloth:3},label:"تخت"},table:{cost:{plank:6,nail:4},label:"میز"},chair:{cost:{plank:4,nail:2},label:"صندلی"}};const r=recipes[type];if(!r||furnitureOwned[type])return;if(!Object.entries(r.cost).every(([k,v])=>(bag[k]||0)>=v)){showToast("مصالح کافی نداری");return;}Object.entries(r.cost).forEach(([k,v])=>bag[k]-=v);furnitureOwned[type]=true;updateUI();updateCarpenterUI();saveQuietly();showToast(r.label+" برای خانه ساخته شد! 🪑");}
 function upgradeBackpack(){
- const costs=[{coins:40,plank:8},{coins:100,plank:18,cloth:8}];
+ const costs=[{coins:3000},{coins:10000}];
  if(backpackTier>=2){showToast("کوله‌پشتی به آخرین سطح رسیده!");return;}
  const cost=costs[backpackTier],missing=[];
  if(player.coins<cost.coins)missing.push((cost.coins-player.coins)+" سکه");
- if(bag.plank<cost.plank)missing.push((cost.plank-bag.plank)+" تخته");
- if(cost.cloth&&bag.cloth<cost.cloth)missing.push((cost.cloth-bag.cloth)+" پارچه");
+
  if(missing.length){showToast("برای ارتقا کم داری: "+missing.join("، "));updateNaderiUI();return;}
- player.coins-=cost.coins;bag.plank-=cost.plank;if(cost.cloth)bag.cloth-=cost.cloth;
+ player.coins-=cost.coins;
  backpackTier=Math.min(2,backpackTier+1);updateUI();updateTownShop();updateNaderiUI();saveQuietly();
  showToast("کوله‌پشتی ارتقا پیدا کرد! ظرفیت: "+backpackCaps[backpackTier]+" 🎒");
 }
 function updateNaderiUI(){
- const costs=[{coins:40,plank:8},{coins:100,plank:18,cloth:8}],cost=costs[backpackTier],btn=$("backpackUpgrade");
+ const costs=[{coins:3000},{coins:10000}],cost=costs[backpackTier],btn=$("backpackUpgrade");
  btn.hidden=backpackTier>=2;
- btn.disabled=!cost||player.coins<cost.coins||bag.plank<cost.plank||(cost.cloth&&bag.cloth<cost.cloth);
- btn.textContent=backpackTier===0?"🎒 ارتقا به ۴۵ خانه • ۴۰ سکه + ۸ تخته":backpackTier===1?"🎒 ارتقا به ۶۰ خانه • ۱۰۰ سکه + ۱۸ تخته + ۸ پارچه":"🎒 کوله‌پشتی در بالاترین سطح است";
- $("naderiStatus").textContent="ظرفیت: "+bagUsed()+" / "+backpackCaps[backpackTier]+" • سکه: "+player.coins+(cost?"\nارتقای بعدی: "+backpackCaps[backpackTier+1]+" خانه • "+cost.coins+" سکه، "+cost.plank+" تخته"+(cost.cloth?" و "+cost.cloth+" پارچه":""):"\nکوله‌پشتی به آخرین سطح رسیده است.");
+ btn.disabled=!cost||player.coins<cost.coins;
+ btn.textContent=backpackTier===0?"🎒 ارتقا به ۲۰ اسلات • ۳۰۰۰ سکه":backpackTier===1?"🎒 ارتقا به ۳۰ اسلات • ۱۰۰۰۰ سکه":"🎒 کوله‌پشتی در بالاترین سطح است";
+ $("naderiStatus").textContent="ظرفیت: "+bagUsed()+" / "+backpackCaps[backpackTier]+" اسلات • سکه: "+player.coins+(cost?"\nارتقای بعدی: "+backpackCaps[backpackTier+1]+" اسلات • فقط "+cost.coins+" سکه":"\nکوله‌پشتی به آخرین سطح رسیده است.");
 }
 function openNaderiShop(){const p=townPeople[townNpcIndex];if(!p||p.id!=="naderi")return;openTownShop();updateNaderiUI();}
 function drawLivestockPen(){
