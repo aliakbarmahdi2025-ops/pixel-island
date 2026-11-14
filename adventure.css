@@ -252,3 +252,10 @@ button:disabled{opacity:.38;filter:grayscale(.65)}
 #energyText{color:#f2d18c}
 #statusEffects{position:fixed;top:calc(env(safe-area-inset-top,0px) + 116px);left:9px;display:flex;gap:6px;z-index:6;pointer-events:none}
 .status-buff{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid #c87970;border-radius:50%;background:#17251ded;box-shadow:0 2px 9px #0008;font-size:17px}
+
+/* Stage 65 — seasonal-only seed stock and Naderi's custom pixel portrait. */
+.naderi-shop-heading{display:flex;align-items:center;gap:12px;margin:4px 0 10px;text-align:right}
+.naderi-shop-heading canvas{width:100px;height:100px;flex:0 0 100px;image-rendering:pixelated;border:2px solid #9b8055;border-radius:10px;box-shadow:0 3px 10px #0005}
+.naderi-shop-heading h2{margin:0 0 6px;font-size:18px}
+.naderi-shop-heading p{margin:0;font-size:12px;line-height:1.8}
+.seed-shop-list button:disabled{opacity:.55;filter:saturate(.75)}
