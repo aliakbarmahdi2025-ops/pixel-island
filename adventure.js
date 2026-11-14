@@ -2548,6 +2548,18 @@ function drawTree(r) {
  for(const a of leaves){ctx.fillStyle=a[4];ctx.fillRect(x+a[0],y+a[1],a[2],a[3]);}
  ctx.fillStyle="#b2c978";ctx.fillRect(x-11,y-60,4,2);ctx.fillRect(x+5,y-52,5,2);ctx.fillRect(x+25,y-38,3,2);
  ctx.fillStyle="#244f32";ctx.fillRect(x-32,y-35,4,9);ctx.fillRect(x+29,y-29,4,8);
+ // HD foliage pass: deterministic leaf clusters, layered edge pixels and warm canopy highlights.
+ for(let k=0;k<18;k++){
+   const h=terrainHash(Math.floor(r.x/7)+k*13,Math.floor(r.y/7)+k*29);
+   const lx=x-29+Math.floor(h*59),ly=y-57+Math.floor(terrainHash(k+41,Math.floor(r.x/11))*43);
+   const colors=["#326d3e","#43834a","#579653","#70a95b","#8ab96a"];
+   ctx.fillStyle=colors[Math.floor(terrainHash(k+9,Math.floor(r.y/13))*colors.length)];
+   ctx.fillRect(lx,ly,2+(k%3),2);
+   if(k%4===0){ctx.fillStyle="rgba(190,218,133,.72)";ctx.fillRect(lx,ly,2,1);}
+ }
+ // Small bark grain catches light without changing the tree's collision footprint.
+ ctx.fillStyle="#bd9360";ctx.fillRect(x-2,y-16,2,5);ctx.fillRect(x+3,y-7,1,6);
+ ctx.fillStyle="#493322";ctx.fillRect(x-5,y-3,2,7);
 }
 function drawFiberBush(r){
  const x=r.x-camera.x,y=r.y-camera.y;ctx.fillStyle="rgba(12,25,17,.3)";ctx.beginPath();ctx.ellipse(x,y+9,23,7,0,0,Math.PI*2);ctx.fill();
@@ -2572,6 +2584,11 @@ function drawRock(r) {
  ctx.fillStyle="#c2c6a9";ctx.fillRect(x-5,y-15,6,2);ctx.fillRect(x-14,y-5,4,2);
  ctx.fillStyle="#252f2e";ctx.fillRect(x+10,y-2,8,8);ctx.fillRect(x-18,y+5,8,3);
  ctx.fillStyle="#477b48";ctx.fillRect(x-18,y-9,5,3);ctx.fillRect(x+9,y-17,5,2);
+ // HD stone facets: crisp mineral flecks, a cool midtone plane and tiny surface fractures.
+ ctx.fillStyle="#d0d2bc";ctx.fillRect(x-12,y-10,3,2);ctx.fillRect(x-2,y-19,4,2);ctx.fillRect(x+10,y-11,3,2);
+ ctx.fillStyle="#87938a";ctx.fillRect(x-15,y+1,5,2);ctx.fillRect(x+4,y+5,7,2);
+ ctx.fillStyle="#303b38";ctx.fillRect(x-3,y-5,2,7);ctx.fillRect(x+13,y-7,2,4);
+ ctx.strokeStyle="rgba(25,36,33,.55)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+1,y-12);ctx.lineTo(x-2,y-7);ctx.lineTo(x+1,y-3);ctx.stroke();
 }
 function drawIron(r) {
  drawRock(r);const x=r.x-camera.x,y=r.y-camera.y;
