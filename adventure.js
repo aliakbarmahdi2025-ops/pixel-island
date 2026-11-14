@@ -1852,8 +1852,8 @@ function townSchedule(dt=0){
  townPeople.forEach(p=>{
    const target=plans[p.id];if(!target)return;
    const dx=target[0]-p.x,dy=target[1]-p.y,d=Math.hypot(dx,dy);
-   if(d>2&&dt>0){const step=Math.min(d,48*dt);p.x+=dx/d*step;p.y+=dy/d*step;p.walking=true;}
-   else p.walking=false;
+   if(d>2&&dt>0){const step=Math.min(d,48*dt);p.vx=dx/d;p.vy=dy/d;p.facing=Math.abs(p.vx)>Math.abs(p.vy)?(p.vx>0?"right":"left"):(p.vy>0?"down":"up");p.x+=p.vx*step;p.y+=p.vy*step;p.walking=true;}
+   else {p.walking=false;p.vx=0;p.vy=0;}
  });
  for(let a=0;a<townPeople.length;a++)for(let b=a+1;b<townPeople.length;b++){
   const p=townPeople[a],q=townPeople[b],dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);
@@ -2530,18 +2530,18 @@ function drawTownBuilding(x,y,label,roof,kind){
   // small clay pots and step
   ctx.fillStyle="#70412f";ctx.fillRect(sx-31,sy+95,14,10);ctx.fillRect(sx+19,sy+95,14,10);ctx.fillStyle="#c17a53";ctx.fillRect(sx-30,sy+93,12,8);ctx.fillRect(sx+20,sy+93,12,8);ctx.fillStyle="#356c40";ctx.fillRect(sx-27,sy+83,3,12);ctx.fillRect(sx-23,sy+86,4,9);ctx.fillRect(sx+23,sy+83,3,12);ctx.fillRect(sx+27,sy+86,4,9);ctx.fillStyle="#80a85b";ctx.fillRect(sx-28,sy+82,4,3);ctx.fillRect(sx+24,sy+82,4,3);
 }const townSpriteCache = {};
-function makePixelTownSprite(id, frame) {
+function makePixelTownSpriteFront(id, frame) {
  const c=document.createElement("canvas");c.width=80;c.height=112;
  const g=c.getContext("2d");
- const mina=id==="mina",hana=id==="hana",saeed=id==="saeed",naderi=id==="naderi";
+ const mina=id==="mina",hana=id==="hana",nahid=id==="nahid",rezaei=id==="rezaei",saeed=id==="saeed",naderi=id==="naderi";
  const walk=frame===1?-2:frame===2?2:0;
  const skin="#e9b99c",skinHi="#f7d4bb",skinShade="#c98f78";
- const hair=mina?"#65402f":hana?"#29232d":"#302b2b";
- const hairHi=mina?"#a36c49":hana?"#62515f":"#64504a";
- const top=mina?"#d94f91":hana?"#347fb6":"#52677a";
- const topHi=mina?"#f58bb5":hana?"#79b8dc":"#8da1ad";
- const topShade=mina?"#9f376b":hana?"#205b89":"#354b5b";
- const bottom=saeed?"#3c4148":mina?"#403447":"#d0d1d8";
+ const hair=mina?"#65402f":hana?"#29232d":nahid?"#673b40":rezaei?"#74483a":"#302b2b";
+ const hairHi=mina?"#a36c49":hana?"#62515f":nahid?"#98605d":rezaei?"#a87958":"#64504a";
+ const top=mina?"#d94f91":hana?"#347fb6":nahid?"#9b3e60":rezaei?"#4b8b50":saeed?"#33465b":"#52677a";
+ const topHi=mina?"#f58bb5":hana?"#79b8dc":nahid?"#d27c91":rezaei?"#8fbd79":saeed?"#8294a5":"#8da1ad";
+ const topShade=mina?"#9f376b":hana?"#205b89":nahid?"#642b43":rezaei?"#315f3a":saeed?"#202d3a":"#354b5b";
+ const bottom=saeed||naderi?"#3c4148":mina||nahid?"#403447":rezaei?"#5b4635":"#d0d1d8";
  const boot="#292b32";
  const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
  // Ground shadow, boots and separated legs.
@@ -2607,6 +2607,8 @@ function makePixelTownSprite(id, frame) {
  else{px(31,43,22,3,hair);px(35,45,14,4,hair);}
  // Character-specific accents.
  if(mina){px(59,54,3,7,"#f3cf75");px(60,55,2,3,"#fff1b8");px(24,47,3,8,"#f6a6c6");}
+ if(nahid){px(23,53,4,12,"#d7a2a0");px(53,57,4,11,"#d7a2a0");px(37,51,6,3,"#e5c58d");}
+ if(rezaei){px(31,51,18,24,"#8b5a2b");px(29,49,4,19,"#6b4226");px(47,49,4,19,"#6b4226");px(35,58,10,2,"#d4a16a");px(37,67,7,2,"#d4a16a");}
  if(hana){px(38,47,5,5,"#e8edf4");px(39,48,3,3,"#f5d98d");px(54,77,3,5,"#7ba9d0");}
  if(saeed){px(34,48,4,5,"#d7d4c9");px(42,48,4,5,"#d7d4c9");}
   if(naderi){px(27,30,13,8,"#6d7778");px(45,30,13,8,"#6d7778");px(39,32,7,2,"#6d7778");px(29,32,9,4,"#b9dce0");px(47,32,9,4,"#b9dce0");}
@@ -2636,28 +2638,78 @@ function makePixelTownSprite(id, frame) {
  if(saeed){px(37,57,2,3,"#e8dfc9");px(42,64,3,2,"#b7c0c2");}
  return c;
 }
-function getTownSpriteFrames(id){
- if(!townSpriteCache[id]) townSpriteCache[id]=[makePixelTownSprite(id,0),makePixelTownSprite(id,1),makePixelTownSprite(id,2)];
- return townSpriteCache[id];
+function getTownSpriteFrames(id, dir="down"){
+ const key=id+"_"+dir;
+ if(!townSpriteCache[key]) townSpriteCache[key]=[0,1,2].map(frame=>makePixelTownSprite(id,frame,dir));
+ return townSpriteCache[key];
 }
+
+function makePixelTownSprite(id, frame=0, dir="down") {
+ const front=makePixelTownSpriteFront(id,frame);
+ if(dir==="down") return front;
+ const c=document.createElement("canvas");c.width=80;c.height=112;
+ const g=c.getContext("2d");g.imageSmoothingEnabled=false;
+ const hair=id==="mina"?"#65402f":id==="hana"?"#29232d":id==="naderi"?"#302b2b":id==="rezaei"?"#5c4033":"#302b2b";
+ const hi=id==="mina"?"#a36c49":id==="hana"?"#62515f":id==="naderi"?"#64504a":id==="rezaei"?"#8c6b4a":"#64504a";
+ if(dir==="up"){
+  g.drawImage(front,0,0);
+  // Cover facial features with the back of the head while retaining the original hair silhouette.
+  g.fillStyle=hair;g.fillRect(25,20,30,25);g.fillRect(22,16,36,8);
+  g.fillRect(19,24,8,25);g.fillRect(53,24,8,25);
+  g.fillStyle=hi;g.fillRect(29,18,9,3);g.fillRect(43,17,8,2);
+  g.fillStyle=hair;g.fillRect(30,27,4,7);g.fillRect(45,25,5,8);
+  if(id==="mina"||id==="hana"){g.fillRect(17,44,8,27);g.fillRect(55,44,8,27);}
+  if(id==="naderi"){g.fillStyle="#3b302d";g.fillRect(24,22,32,5);}
+  return c;
+ }
+ // Side profile: keep the established costume and silhouette, then redraw the head in profile.
+ const right=dir==="right";
+ g.drawImage(front,right?8:14,0,58,112);
+ g.fillStyle=hair;g.fillRect(right?25:39,12,22,17);
+ g.fillRect(right?24:43,20,14,17);
+ g.fillStyle=hi;g.fillRect(right?29:45,15,8,3);
+ // Rebuild the visible cheek, eye and nose on the facing edge.
+ g.fillStyle="#c98f78";g.fillRect(right?49:22,25,8,17);
+ g.fillStyle="#f7d4bb";g.fillRect(right?45:25,23,13,19);
+ g.fillStyle="#392d30";g.fillRect(right?53:24,31,3,4);
+ g.fillStyle="#fff8ed";g.fillRect(right?54:25,31,1,1);
+ g.fillStyle="#d99d8c";g.fillRect(right?56:20,35,4,4);
+ g.fillStyle=hair;g.fillRect(right?37:24,20,12,12);
+ if(id==="naderi"){
+  g.fillStyle="#6d7778";g.fillRect(right?48:24,30,9,5);
+  g.fillStyle="#b9dce0";g.fillRect(right?50:25,31,6,3);
+  g.fillStyle="#302b2b";g.fillRect(right?43:29,43,14,4);
+ }
+ if(id==="mina"||id==="hana"){g.fillStyle=hair;g.fillRect(right?23:50,31,9,40);g.fillRect(right?29:43,57,7,13);}
+ return c;
+}
+
 function drawTownPeople(){
  townPeople.forEach(p=>{
   const x=p.x-camera.x,y=p.y-camera.y;
   if(x< -60||x>viewW+60||y< -70||y>viewH+70)return;
   const walking=!!p.walking,phase=animTime*8+(p.x*.013);
+  let dir=p.facing||"down";
+  if(walking){
+   const vx=p.vx||0,vy=p.vy||0;
+   if(Math.abs(vx)>Math.abs(vy))dir=vx>0?"right":"left";
+   else dir=vy>0?"down":"up";
+   p.facing=dir;
+  }
   const frame=walking?(Math.floor(phase)%2+1):0;
   const bob=walking?Math.abs(Math.sin(phase))*1.1:Math.sin(animTime*2+p.x*.01)*.35;
-  const frames=getTownSpriteFrames(p.id);
+  const frames=getTownSpriteFrames(p.id,dir);
   ctx.fillStyle="#302923";ctx.globalAlpha=.28;ctx.beginPath();ctx.ellipse(x,y+2,9,3,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
   ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(frames[frame],x-20,y-56+bob,40,56);ctx.restore();
   if(p.id==="mina"||p.id==="hana"){
-   if(Math.floor(animTime*2.1+p.x*.017)%9===0){ctx.fillStyle="#fff7ed";ctx.fillRect(x-4,y-38+bob,2,1);ctx.fillRect(x+3,y-38+bob,2,1);}
+   if(dir==="down"&&Math.floor(animTime*2.1+p.x*.017)%9===0){ctx.fillStyle="#fff7ed";ctx.fillRect(x-4,y-38+bob,2,1);ctx.fillRect(x+3,y-38+bob,2,1);}
   }
   ctx.font="bold 10px Tahoma";ctx.textAlign="center";ctx.lineWidth=2;ctx.strokeStyle="#44352f";ctx.strokeText(p.name,x,y-61+bob);ctx.fillStyle="#fff7df";ctx.fillText(p.name,x,y-61+bob);
   if(Math.hypot(player.x-p.x,player.y-p.y)<95){ctx.fillStyle="#ffe9a0";ctx.font="bold 13px Tahoma";ctx.fillText("✦",x,y-70+bob);}
   ctx.textAlign="start";
  });
 }
+
 
 function updateHomeUI() {
   const title = homeLevel === 0 ? "زمین خالی" : homeLevel === 1 ? "کلبه چوبی" : homeLevel === 2 ? "خانه بزرگ" : "خانه لوکس";
