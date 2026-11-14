@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Pixel Island — Town Visual Test</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#17231d;color:#f4ead5;font-family:Tahoma,Arial,sans-serif}
+header{padding:13px 15px;background:#25382d;border-bottom:2px solid #536a4b}
+h1{font-size:17px;margin:0 0 6px}p{font-size:12px;line-height:1.8;margin:0;color:#d5ddc9}
+main{max-width:1100px;margin:auto;padding:12px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+button,select{font:inherit;font-size:12px;color:#f9efd9;background:#354b3a;border:1px solid #81916b;border-radius:9px;padding:9px 12px}
+button.active{background:#b77a42;border-color:#e4b36c;color:#21180f}
+.stage{background:#101914;border:2px solid #60734f;border-radius:12px;overflow:hidden;box-shadow:0 8px 28px #0008}
+canvas{display:block;width:100%;height:auto;touch-action:pan-y}
+.legend{display:flex;gap:12px;flex-wrap:wrap;padding:10px;font-size:11px;color:#dce5d2}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:4px}
+.note{font-size:11px;color:#c5d1bd;padding:10px 2px;line-height:1.8}
+</style></head>
+<body>
+<header><h1>Pixel Island: Adventure — آزمایش بصری شهر</h1><p>این صفحه مستقل است؛ فقط پیش‌نمایش گرافیک و چیدمان شهر است و هیچ تغییری در فایل‌های بازی اصلی نمی‌دهد.</p></header>
+<main>
+<div class="toolbar">
+<button id="old" class="active">چیدمان فعلی</button><button id="new">طرح آزمایشی جدید</button>
+<button id="walk" class="active">حرکت NPCها: روشن</button>
+<select id="clock"><option value="9">صبح</option><option value="14">ظهر</option><option value="19">عصر</option><option value="22">شب</option></select>
+</div>
+<div class="stage"><canvas id="map" width="960" height="660"></canvas>
+<div class="legend"><span><i class="dot" style="background:#e56c9d"></i>مینا</span><span><i class="dot" style="background:#69b5df"></i>حنا</span><span><i class="dot" style="background:#cf7990"></i>ناهید</span><span><i class="dot" style="background:#8299ad"></i>آقای نادری</span><span><i class="dot" style="background:#8cbd78"></i>خانم رضایی</span><span><i class="dot" style="background:#667f9b"></i>سعید</span></div></div>
+<div class="note">برای مقایسه، دو حالت را عوض کن. حالت «طرح آزمایشی جدید» از ایده‌های ساختمان آجری، مسیر سنگ‌فرش، میدان مرکزی، چراغ‌ها و باغچه‌ها الهام می‌گیرد؛ اما این دمو عمداً از نقشه و کد اصلی جداست.</div>
+</main>
+<script>
+(()=>{
+const c=document.getElementById('map'),g=c.getContext('2d');
+const W=2400,H=1650,scale=c.width/W;
+let mode='old',moving=true,hour=9,last=0,t=0;
+const people=[
+{id:'mina',name:'مینا',x:450,y:650,c:'#e56c9d',home:[450,650],work:[1150,970]},
+{id:'hana',name:'حنا',x:550,y:700,c:'#69b5df',home:[550,700],work:[1300,1000]},
+{id:'nahid',name:'ناهید',x:350,y:750,c:'#cf7990',home:[350,750],work:[980,1080]},
+{id:'saeed',name:'سعید',x:1200,y:1450,c:'#667f9b',home:[1200,1450],work:[1200,1120]},
+{id:'rezaei',name:'رضایی',x:1850,y:900,c:'#8cbd78',home:[1850,900],work:[1850,940]},
+{id:'naderi',name:'نادری',x:1850,y:600,c:'#8299ad',home:[1850,600],work:[1850,650]}
+];
+const buildings=[
+[450,550,'خانه مینا و حنا','#a65343','home'],[350,950,'خانه ناهید','#b77c4c','home'],[750,600,'خانه قدیمی','#6d8b61','home'],
+[1850,500,'فروشگاه نادری','#b86d3c','shop'],[1850,850,'کارگاه رضایی','#4b8b50','shop'],[700,1300,'رستوران شب','#c63f32','shop'],[1500,1400,'اتاق نگهبانی','#637e78','guard']
+];
+function rect(x,y,w,h,col){g.fillStyle=col;g.fillRect(x,y,w,h)}
+function text(s,x,y,size=20,col='#fff0cf'){g.fillStyle=col;g.font='bold '+size+'px Tahoma';g.textAlign='center';g.fillText(s,x,y);g.textAlign='start'}
+function path(x,y,w,h,newStyle){
+ rect(x,y,w,h,newStyle?'#82735f':'#927e68');
+ for(let yy=y+8;yy<y+h;yy+=newStyle?32:38)for(let xx=x+8;xx<x+w;xx+=newStyle?38:44){
+ rect(xx,yy,newStyle?31:34,newStyle?23:26,((xx+yy)/10|0)%2?'#b9a58c':'#a8947b');
+ g.strokeStyle='#786b5b';g.lineWidth=1;g.strokeRect(xx,yy,newStyle?31:34,newStyle?23:26);
+ }}
+function house(x,y,label,roof,kind,newStyle){
+ // anchor is the front-door position, matching the town's coordinate convention
+ rect(x-96,y-5,192,119,'#514b3b');
+ rect(x-86,y-1,172,103,newStyle?'#d8c39c':'#d4c09a');
+ rect(x-80,y+5,160,87,kind==='guard'?'#aeb19b':kind==='shop'?'#dfc18e':'#e5d0a8');
+ if(newStyle){
+   // layered masonry and distinct roof tiles
+   for(let r=0;r<5;r++)for(let q=0;q<8;q++){rect(x-73+q*19+(r%2)*8,y+13+r*15,13,3,'#c2aa83')}
+   rect(x-99,y+2,198,12,'#66432f');
+   g.beginPath();g.moveTo(x-102,y+5);g.lineTo(x,y-72);g.lineTo(x+102,y+5);g.closePath();g.fillStyle='#694331';g.fill();
+   g.beginPath();g.moveTo(x-94,y+1);g.lineTo(x,y-65);g.lineTo(x+94,y+1);g.closePath();g.fillStyle=roof;g.fill();
+   for(let r=0;r<5;r++){g.strokeStyle='#e6b27b';g.lineWidth=2;g.beginPath();g.moveTo(x-75+r*13,y-42+r*11);g.lineTo(x+75-r*13,y-42+r*11);g.stroke()}
+ }else{
+   g.beginPath();g.moveTo(x-98,y+7);g.lineTo(x,y-62);g.lineTo(x+98,y+7);g.closePath();g.fillStyle=roof;g.fill();
+   g.strokeStyle='#e3a16e';g.lineWidth=2;for(let r=0;r<4;r++){g.beginPath();g.moveTo(x-65+r*20,y-37+r*11);g.lineTo(x+65-r*20,y-37+r*11);g.stroke()}
+ }
+ // door and windows
+ rect(x-17,y+42,34,54,'#75472f');rect(x-13,y+46,26,48,'#9b6841');rect(x+7,y+68,3,4,'#e7c98a');
+ for(const wx of [-57,35]){rect(x+wx-15,y+27,30,30,'#80583c');rect(x+wx-11,y+31,22,22,hour>=19?'#e6b86e':'#80b8bb');rect(x+wx-1,y+31,3,22,'#f1dfb5');rect(x+wx-11,y+41,22,3,'#f1dfb5')}
+ if(kind==='shop'){
+   rect(x-80,y+3,160,17,'#d85f4c');for(let i=0;i<8;i++)rect(x-80+i*20,y+3,10,17,i%2?'#f3e2bd':'#fff1d0');
+ }
+ rect(x-56,y-20,112,23,'#70452f');g.strokeStyle='#e8cb93';g.strokeRect(x-56,y-20,112,23);text(label,x,y-4,13);
+ rect(x-31,y+96,14,9,'#8f5239');rect(x+19,y+96,14,9,'#8f5239');
+}
+function tree(x,y,newStyle){g.fillStyle='#284c31';g.beginPath();g.ellipse(x,y+9,25,13,0,0,Math.PI*2);g.fill();rect(x-5,y-10,10,28,'#755039');for(const [dx,dy,r,col] of [[0,-25,20,'#477b43'],[-14,-16,14,'#5c914d'],[14,-15,14,'#3d7040'],[0,-40,12,newStyle?'#8aaa58':'#75a65b']]){g.fillStyle=col;g.beginPath();g.arc(x+dx,y+dy,r,0,Math.PI*2);g.fill()}g.fillStyle='#b4cb75';g.fillRect(x-7,y-42,6,3)}
+function bench(x,y){rect(x-23,y-5,46,8,'#80563a');rect(x-20,y+4,5,12,'#573c2d');rect(x+15,y+4,5,12,'#573c2d');rect(x-25,y-10,50,5,'#bd8b5b')}
+function drawBase(newStyle){
+ rect(0,0,W,H,newStyle?'#729d5d':'#6e9e5a');
+ for(let y=0;y<H;y+=40)for(let x=0;x<W;x+=40){let n=Math.abs((x/40*13+y/40*7+(x/40)*(y/40)*3)%9);if(n<3)rect(x,y,40,40,newStyle?'#78a765':'#77a863');else if(n>6)rect(x,y,40,40,'#659555');if(n===1||n===5){rect(x+8,y+11,5,2,'#9cbd78');rect(x+27,y+29,4,2,'#8bb873')}}
+}
+function drawOld(){
+ drawBase(false);path(1050,0,300,H,false);path(300,790,690,100,false);
+ g.fillStyle='#8e7b65';g.beginPath();g.arc(1200,1000,232,0,Math.PI*2);g.fill();g.fillStyle='#d4c4b1';g.beginPath();g.arc(1200,1000,202,0,Math.PI*2);g.fill();
+ g.fillStyle='#4fc3f7';g.beginPath();g.ellipse(1200,997,64,44,0,0,Math.PI*2);g.fill();g.strokeStyle='#b3e5fc';g.lineWidth=4;g.beginPath();g.ellipse(1200,996,42+Math.sin(t*2)*5,25,0,0,Math.PI*2);g.stroke();
+ [[70,170,220,170],[1450,130,300,210],[70,1080,250,300],[1510,1120,250,300],[470,120,500,110]].forEach((a,i)=>{rect(a[0],a[1],a[2],a[3],i%2?'#72985b':'#789f60');for(let k=0;k<18;k++)rect(a[0]+(k*47)%a[2],a[1]+(k*31)%a[3],7,4,'#8dbb70')});
+ buildings.forEach(b=>house(...b,false));
+ [[900,900],[1500,1100],[780,1120],[1450,760]].forEach(p=>bench(...p));
+}
+function drawNew(){
+ drawBase(true);
+ // More connected lanes and a broader paved square.
+ path(1040,0,320,H,true);path(290,780,760,118,true);path(1360,960,520,100,true);path(1020,1150,340,300,true);
+ g.fillStyle='#786a57';g.beginPath();g.arc(1200,1000,250,0,Math.PI*2);g.fill();g.fillStyle='#c8b69e';g.beginPath();g.arc(1200,1000,235,0,Math.PI*2);g.fill();g.fillStyle='#d8c9b5';g.beginPath();g.arc(1200,1000,205,0,Math.PI*2);g.fill();
+ for(let a=0;a<Math.PI*2;a+=Math.PI/8){g.strokeStyle='#b6a58f';g.lineWidth=3;g.beginPath();g.moveTo(1200+Math.cos(a)*145,1000+Math.sin(a)*145);g.lineTo(1200+Math.cos(a)*194,1000+Math.sin(a)*194);g.stroke()}
+ g.fillStyle='#554e43';g.beginPath();g.ellipse(1200,1009,91,66,0,0,Math.PI*2);g.fill();g.fillStyle='#54bfe2';g.beginPath();g.ellipse(1200,997,82,57,0,0,Math.PI*2);g.fill();g.strokeStyle='#d8f4fa';g.lineWidth=4;g.beginPath();g.ellipse(1200,995,50+Math.sin(t*2.5)*4,30,0,0,Math.PI*2);g.stroke();
+ // Decorative planted gardens, trees, lamps and benches
+ [[70,170,220,170],[1450,130,300,210],[70,1080,250,300],[1510,1120,250,300],[470,120,500,110],[1900,1100,300,240]].forEach(a=>{rect(a[0],a[1],a[2],a[3],'#668e52');for(let k=0;k<25;k++){rect(a[0]+(k*43)%a[2],a[1]+(k*29)%a[3],8,5,k%2?'#9cbe70':'#7fa95e')}});
+ buildings.forEach(b=>house(...b,true));
+ [[900,900],[1500,1100],[780,1120],[1450,760],[1640,950],[970,1230]].forEach(p=>bench(...p));
+ for(let y=250;y<1500;y+=240){rect(1000,y,8,25,'#594a39');g.fillStyle=hour>=19?'#ffe09a':'#e6d39b';g.beginPath();g.arc(1004,y-5,12,0,Math.PI*2);g.fill()}
+}
+function destination(p){if(hour>=21||hour<7)return p.home;if(p.id==='saeed')return [1200,1100];if(p.id==='mina'||p.id==='hana'||p.id==='nahid')return p.work;return p.work}
+function drawPeople(dt){
+ for(const p of people){
+  if(moving){const target=destination(p),dx=target[0]-p.x,dy=target[1]-p.y,d=Math.hypot(dx,dy);if(d>3){const step=Math.min(d,42*dt);p.x+=dx/d*step;p.y+=dy/d*step}}
+  // shadow + chunky pixel sprite
+  g.fillStyle='#283026';g.beginPath();g.ellipse(p.x,p.y+15,14,5,0,0,Math.PI*2);g.fill();
+  rect(p.x-8,p.y-1,7,13,'#343039');rect(p.x+2,p.y-1,7,13,'#343039');
+  rect(p.x-10,p.y-22,20,24,p.c);rect(p.x-8,p.y-39,16,18,'#e9b99c');rect(p.x-9,p.y-42,18,7,p.id==='saeed'||p.id==='naderi'?'#302b2b':'#51352f');
+  rect(p.x-7,p.y-32,4,3,'#392a25');rect(p.x+3,p.y-32,4,3,'#392a25');
+  text(p.name,p.x,p.y-49,12,'#fff6df');
+ }
+}
+function draw(dt){g.save();g.scale(scale,scale);drawOld();if(mode==='new')drawNew();drawPeople(dt);g.restore()}
+function frame(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;t+=dt;draw(dt);requestAnimationFrame(frame)}
+document.getElementById('old').onclick=()=>{mode='old';document.getElementById('old').classList.add('active');document.getElementById('new').classList.remove('active')};
+document.getElementById('new').onclick=()=>{mode='new';document.getElementById('new').classList.add('active');document.getElementById('old').classList.remove('active')};
+document.getElementById('walk').onclick=e=>{moving=!moving;e.target.textContent='حرکت NPCها: '+(moving?'روشن':'خاموش');e.target.classList.toggle('active',moving)};
+document.getElementById('clock').onchange=e=>{hour=+e.target.value;people.forEach(p=>{p.x=p.home[0];p.y=p.home[1]})};
+requestAnimationFrame(frame);
+})();
+</script></body></html>
