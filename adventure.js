@@ -8,7 +8,22 @@ const CAVE = { w: 1600, h: 1200 };
 const SAVE_KEY = "pixelIsland_adventure_save_v1";
 let viewW = innerWidth, viewH = innerHeight, dpr = 1;
 const camera = { x: 0, y: 0 };
-const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, maxHealth: 5, level: 1, xp: 0, skillPoints: 0, attackPower: 1, armorLevel: 0, coins: 0 };
+const player = { x: 1200, y: 900, speed: 190, size: 22, health: 5, maxHealth: 5, energy: 100, maxEnergy: 100, level: 1, xp: 0, skillPoints: 0, attackPower: 1, armorLevel: 0, coins: 0 };
+let playerDebuffs = { slow: 0, blind: 0 };
+function useEnergy(amount) {
+  if (player.energy < amount) { showToast("انرژیت کافی نیست؛ استراحت کن یا غذا بخور ⚡"); return false; }
+  player.energy = Math.max(0, player.energy - amount); updateUI(); return true;
+}
+function applyDebuff(type, duration) {
+  if (!(type in playerDebuffs)) return;
+  playerDebuffs[type] = Math.max(playerDebuffs[type], duration); updateDebuffUI();
+  showToast(type === "slow" ? "سرعتت کم شد! 🐌" : "دیدت تار شد! 🌫️");
+}
+function updateDebuffUI() {
+  const box = $("statusEffects"); if (!box) return; box.innerHTML = "";
+  if (playerDebuffs.slow > 0) box.insertAdjacentHTML("beforeend", "<span class='status-buff' title='کندی'>🐌</span>");
+  if (playerDebuffs.blind > 0) box.insertAdjacentHTML("beforeend", "<span class='status-buff' title='تاری دید'>🌫️</span>");
+}
 const bag = { wood: 0, stone: 0, iron: 0, crystal: 0, copperOre: 0, coal: 0, ironOre: 0, goldOre: 0, steelOre: 0, adamantiteOre: 0, copperIngot: 0, ironIngot: 0, goldIngot: 0, steelIngot: 0, adamantiteIngot: 0, furnaceItem: 0, potion: 0, egg: 0, milk: 0, carp:0, perch:0, trout:0, seeds: 0, wheat: 0, carrot: 0, strawberry: 0, fiber: 0, sand: 0, marble: 0, plank: 0, brick: 0, rope: 0, nail: 0, glass: 0, cloth: 0, marbleSlab: 0, ironParts: 0, templeFoundation: 0, templeColumn: 0, templeBeam: 0, templeMosaic: 0, templeBanner: 0 };
 const chestStorage={};let fishingRodOwned=false,fishingCooldown=0;const CHEST_CAPACITY=150;const CHEST_POS={x:555,y:585};
 
@@ -390,6 +405,8 @@ function load() {
     if (data.player) {
       Object.assign(player, data.player);
       player.armorLevel = Math.max(0, Math.min(2, Number(data.player.armorLevel) || 0));
+      player.maxEnergy = Math.max(1, Math.min(200, Number(data.player.maxEnergy) || 100));
+      player.energy = Math.max(0, Math.min(player.maxEnergy, Number.isFinite(Number(data.player.energy)) ? Number(data.player.energy) : player.maxEnergy));
       if (!Object.prototype.hasOwnProperty.call(data.player, "skillPoints")) player.skillPoints = Math.max(0, player.level - 1);
     }
     if (data.bag) Object.assign(bag, data.bag);
@@ -437,7 +454,7 @@ function load() {
 function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
-      player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
+      player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, energy: player.energy, maxEnergy: player.maxEnergy, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
       bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
     }));
     showToast("پیشرفتت ذخیره شد 💾");
@@ -500,6 +517,7 @@ function addXP(amount) {
 }
 function updateUI() {
   $("health").textContent = (Number.isInteger(player.health) ? player.health : player.health.toFixed(1)) + "/" + player.maxHealth;
+  if ($("energyText")) $("energyText").textContent = Math.ceil(player.energy) + "/" + player.maxEnergy;
   $("level").textContent = player.level;
   $("coins").textContent = player.coins;
   $("wood").textContent = bag.wood;
@@ -613,6 +631,10 @@ function buildMineFloor(f,opts){
   for(const pl of plan){const n=ri(pl[1],pl[2]);for(let k=0;k<n;k++){const p=spot(44),hp=pl[0]==="stone"?4:MINE_ORES[pl[0]].hp;nodes.push({id:"mine:"+f+":"+idx,x:p.x,y:p.y,type:pl[0],hp:hp,max:hp});idx++;}}
   const enemies=[],nSl=f<=2?0:(special||keyFloor)?2:Math.min(5,1+Math.floor(f/15)),slHp=3+Math.floor(f/25);
   for(let i=0;i<nSl;i++){let x=0,y=0;for(let t=0;t<30;t++){x=140+rng()*1320;y=150+rng()*880;if(Math.hypot(x-MINE_SPAWN.x,y-MINE_SPAWN.y)>280)break;}x=Math.round(x);y=Math.round(y);enemies.push({id:"mine-slime-"+i,kind:"slime",x:x,y:y,spawnX:x,spawnY:y,hp:slHp,max:slHp,alive:true,respawnTimer:0});}
+  const addMineMob=(kind,i,hp)=>{let x=0,y=0;for(let t=0;t<35;t++){x=140+rng()*1320;y=150+rng()*880;if(Math.hypot(x-MINE_SPAWN.x,y-MINE_SPAWN.y)>300)break;}x=Math.round(x);y=Math.round(y);enemies.push({id:"mine-"+kind+"-"+i,kind,x,y,spawnX:x,spawnY:y,hp,max:hp,alive:true,respawnTimer:0});};
+  if(f>50){addMineMob("worm",0,7+Math.floor(f/25));if(f>80)addMineMob("fairy",0,6+Math.floor(f/25));}
+  if(f>25&&!st.mimicAwake){const disguise=nodes.find(n=>n.type==="stone");if(disguise){disguise.isMimic=true;disguise.hp=99;disguise.max=99;}}
+  if(st.mimicAwake)addMineMob("mimic",0,20+Math.floor(f/15));
   const shelves=[],ns=5+Math.floor(rng()*4);
   for(let i=0;i<ns;i++){let x=0,y=0;for(let t=0;t<20;t++){x=150+rng()*1300;y=170+rng()*860;if(Math.hypot(x-MINE_SPAWN.x,y-MINE_SPAWN.y)>240)break;}shelves.push([Math.round(x),Math.round(y)]);}
   const glows=[],ng=3+Math.floor(rng()*2);
@@ -991,6 +1013,14 @@ function harvest(targetId=null) {
   const toolType = requiredToolForResource(nearest);
   if(selectedTool!==toolType){showToast("برای "+(nearest.type==="tree"?"قطع درخت":nearest.type==="bush"?"جمع‌آوری الیاف":nearest.type==="sand"?"برداشتن شن":"استخراج سنگ و معدن")+" باید "+TOOL_INFO[toolType].label+" انتخاب کنی");moveTarget=null;return;}
   const damage=1+(toolLevels[toolType]||0);
+  if (!useEnergy(2)) { moveTarget=null; return; }
+  if(nearest.isMimic){
+    const st=mineState[mineFloor]||(mineState[mineFloor]={b:0,c:[],k:0});
+    st.mimicAwake=true; caveHarvested.add(nearest.id);
+    const hp=20+Math.floor(mineFloor/15);
+    caveEnemies.push({id:"mine-mimic-"+mineFloor,kind:"mimic",x:nearest.x,y:nearest.y,spawnX:nearest.x,spawnY:nearest.y,hp,max:hp,alive:true,respawnTimer:0});
+    screenShake=12;spawnHitSpark(nearest.x,nearest.y);playGameSound("attack");showToast("این سنگ زنده بود! غول سنگی بیدار شد! 🪨");saveQuietly();return;
+  }
   const amount=MINE_ORES[nearest.type]?MINE_ORES[nearest.type].qty:nearest.type==="tree"?3:(nearest.type==="stone"||nearest.type==="bush"||nearest.type==="sand")?2:1;
   const rewardKey=MINE_ORES[nearest.type]?.bag||({tree:"wood",stone:"stone",iron:"iron",crystal:"crystal",bush:"fiber",sand:"sand",marble:"marble"})[nearest.type];
   if(nearest.hp-damage<=0&&!bagCanAdd(amount,rewardKey)){showToast("کوله‌پشتی پره! برای ظرفیت بیشتر برو پیش آقای نادری 🎒");return;}
@@ -1028,6 +1058,7 @@ function attack(targetId=null) {
   if (!target) { showToast("برای حمله به موجود نزدیک‌تر شو"); return; }
   if(target.hp-player.attackPower<=0&&target.kind==="templeBoss"&&!bagCanAddBatch([{key:"crystal",amount:2+templeFloor},{key:"templeMosaic",amount:1}])){showToast("برای غنیمت نگهبان معبد، اول در کوله جا باز کن 🎒");return;}
   if(target.hp-player.attackPower<=0&&target.kind==="guardian"&&!bagCanAdd(2,"crystal")){showToast("برای برداشتن کریستال نگهبان، اول در کوله جا باز کن 🎒");return;}
+  if (!useEnergy(2)) return;
   const damage = player.attackPower;
   target.hp -= damage;
   spawnDamageText(target.x, target.y - 40, "-" + damage, "#ff6b6b");
@@ -1647,6 +1678,9 @@ function update(dt) {
   if(townMode)townSchedule(dt);
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt); templeTrapCooldown=Math.max(0,templeTrapCooldown-dt);
   updateCombatEffects(dt);
+  let debuffChanged=false;
+  for(const key of ["slow","blind"]){if(playerDebuffs[key]>0){playerDebuffs[key]=Math.max(0,playerDebuffs[key]-dt);if(playerDebuffs[key]===0)debuffChanged=true;}}
+  if(debuffChanged)updateDebuffUI();
   const activeEnemies = templeMode ? templeEnemies : (caveMode || homeInterior || townMode) ? (caveMode ? caveEnemies : []) : enemies;
   for(const enemy of activeEnemies){
     if(!enemy.alive){
@@ -1655,14 +1689,21 @@ function update(dt) {
       continue;
     }
     const ex=player.x-enemy.x,ey=player.y-enemy.y,distance=Math.hypot(ex,ey)||1;
-    const chaseSpeed = templeMode ? 56+templeFloor*6+(enemy.kind==="templeBoss"?12:0) : caveMode ? 48 : 72;
-    if(distance<300&&distance>30){enemy.x+=ex/distance*chaseSpeed*dt;enemy.y+=ey/distance*chaseSpeed*dt;}
-    else if(distance<=30&&damageCooldown<=0){
+    let chaseSpeed = templeMode ? 56+templeFloor*6+(enemy.kind==="templeBoss"?12:0) : caveMode ? 48 : 72;
+    if(enemy.kind==="worm")chaseSpeed=62;
+    if(enemy.kind==="fairy"){chaseSpeed=48;enemy.y+=Math.sin(animTime*4+enemy.spawnX*.01)*13*dt;}
+    if(enemy.kind==="mimic")chaseSpeed=34;
+    const attackRange=enemy.kind==="fairy"?48:enemy.kind==="mimic"?42:30;
+    if(distance<300&&distance>attackRange){enemy.x+=ex/distance*chaseSpeed*dt;enemy.y+=ey/distance*chaseSpeed*dt;}
+    else if(distance<=attackRange&&damageCooldown<=0){
       const armorLevel=Math.max(0,Math.min(2,player.armorLevel||0));
-      const baseDamage=templeMode?(enemy.kind==="templeBoss"?1.15+templeFloor*.24:.8+templeFloor*.13):1;
+      const baseDamage=templeMode?(enemy.kind==="templeBoss"?1.15+templeFloor*.24:.8+templeFloor*.13):enemy.kind==="mimic"?2.4:enemy.kind==="fairy"?1.5:enemy.kind==="worm"?1.2:1;
       const incomingDamage=baseDamage*(armorLevel===0?1:armorLevel===1?0.7:0.4);
       player.health=Math.max(0,Math.round((player.health-incomingDamage)*10)/10);
-      damageCooldown=1;updateUI();saveQuietly();
+      damageCooldown=1;
+      if(enemy.kind==="worm")applyDebuff("slow",4);
+      if(enemy.kind==="fairy")applyDebuff("blind",3);
+      updateUI();saveQuietly();
       if(player.health<=0){if(templeMode)templeDefeatPlayer();else{player.health=player.maxHealth;player.x=caveMode?800:1200;player.y=caveMode?1015:900;showToast("انرژیت تمام شد؛ جانت بازیابی شد");updateUI();}}
       else showToast(caveMode?"نگهبان کریستالی بهت ضربه زد! 💎":"موجود بهت ضربه زد! ❤️");
     }
@@ -1698,6 +1739,7 @@ function update(dt) {
     let currentSpeed = player.speed;
     if (currentWeather === "snow") currentSpeed *= 0.8;
     else if (currentWeather === "fog") currentSpeed *= 0.9;
+    if(playerDebuffs.slow>0)currentSpeed*=0.55;
     player.x += dx / len * currentSpeed * dt;
     player.y += dy / len * currentSpeed * dt;
     // A deep river divides the forest. Only the completed ancient bridge permits crossing.
@@ -1886,7 +1928,8 @@ function onNewFarmDay(){
   p.wateredDay=-1;
   if(seasonChanged&&p.state==="growing"&&p.crop&&FARM_CROPS[p.crop].season!==season){p.state="tilled";p.crop=null;p.growth=0;p.harvests=0;p.tilledDay=-1;}
  }
- showToast("روز "+getFarmSeasonDay()+" از "+FARM_SEASONS[season]+" شروع شد! 🌅");
+ player.energy = player.maxEnergy; playerDebuffs.slow = 0; playerDebuffs.blind = 0; updateDebuffUI(); updateUI();
+ showToast("روز "+getFarmSeasonDay()+" از "+FARM_SEASONS[season]+" شروع شد! انرژی کامل شد ⚡🌅");
  updateFarmUI();
 }
 function updateLivestockUI(){
@@ -1950,6 +1993,7 @@ function farmTill(targetX=null,targetY=null){
  const existing=getFarmTileAt(x,y);
  if(existing>=0){if(farmPlots[existing].state==="empty"){selectedFarmPlot=existing;farmPlots[existing].state="tilled";farmPlots[existing].tilledDay=worldDay;farmPlots[existing].wateredDay=-1;}else{showToast("این زمین قبلاً آماده شده!");return;}}
  else{farmPlots.push({id:farmPlots.length,x,y,state:"tilled",crop:null,growth:0,wateredDay:-1,harvests:0,tilledDay:worldDay});selectedFarmPlot=farmPlots.length-1;}
+ if(!useEnergy(3))return;
  updateFarmUI();saveQuietly();showToast("زمین جدیدت شخم خورد! 🪴");
 }
 function farmPlant(){
@@ -1975,6 +2019,7 @@ function farmWater(){
   if(p.growth>=target){showToast("این محصول رسیده و آماده‌ی برداشته؛ نیازی به آبیاری نداره 🌾");return;}
  }
  if(wateringCanWater<=0){showToast("آب‌پاش خالیه؛ روی برکه بزن تا دوباره پرش کنی 🌊");return;}
+ if(!useEnergy(1))return;
  wateringCanWater--;p.wateredDay=worldDay;updateFarmUI();updateUI();saveQuietly();playGameSound("water");
  showToast((p.state==="tilled"?"زمین شخم‌خورده آبیاری شد 💧":"محصول آبیاری شد 💧")+" آب باقی‌مانده: "+wateringCanWater+"/"+WATERING_CAN_MAX);
 }
@@ -2810,6 +2855,32 @@ function drawSlime(e) {
  ctx.fillStyle="#263d2e";ctx.fillRect(x-19,y-29,38,5);ctx.fillStyle="#e3c56d";ctx.fillRect(x-19,y-29,38*(e.hp/e.max),5);
 }
 
+
+function drawMimic(e){
+ const x=e.x-camera.x,y=e.y-camera.y;
+ ctx.fillStyle="rgba(8,12,12,.35)";ctx.beginPath();ctx.ellipse(x,y+16,27,8,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#46514d";ctx.beginPath();ctx.moveTo(x-25,y+14);ctx.lineTo(x-21,y-13);ctx.lineTo(x-7,y-25);ctx.lineTo(x+15,y-22);ctx.lineTo(x+26,y-5);ctx.lineTo(x+23,y+16);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#718078";ctx.fillRect(x-13,y-15,9,5);ctx.fillRect(x+6,y-15,9,5);
+ ctx.fillStyle="#ff5148";ctx.fillRect(x-11,y-14,5,3);ctx.fillRect(x+8,y-14,5,3);
+ ctx.fillStyle="#171b1a";ctx.fillRect(x-12,y+1,24,8);ctx.fillStyle="#e8dfc9";for(let i=-9;i<=7;i+=8)ctx.fillRect(x+i,y+1,4,4);
+ ctx.fillStyle="#18211d";ctx.fillRect(x-22,y-39,44,5);ctx.fillStyle="#e15c45";ctx.fillRect(x-22,y-39,44*Math.max(0,e.hp/e.max),5);
+}
+function drawWorm(e){
+ const x=e.x-camera.x,y=e.y-camera.y,w=Math.sin(animTime*9+e.spawnX)*4;
+ ctx.fillStyle="rgba(0,0,0,.3)";ctx.beginPath();ctx.ellipse(x,y+13,18,6,0,0,Math.PI*2);ctx.fill();
+ for(let i=0;i<4;i++){ctx.fillStyle=i%2?"#542b70":"#8c4aa4";ctx.beginPath();ctx.ellipse(x-12+i*8,y+Math.sin(animTime*8+i)*2,8,10+(i===3?w:0),0,0,Math.PI*2);ctx.fill();}
+ ctx.fillStyle="#f1e8ff";ctx.fillRect(x-6,y-8,4,5);ctx.fillRect(x+3,y-8,4,5);ctx.fillStyle="#201628";ctx.fillRect(x-5,y-6,2,3);ctx.fillRect(x+4,y-6,2,3);
+}
+function drawFairy(e){
+ const x=e.x-camera.x,y=e.y-camera.y+Math.sin(animTime*3+e.spawnY)*6;
+ ctx.fillStyle="rgba(163,34,76,.22)";ctx.beginPath();ctx.arc(x,y,29,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#39243e";ctx.beginPath();ctx.ellipse(x-13,y-8,9,15,-.45,0,Math.PI*2);ctx.ellipse(x+13,y-8,9,15,.45,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#702b50";ctx.fillRect(x-7,y-3,14,18);ctx.fillStyle="#e7d9dc";ctx.beginPath();ctx.arc(x,y-12,7,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#17131c";ctx.fillRect(x-8,y-21,16,7);ctx.fillRect(x-10,y-15,4,17);ctx.fillRect(x+6,y-15,4,17);
+ ctx.fillStyle="#ff525c";ctx.fillRect(x-4,y-13,2,3);ctx.fillRect(x+2,y-13,2,3);
+ ctx.fillStyle="#211725";ctx.fillRect(x-17,y-34,34,4);ctx.fillStyle="#cf668c";ctx.fillRect(x-17,y-34,34*Math.max(0,e.hp/e.max),4);
+}
+
 function drawCrystalGuardian(e) {
   const x=e.x-camera.x,y=e.y-camera.y;
   const hover = Math.sin(animTime * 2.2) * 2.5;
@@ -3430,7 +3501,7 @@ function draw() {
     else if(MINE_ORES[r.type]) drawOreNode(r);
   }
   const visibleEnemies = caveMode ? caveEnemies : enemies;
-  for(const e of visibleEnemies){if(!e.alive)continue;if(e.x<camera.x-60||e.x>camera.x+viewW+60||e.y<camera.y-60||e.y>camera.y+viewH+60)continue;if(e.kind==="slime")drawSlime(e);else drawCrystalGuardian(e);}
+  for(const e of visibleEnemies){if(!e.alive)continue;if(e.x<camera.x-60||e.x>camera.x+viewW+60||e.y<camera.y-60||e.y>camera.y+viewH+60)continue;if(e.kind==="slime")drawSlime(e);else if(e.kind==="mimic")drawMimic(e);else if(e.kind==="worm")drawWorm(e);else if(e.kind==="fairy")drawFairy(e);else drawCrystalGuardian(e);}
   drawLootDrops();
   if(!caveMode) drawForestNpc();
   if(!caveMode){const sx=2310-camera.x,sy=900-camera.y;ctx.fillStyle="#65452c";ctx.fillRect(sx-4,sy-2,8,50);ctx.fillStyle="#b77b3e";ctx.fillRect(sx-43,sy-38,86,34);ctx.strokeStyle="#f0d49a";ctx.lineWidth=3;ctx.strokeRect(sx-43,sy-38,86,34);ctx.fillStyle="#fff0c2";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("شهر سبز",sx,sy-16);ctx.textAlign="start";}
@@ -3441,6 +3512,7 @@ function draw() {
   ctx.strokeStyle = "#d6f0a8"; ctx.lineWidth = 3;
   ctx.strokeRect(2-camera.x,2-camera.y,(caveMode?CAVE.w:WORLD.w)-4,(caveMode?CAVE.h:WORLD.h)-4);
   if(!caveMode){drawMineEntrance();}
+  if(caveMode&&playerDebuffs.blind>0){ctx.fillStyle="rgba(8,10,20,.48)";ctx.fillRect(0,0,viewW,viewH);const g=ctx.createRadialGradient(viewW/2,viewH/2,Math.min(viewW,viewH)*.08,viewW/2,viewH/2,Math.max(viewW,viewH)*.62);g.addColorStop(0,"rgba(8,10,20,0)");g.addColorStop(1,"rgba(8,10,20,.72)");ctx.fillStyle=g;ctx.fillRect(0,0,viewW,viewH);}
 }
 function loop(time) {
   const dt = Math.min((time - lastTime) / 1000 || 0, 0.04);
