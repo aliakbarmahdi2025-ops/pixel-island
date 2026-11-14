@@ -1181,8 +1181,8 @@ function canvasWorldTap(e){
   if(restaurantMode){if(Math.hypot(wx-450,wy-610)<82){leaveRestaurant();return;}if(Math.hypot(wx-450,wy-245)<82){openRestaurantUI();return;}setWorldTarget("ground",wx,wy);return;}
   if(shopInteriorMode){
     const wx=e.clientX+camera.x,wy=e.clientY+camera.y;
-    if(Math.hypot(wx-800,wy-610)<105){exitShopInterior();return;}
-    if(Math.hypot(wx-800,wy-245)<92){
+    if(Math.hypot(wx-320,wy-448)<88){exitShopInterior();return;}
+    if(Math.hypot(wx-320,wy-166)<88){
       if(shopInteriorType==="naderi"){townNpcIndex=townPeople.findIndex(p=>p.id==="naderi");openTownShop();}
       else{townNpcIndex=townPeople.findIndex(p=>p.id==="rezaei");$("carpenterPanel").hidden=false;updateCarpenterUI();syncXpPanel();}
       return;
@@ -1316,7 +1316,7 @@ $("farmTill").addEventListener("click",farmTill);$("farmPlant").addEventListener
 $("farmCrop").addEventListener("change",e=>{selectedCrop=e.target.value;updateFarmUI();});$("sellCrops").addEventListener("click",sellFarmCrops);$("sellFish").addEventListener("click",sellFish);
 $("openLivestock").addEventListener("click",openLivestockPanel);$("closeLivestock").addEventListener("click",()=>{$("livestockPanel").hidden=true;syncXpPanel();});$("buyChicken").addEventListener("click",()=>buyLivestock("chicken"));$("buyCow").addEventListener("click",()=>buyLivestock("cow"));$("feedChicken").addEventListener("click",()=>feedLivestock("chicken"));$("feedCow").addEventListener("click",()=>feedLivestock("cow"));$("collectEggs").addEventListener("click",()=>collectAnimalProduct("egg"));$("collectMilk").addEventListener("click",()=>collectAnimalProduct("milk"));$("sellAnimalProducts").addEventListener("click",sellAnimalProducts);
 $("npcBtn").addEventListener("click", openNpcDialogue);
-$("shopInteriorExitBtn").addEventListener("click",exitShopInterior);$("townBtn").addEventListener("click",()=>transitionTown(true));$("townExitBtn").addEventListener("click",()=>transitionTown(false));$("shopInteriorEnterBtn").addEventListener("click",()=>{const p=townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115&&(p.id==="naderi"||p.id==="rezaei"));if(p)enterShopInterior(p.id);});$("townNpcBtn").addEventListener("click",openTownNpc);$("townNpcTalk").addEventListener("click",nextTownDialogue);$("townNpcShop").addEventListener("click",openTownShop);$("carpenterClose").addEventListener("click",()=>{$("carpenterPanel").hidden=true;syncXpPanel();});$("carpenterBuild").addEventListener("click",carpenterBuild);$("carpenterUpgrade").addEventListener("click",carpenterUpgrade);$("furnitureBed").addEventListener("click",()=>buildFurniture("bed"));$("furnitureTable").addEventListener("click",()=>buildFurniture("table"));$("furnitureChair").addEventListener("click",()=>buildFurniture("chair"));$("backpackUpgrade").addEventListener("click",upgradeBackpack);$("townNpcClose").addEventListener("click",()=>{$("townNpcPanel").hidden=true;syncXpPanel();});$("townShopClose").addEventListener("click",()=>{$("townShopPanel").hidden=true;syncXpPanel();});$("buyBread").addEventListener("click",()=>buyTownItem("bread"));$("buySeeds").addEventListener("click",()=>buyCropSeed(selectedCrop));$("seedShopList").addEventListener("click",e=>{const b=e.target.closest("[data-seed]");if(!b)return;selectedCrop=b.dataset.seed;updateTownShop();});$("buyApple").addEventListener("click",()=>buyTownItem("apple"));
+$("shopInteriorExitBtn").addEventListener("click",exitShopInterior);$("townBtn").addEventListener("click",()=>transitionTown(true));$("townExitBtn").addEventListener("click",()=>transitionTown(false));$("shopInteriorEnterBtn").addEventListener("click",()=>{const p=townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115&&(p.id==="naderi"||p.id==="rezaei"));if(p)enterShopInterior(p.id);});$("townNpcBtn").addEventListener("click",openTownNpc);$("townNpcTalk").addEventListener("click",nextTownDialogue);$("townNpcShop").addEventListener("click",openTownShop);$("carpenterClose").addEventListener("click",()=>{$("carpenterPanel").hidden=true;syncXpPanel();});$("carpenterBuild").addEventListener("click",carpenterBuild);$("carpenterUpgrade").addEventListener("click",carpenterUpgrade);$("furnitureBed").addEventListener("click",()=>buildFurniture("bed"));$("furnitureTable").addEventListener("click",()=>buildFurniture("table"));$("furnitureChair").addEventListener("click",()=>buildFurniture("chair"));$("backpackUpgrade").addEventListener("click",upgradeBackpack);$("townNpcClose").addEventListener("click",()=>{$("townNpcPanel").hidden=true;syncXpPanel();});$("townShopClose").addEventListener("click",()=>{$("townShopPanel").hidden=true;syncXpPanel();});$("buyBread").addEventListener("click",()=>buyTownItem("bread"));$("buySeeds").addEventListener("click",()=>buyCropSeed(selectedCrop,Number($("shopQtySlider").value)||1));$("shopQtySlider").addEventListener("input",updateSeedQuantityUI);$("seedShopList").addEventListener("click",e=>{const b=e.target.closest("[data-seed]");if(!b)return;selectedCrop=b.dataset.seed;updateTownShop();});$("buyApple").addEventListener("click",()=>buyTownItem("apple"));
 $("eatBread").addEventListener("click",()=>consumeTownFood("bread"));
 $("eatApple").addEventListener("click",()=>consumeTownFood("apple"));
 $("npcNext").addEventListener("click", advanceNpcDialogue);
@@ -1800,12 +1800,12 @@ function update(dt) {
   tickWorldInteraction(dt);
   audioEnvironment(dt);
   animTime += dt;
-  const mw = (shopInteriorMode||restaurantMode) ? 900 : templeMode ? TEMPLE.w : caveMode ? CAVE.w : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
-  const mh = (shopInteriorMode||restaurantMode) ? 650 : templeMode ? TEMPLE.h : caveMode ? CAVE.h : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h;
-  player.x=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mw-((caveMode || homeInterior || townMode)?55:24),player.x));
-  player.y=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mh-((caveMode || homeInterior || townMode)?55:24),player.y));
-  camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
-  camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
+  const mw = shopInteriorMode ? 640 : (restaurantMode ? 900 : templeMode ? TEMPLE.w : caveMode ? CAVE.w : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w);
+  const mh = shopInteriorMode ? 480 : (restaurantMode ? 650 : templeMode ? TEMPLE.h : caveMode ? CAVE.h : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h);
+  player.x=Math.max((caveMode || homeInterior || townMode || shopInteriorMode)?55:24,Math.min(mw-((caveMode || homeInterior || townMode || shopInteriorMode)?55:24),player.x));
+  player.y=Math.max((caveMode || homeInterior || townMode || shopInteriorMode)?55:24,Math.min(mh-((caveMode || homeInterior || townMode || shopInteriorMode)?55:24),player.y));
+  if(shopInteriorMode){camera.x=(mw-viewW)/2;camera.y=(mh-viewH)/2;}
+  else{camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));}
   $("homeBtn").hidden=true;$("townBtn").hidden=true;$("townExitBtn").hidden=true;
   $("shopInteriorExitBtn").hidden=!shopInteriorMode;
   const bridgeDistance=Math.hypot(player.x-2525,player.y-1710),gateDistance=Math.hypot(player.x-3000,player.y-1710);
@@ -2115,13 +2115,13 @@ function farmHarvest(){
  else{p.state="tilled";p.crop=null;p.growth=0;p.harvests=0;p.tilledDay=-1;p.wateredDay=-1;}
  updateUI();updateFarmUI();saveQuietly();showToast(crop.name+" برداشت شد! 🧺");
 }
-function buyCropSeed(type){
- const crop=FARM_CROPS[type];if(!crop)return;
+function buyCropSeed(type,amount=1){
+ const crop=FARM_CROPS[type],qty=Math.max(1,Math.floor(Number(amount)||1));if(!crop)return;
  if(crop.season!==getFarmSeason()){showToast("بذر "+crop.name+" فقط در فصل "+FARM_SEASONS[crop.season]+" فروخته می‌شه.");return;}
- if(player.coins<crop.seed){showToast("برای خرید "+crop.name+" به "+crop.seed+" سکه نیاز داری.");return;}
- if(!bagCanAdd(1,type,true)){showToast("کوله‌پشتی پره! ظرفیت فعلی "+bagUsed()+" از "+backpackCaps[backpackTier]+" است.");return;}
- player.coins-=crop.seed;farmSeedStock[type]=(farmSeedStock[type]||0)+1;selectedCrop=type;
- updateUI();updateTownShop();updateFarmUI();saveQuietly();showToast("یک بسته بذر "+crop.name+" خریدی 🌱");
+ const total=crop.seed*qty;if(player.coins<total){showToast("برای خرید "+qty+" بسته بذر "+crop.name+" به "+total+" سکه نیاز داری.");return;}
+ if(!bagCanAdd(qty,type,true)){showToast("برای این تعداد بذر فضای کافی در کوله نداری؛ تعداد رو کمتر کن.");return;}
+ player.coins-=total;farmSeedStock[type]=(farmSeedStock[type]||0)+qty;selectedCrop=type;
+ updateUI();updateTownShop();updateFarmUI();saveQuietly();showToast(qty+" بسته بذر "+crop.name+" خریدی 🌱");
 }
 function sellFarmCrops(){let count=0,total=0;for(const [key,crop] of Object.entries(FARM_CROPS)){const n=bag[key]||0;count+=n;total+=n*crop.price;bag[key]=0;}if(!count){showToast("محصولی برای فروش نداری");return;}player.coins+=total;updateUI();updateTownShop();saveQuietly();showToast("آقای نادری محصولاتت رو خرید! +"+total+" سکه 🪙");}
 function sellFish(){const prices={carp:10,perch:16,trout:24};let total=0,count=0;for(const [k,v] of Object.entries(prices)){const n=bag[k]||0;count+=n;total+=n*v;bag[k]=0;}if(!count){showToast("ماهی برای فروش نداری");return;}player.coins+=total;updateUI();updateTownShop();saveQuietly();showToast(count+" ماهی فروختی؛ +"+total+" سکه 🪙");}
@@ -2172,9 +2172,22 @@ function updateTownShop(){
   return '<button type="button" data-seed="'+k+'" class="'+(selectedCrop===k?"selected":"")+'" '+(disabled?'disabled':'')+'><span>'+c.icon+" "+c.name+'</span><small>'+c.seed+" سکه • "+c.days+" روز رشد</small></button>";
  }).join("");
  $("buyBread").hidden=true;$("buyApple").hidden=true;$("eatBread").hidden=true;$("eatApple").hidden=true;
- const crop=FARM_CROPS[selectedCrop];
- $("buySeeds").disabled=!crop||crop.season!==getFarmSeason()||player.coins<crop.seed||!bagCanAdd(1,selectedCrop,true);
- $("buySeeds").textContent="🌱 خرید "+(crop?.name||"بذر")+" • "+(crop?.seed||0)+" سکه";$("buySeeds").hidden=false;
+ const crop=FARM_CROPS[selectedCrop];$("buySeeds").hidden=false;configureSeedQuantitySlider(crop);
+}
+function configureSeedQuantitySlider(crop){
+ const slider=$("shopQtySlider"),btn=$("buySeeds");if(!slider||!btn)return;
+ let lo=0,hi=crop&&crop.season===getFarmSeason()&&crop.seed>0?Math.floor(player.coins/crop.seed):0;
+ while(lo<hi){const mid=Math.ceil((lo+hi)/2);if(bagCanAdd(mid,selectedCrop,true))lo=mid;else hi=mid-1;}
+ const max=lo;slider.min="1";slider.max=String(Math.max(1,max));slider.value=String(max?Math.min(Number(slider.value)||1,max):1);slider.disabled=max<1;
+ btn.disabled=max<1;btn.textContent=max<1?"🌱 سکه یا فضای کوله کافی نیست":"🌱 خرید بذر";updateSeedQuantityUI();
+}
+function updateSeedQuantityUI(){
+ const slider=$("shopQtySlider"),btn=$("buySeeds"),crop=FARM_CROPS[selectedCrop];if(!slider||!btn)return;
+ const qty=Number(slider.value)||1,total=crop?crop.seed*qty:0;
+ $("shopQtyText").textContent=slider.disabled?"تعداد: ۰":"تعداد: "+qty+" بسته";
+ $("shopItemPrice").textContent=crop?"جمع کل: "+total+" 🪙":"";
+ btn.disabled=slider.disabled||!crop||player.coins<total||!bagCanAdd(qty,selectedCrop,true);
+ if(!slider.disabled)btn.textContent="🌱 خرید "+qty+" بسته • "+total+" سکه";
 }
 function consumeTownFood(type){if(!townStock[type]){showToast("از این خوراکی نداری!");return;}if(player.health>=player.maxHealth){showToast("جان تو کامله!");return;}townStock[type]--;player.health=Math.min(player.maxHealth,player.health+(type==="bread"?2:1));updateUI();updateTownShop();saveQuietly();showToast("خوراکی خوردی و جانت بیشتر شد ❤️");}
 function buyTownItem(type){const item={bread:{price:8,label:"نان"},seeds:{price:5,label:"بذر"},apple:{price:6,label:"سیب"}}[type];if(!item||player.coins<item.price){showToast("سکه کافی نداری! 🪙");return;}if(type==="seeds"&&!bagCanAdd(1,"carrot",true)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}player.coins-=item.price;if(type==="seeds")farmSeedStock.carrot=(farmSeedStock.carrot||0)+1;else townStock[type]++;updateUI();updateTownShop();saveQuietly();showToast(item.label+" خریدی! 🛍️");}
@@ -2320,7 +2333,7 @@ function drawFarmPlots(){
 function enterShopInterior(type){
  if(!townMode||!["naderi","rezaei"].includes(type))return;
  shopInteriorReturn={x:player.x,y:player.y};shopInteriorType=type;shopInteriorMode=true;
- player.x=800;player.y=500;moveTarget=null;camera.x=0;camera.y=0;
+ player.x=320;player.y=360;moveTarget=null;camera.x=(640-viewW)/2;camera.y=(480-viewH)/2;
  $("shopInteriorExitBtn").hidden=false;
  showToast(type==="naderi"?"وارد مغازه آقای نادری شدی 🏪":"وارد کارگاه خانم رضایی شدی 🪚");
 }
@@ -2352,59 +2365,15 @@ function openRestaurantUI(){if(!restaurantMode)return;$("restaurantPanel").hidde
 function refreshRestaurantBuyButton(){const btn=$("restaurantBuyBtn"),item=restaurantSelectedItem;btn.disabled=!item||player.coins<item.price;btn.textContent=!item?"انتخاب غذا":player.coins<item.price?"سکه کافی نیست":"سفارش غذا";}
 function buyRestaurantFood(){const item=restaurantSelectedItem;if(!item||player.coins<item.price){refreshRestaurantBuyButton();return;}player.coins-=item.price;player.energy=Math.min(player.maxEnergy,player.energy+item.energy);if(item.health)player.health=Math.min(player.maxHealth,player.health+item.health);if(item.attack)restaurantBuffs.attack=Math.max(restaurantBuffs.attack,item.attack);if(item.speed)restaurantBuffs.speed=Math.max(restaurantBuffs.speed,item.speed);playGameSound("pickup");updateUI();saveQuietly();refreshRestaurantBuyButton();$("restaurantDialogue").textContent="نوش جان! امیدوارم انرژی تازه‌ای گرفته باشی 🍽️";showToast(item.name+" سفارش داده شد!");}
 function drawShopInterior(){
- const w=900,h=650,wood=shopInteriorType==="naderi";
- ctx.fillStyle="#211811";ctx.fillRect(0,0,viewW,viewH);
- ctx.fillStyle=wood?"#ead8b5":"#76513b";ctx.fillRect(35,28,830,590);
- // warm timber floor with perspective boards
- ctx.fillStyle=wood?"#a87950":"#4a3025";ctx.fillRect(35,430,830,188);
- for(let y=438;y<618;y+=30){ctx.fillStyle=wood?"#c08b5c":"#634331";ctx.fillRect(35,y,830,2);}
- for(let x=45;x<865;x+=58){ctx.fillStyle=wood?"#8d603f":"#38251e";ctx.fillRect(x,430,2,188);}
- // wall panels and beams
- ctx.fillStyle=wood?"#f4e6c8":"#624333";ctx.fillRect(35,28,830,402);
- for(let x=45;x<865;x+=92){ctx.fillStyle=wood?"#dfc99f":"#503426";ctx.fillRect(x,30,5,398);}
- ctx.fillStyle=wood?"#76503a":"#35251d";ctx.fillRect(35,410,830,20);
- // shelves / workshop wall storage
- if(wood){
-   ctx.fillStyle="#4a2e21";ctx.fillRect(105,92,690,175);
-   for(let y of [174,256]){ctx.fillStyle="#8a5b38";ctx.fillRect(112,y,676,12);}
-   const colors=["#d96e55","#7d9b67","#6d91b5","#d6a64f","#9874a8"];
-   for(let row=0;row<2;row++)for(let i=0;i<11;i++){
-     const x=125+i*60,y=112+row*82;
-     ctx.fillStyle="#f4e6c8";ctx.fillRect(x+7,y,22,7);
-     ctx.fillStyle=colors[(i+row*2)%colors.length];ctx.fillRect(x+3,y+7,30,43);
-     ctx.fillStyle="rgba(255,255,255,.48)";ctx.fillRect(x+7,y+12,4,16);
-     ctx.fillStyle="#f7e9c5";ctx.fillRect(x+10,y+29,16,11);
-   }
-   ctx.fillStyle="#8e4b37";ctx.fillRect(300,330,300,88);ctx.fillStyle="#c08b5c";ctx.fillRect(290,320,320,18);
-   ctx.fillStyle="#455b68";ctx.fillRect(430,295,54,26);ctx.fillStyle="#b9d1d6";ctx.fillRect(442,287,30,8);
-   ctx.fillStyle="#d7ae53";ctx.beginPath();ctx.arc(535,315,9,Math.PI,0);ctx.fill();
-   ctx.fillStyle="#7a2d26";ctx.fillRect(355,462,190,72);ctx.strokeStyle="#e7c779";ctx.lineWidth=4;ctx.strokeRect(355,462,190,72);
- }else{
-   ctx.fillStyle="#34241b";ctx.fillRect(92,92,716,168);
-   // pegboard and tools
-   ctx.fillStyle="#9c7957";ctx.fillRect(112,108,676,132);
-   for(let x=130;x<780;x+=22)for(let y=124;y<232;y+=22){ctx.fillStyle="#654631";ctx.fillRect(x,y,3,3);}
-   ctx.fillStyle="#9aa7a9";ctx.fillRect(220,130,9,88);ctx.fillRect(198,130,52,12);
-   ctx.fillStyle="#7a5034";ctx.fillRect(370,124,10,96);ctx.fillStyle="#aab5b8";ctx.fillRect(350,124,50,13);
-   ctx.fillStyle="#a7b0aa";ctx.fillRect(540,132,62,8);ctx.fillStyle="#805437";ctx.fillRect(565,140,10,78);
-   ctx.fillStyle="#315d42";ctx.fillRect(650,118,105,94);ctx.strokeStyle="#c7a77b";ctx.lineWidth=5;ctx.strokeRect(650,118,105,94);
-   ctx.fillStyle="#f1e4c5";ctx.fillRect(664,135,32,3);ctx.fillRect(690,154,44,3);ctx.fillRect(668,178,54,3);
-   // logs and workbench
-   for(let row=0;row<3;row++)for(let i=0;i<4-row;i++){const x=105+i*32,y=345-row*22;ctx.fillStyle="#98633e";ctx.fillRect(x,y,54,19);ctx.fillStyle="#d1a174";ctx.fillRect(x,y,54,4);ctx.fillStyle="#5a3827";ctx.beginPath();ctx.arc(x+27,y+10,6,0,Math.PI*2);ctx.fill();}
-   ctx.fillStyle="#4b3022";ctx.fillRect(260,350,390,82);ctx.fillStyle="#a87950";ctx.fillRect(248,337,414,18);
-   ctx.fillStyle="#aeb8bb";ctx.fillRect(330,326,38,8);ctx.fillStyle="#795235";ctx.fillRect(540,318,8,22);ctx.fillStyle="#aeb8bb";ctx.fillRect(530,316,28,8);
- }
- // NPC behind the counter / workbench
- const id=shopInteriorType==="naderi"?"naderi":"rezaei";
- const sprite=getTownSpriteFrames(id)[0];
- ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(sprite,760,175,80,112);ctx.restore();
- ctx.fillStyle=wood?"#493027":"#f7e8c9";ctx.font="bold 15px Tahoma";ctx.textAlign="center";ctx.fillText(wood?"آقای نادری":"خانم رضایی",800,160);
- // doorway and instruction
- ctx.fillStyle="#38241b";ctx.fillRect(735,565,130,53);ctx.fillStyle="#d4b47a";ctx.fillRect(747,577,106,41);
- ctx.fillStyle="#fff0cf";ctx.font="bold 13px Tahoma";ctx.fillText("🚪 خروج",800,605);
- ctx.fillStyle="#fff4dc";ctx.font="bold 13px Tahoma";ctx.fillText("برای تعامل روی فروشنده بزن",viewW/2,viewH-18);
- const shade=ctx.createRadialGradient(viewW/2,viewH/2,100,viewW/2,viewH/2,Math.max(viewW,viewH)*.75);
- shade.addColorStop(0,"rgba(0,0,0,0)");shade.addColorStop(1,"rgba(0,0,0,.34)");ctx.fillStyle=shade;ctx.fillRect(0,0,viewW,viewH);
+ const wood=shopInteriorType==="naderi";ctx.fillStyle="#17100c";ctx.fillRect(0,0,viewW,viewH);ctx.save();ctx.translate(-camera.x,-camera.y);ctx.imageSmoothingEnabled=false;
+ ctx.fillStyle=wood?"#ead9b7":"#654632";ctx.fillRect(0,0,640,480);ctx.fillStyle=wood?"#f3e6c9":"#76543d";ctx.fillRect(18,18,604,300);
+ for(let x=28;x<620;x+=74){ctx.fillStyle=wood?"#ddc79f":"#513728";ctx.fillRect(x,22,5,292);}
+ ctx.fillStyle=wood?"#76513a":"#38251d";ctx.fillRect(18,314,604,148);for(let y=324;y<460;y+=25){ctx.fillStyle=wood?"#a87950":"#63432f";ctx.fillRect(20,y,600,2);}for(let x=28;x<620;x+=54){ctx.fillStyle=wood?"#875d40":"#4b3023";ctx.fillRect(x,316,2,144);}
+ if(wood){ctx.fillStyle="#4a2e21";ctx.fillRect(54,54,532,112);for(const y of [108,160]){ctx.fillStyle="#8a5b38";ctx.fillRect(60,y,520,8);}const colors=["#d96e55","#7d9b67","#6d91b5","#d6a64f","#9874a8"];for(let row=0;row<2;row++)for(let i=0;i<9;i++){const x=72+i*57,yy=65+row*52;ctx.fillStyle="#f4e6c8";ctx.fillRect(x+5,yy,19,5);ctx.fillStyle=colors[(i+row*2)%colors.length];ctx.fillRect(x+2,yy+5,25,30);ctx.fillStyle="rgba(255,255,255,.45)";ctx.fillRect(x+6,yy+9,4,12);}ctx.fillStyle="#7a2d26";ctx.fillRect(220,370,200,65);ctx.strokeStyle="#e7c779";ctx.lineWidth=3;ctx.strokeRect(226,376,188,53);}
+ else{ctx.fillStyle="#34241b";ctx.fillRect(48,48,544,118);ctx.fillStyle="#9c7957";ctx.fillRect(60,58,520,98);for(let x=72;x<570;x+=20)for(let y=68;y<150;y+=20){ctx.fillStyle="#654631";ctx.fillRect(x,y,3,3);}ctx.fillStyle="#aab5b8";ctx.fillRect(150,76,7,66);ctx.fillRect(130,76,48,10);ctx.fillStyle="#7a5034";ctx.fillRect(260,72,9,76);ctx.fillStyle="#aab5b8";ctx.fillRect(242,72,46,10);ctx.fillStyle="#315d42";ctx.fillRect(420,66,120,82);ctx.strokeStyle="#c7a77b";ctx.lineWidth=4;ctx.strokeRect(420,66,120,82);ctx.fillStyle="#f1e4c5";ctx.fillRect(434,82,34,3);ctx.fillRect(474,100,48,3);ctx.fillRect(438,124,62,3);for(let row=0;row<2;row++)for(let i=0;i<4-row;i++){const x=62+i*30,y=280-row*20;ctx.fillStyle="#98633e";ctx.fillRect(x,y,48,17);ctx.fillStyle="#d1a174";ctx.fillRect(x,y,48,4);ctx.fillStyle="#5a3827";ctx.beginPath();ctx.arc(x+24,y+9,5,0,Math.PI*2);ctx.fill();}}
+ const id=wood?"naderi":"rezaei",sprite=getTownSpriteFrames(id)[0];ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(sprite,280,112,80,112);ctx.restore();ctx.fillStyle=wood?"#493027":"#fff0d8";ctx.font="bold 14px Tahoma";ctx.textAlign="center";ctx.fillText(wood?"آقای نادری":"خانم رضایی",320,104);
+ ctx.fillStyle=wood?"#553526":"#493126";ctx.fillRect(78,210,484,58);ctx.fillStyle=wood?"#bd8a5b":"#a87950";ctx.fillRect(72,204,496,14);ctx.fillStyle="#2d211b";ctx.fillRect(250,224,140,30);ctx.fillStyle="#d7b98c";ctx.fillRect(258,229,124,19);
+ ctx.fillStyle="#38241b";ctx.fillRect(276,426,88,54);ctx.fillStyle="#d4b47a";ctx.fillRect(284,434,72,46);ctx.fillStyle="#fff0cf";ctx.font="bold 12px Tahoma";ctx.fillText("🚪 خروج",320,466);ctx.fillStyle="#fff4dc";ctx.font="bold 12px Tahoma";ctx.fillText("برای تعامل روی فروشنده بزن",320,36);ctx.textAlign="start";ctx.restore();
 }
 function drawTown(){
   const tile=40;
