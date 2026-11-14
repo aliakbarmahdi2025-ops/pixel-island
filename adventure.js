@@ -1172,7 +1172,7 @@ function canvasWorldTap(e){
   if(document.querySelector(".panel:not([hidden])"))return;
   e.preventDefault();
   const wx=e.clientX+camera.x,wy=e.clientY+camera.y;
-  if(!caveMode&&!townMode&&!templeMode&&!homeInterior){const f=furnaces.find(v=>Math.hypot(wx-v.x,wy-v.y)<42);if(f){setWorldTarget("furnace",f.x,f.y,{id:f.id});return;}if(inventorySelected==="bag:furnaceItem"){placeFurnace(wx,wy);return;}}
+  if(!caveMode&&!townMode&&!templeMode&&!homeInterior&&!shopInterior){const f=furnaces.find(v=>Math.hypot(wx-v.x,wy-v.y)<42);if(f){setWorldTarget("furnace",f.x,f.y,{id:f.id});return;}if(inventorySelected==="bag:furnaceItem"){placeFurnace(wx,wy);return;}}
   if(shopInterior){
     if(Math.abs(wx-500)<78&&wy>650){exitShopInterior();return;}
     if(Math.hypot(wx-500,wy-300)<112){setWorldTarget("shopNpc",500,410,{id:shopInterior});return;}
