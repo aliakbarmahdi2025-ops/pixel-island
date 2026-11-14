@@ -775,7 +775,7 @@ function forestCaveSaved(){const o=[];for(const id of caveHarvested){if(!(typeof
 function mineSaveData(){
   storeMineFloorLoot();
   const st={};
-  for(const f of Object.keys(mineState)){const s=mineState[f],o={b:s.b||0};if(s.l)o.l=s.l;if(s.c&&s.c.length)o.c=s.c;if(s.k)o.k=1;if(s.d&&s.d.length)o.d=normalizeMineDrops(s.d);st[f]=o;}
+  for(const f of Object.keys(mineState)){const s=mineState[f],o={b:s.b||0};if(s.l)o.l=s.l;if(s.c&&s.c.length)o.c=s.c;if(s.k)o.k=1;if(s.mimicAwake)o.mimicAwake=1;if(s.d&&s.d.length)o.d=normalizeMineDrops(s.d);st[f]=o;}
   for(const id of caveHarvested){if(typeof id==="string"&&id.indexOf("mine:")===0){const p=id.split(":"),f=Number(p[1]),i=Number(p[2]);const o=st[f]||(st[f]={b:0});(o.h||(o.h=[])).push(i);}}
   return {mf:mineMode?1:0,fl:mineFloor,mx:mineMaxFloor,st:st,key:templeKeyOwned?1:0};
 }
@@ -786,7 +786,7 @@ function loadMineData(m){
   templeKeyOwned=!!m.key;mineState={};
   if(m.st&&typeof m.st==="object")for(const k of Object.keys(m.st)){
     const f=Math.floor(Number(k));if(!(f>=1&&f<=MINE_FLOORS))continue;const s=m.st[k]||{};
-    const o=mineState[f]={b:Math.max(0,Math.floor(Number(s.b))||0),c:Array.isArray(s.c)?s.c.filter(v=>typeof v==="string").slice(0,8):[],k:s.k?1:0,d:normalizeMineDrops(s.d)};
+    const o=mineState[f]={b:Math.max(0,Math.floor(Number(s.b))||0),c:Array.isArray(s.c)?s.c.filter(v=>typeof v==="string").slice(0,8):[],k:s.k?1:0,d:normalizeMineDrops(s.d),mimicAwake:!!s.mimicAwake};
     if(Array.isArray(s.l)&&Number.isFinite(s.l[0])&&Number.isFinite(s.l[1]))o.l=[s.l[0],s.l[1]];
     if(Array.isArray(s.h))for(const i of s.h){if(Number.isFinite(i))caveHarvested.add("mine:"+f+":"+i);}
   }
@@ -1013,8 +1013,8 @@ function harvest(targetId=null) {
   const toolType = requiredToolForResource(nearest);
   if(selectedTool!==toolType){showToast("برای "+(nearest.type==="tree"?"قطع درخت":nearest.type==="bush"?"جمع‌آوری الیاف":nearest.type==="sand"?"برداشتن شن":"استخراج سنگ و معدن")+" باید "+TOOL_INFO[toolType].label+" انتخاب کنی");moveTarget=null;return;}
   const damage=1+(toolLevels[toolType]||0);
-  if (!useEnergy(2)) { moveTarget=null; return; }
   if(nearest.isMimic){
+    if (!useEnergy(2)) { moveTarget=null; return; }
     const st=mineState[mineFloor]||(mineState[mineFloor]={b:0,c:[],k:0});
     st.mimicAwake=true; caveHarvested.add(nearest.id);
     const hp=20+Math.floor(mineFloor/15);
@@ -1024,6 +1024,7 @@ function harvest(targetId=null) {
   const amount=MINE_ORES[nearest.type]?MINE_ORES[nearest.type].qty:nearest.type==="tree"?3:(nearest.type==="stone"||nearest.type==="bush"||nearest.type==="sand")?2:1;
   const rewardKey=MINE_ORES[nearest.type]?.bag||({tree:"wood",stone:"stone",iron:"iron",crystal:"crystal",bush:"fiber",sand:"sand",marble:"marble"})[nearest.type];
   if(nearest.hp-damage<=0&&!bagCanAdd(amount,rewardKey)){showToast("کوله‌پشتی پره! برای ظرفیت بیشتر برو پیش آقای نادری 🎒");return;}
+  if (!useEnergy(2)) { moveTarget=null; return; }
   nearest.hp -= damage;
   spawnGatherFx(nearest.type,nearest.x,nearest.y,nearest.hp<=0);
   if (nearest.hp <= 0) {
@@ -1991,9 +1992,10 @@ function farmTill(targetX=null,targetY=null){
  const x=Math.max(64,Math.min(WORLD.w-64,Math.round(rawX/64)*64)),y=Math.max(64,Math.min(WORLD.h-64,Math.round(rawY/64)*64));
  if(Math.abs(x-2700)<115||Math.hypot(x-playerHome.x,y-playerHome.y)<145||Math.hypot(x-samanHome.x,y-samanHome.y)<105||Math.hypot(x-LIVESTOCK_PEN.x,y-LIVESTOCK_PEN.y)<155||resources.some(r=>Math.hypot(r.x-x,r.y-y)<48)){showToast("اینجا جای مناسبی برای شخم نیست؛ از دامداری و ساختمان‌ها فاصله بگیر 🌿");return;}
  const existing=getFarmTileAt(x,y);
- if(existing>=0){if(farmPlots[existing].state==="empty"){selectedFarmPlot=existing;farmPlots[existing].state="tilled";farmPlots[existing].tilledDay=worldDay;farmPlots[existing].wateredDay=-1;}else{showToast("این زمین قبلاً آماده شده!");return;}}
- else{farmPlots.push({id:farmPlots.length,x,y,state:"tilled",crop:null,growth:0,wateredDay:-1,harvests:0,tilledDay:worldDay});selectedFarmPlot=farmPlots.length-1;}
+ if(existing>=0&&farmPlots[existing].state!=="empty"){showToast("این زمین قبلاً آماده شده!");return;}
  if(!useEnergy(3))return;
+ if(existing>=0){selectedFarmPlot=existing;farmPlots[existing].state="tilled";farmPlots[existing].tilledDay=worldDay;farmPlots[existing].wateredDay=-1;}
+ else{farmPlots.push({id:farmPlots.length,x,y,state:"tilled",crop:null,growth:0,wateredDay:-1,harvests:0,tilledDay:worldDay});selectedFarmPlot=farmPlots.length-1;}
  updateFarmUI();saveQuietly();showToast("زمین جدیدت شخم خورد! 🪴");
 }
 function farmPlant(){
