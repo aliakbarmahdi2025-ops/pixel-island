@@ -210,6 +210,40 @@ const samanHome = { x: 1900, y: 450 };
 const forestNpc = { x: 1320, y: 1010, name: "سامان", role: "پیر دانای جنگل" };
 let enemies = [], caveEnemies = [], lootDrops = [];
 let attackCooldown = 0, attackFlash = 0, damageCooldown = 0;
+// Stage 61 — combat feedback: camera shake, floating damage numbers and hit sparks.
+let screenShake = 0;
+let floatingTexts = [];
+function spawnDamageText(x, y, text, color = "#ffffff") {
+  floatingTexts.push({x, y, text, color, life:0.8, maxLife:0.8, vy:-60, vx:(Math.random()-0.5)*40});
+}
+function spawnHitSpark(x, y) {
+  if (typeof FX !== "undefined" && FX.level <= 0) return;
+  for (let i=0; i<8; i++) {
+    const angle=Math.random()*Math.PI*2;
+    const speed=50+Math.random()*150;
+    if (typeof addPart === "function") addPart({
+      k:3, x, y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed,
+      life:0.3, max:0.3, c:Math.random()<0.5 ? "#ffffff" : "#ffd700"
+    });
+  }
+}
+function updateCombatEffects(dt) {
+  if (screenShake > 0) screenShake = Math.max(0, screenShake - dt*30);
+  for (let i=floatingTexts.length-1; i>=0; i--) {
+    const ft=floatingTexts[i];
+    ft.life-=dt; ft.y+=ft.vy*dt; ft.x+=ft.vx*dt;
+    if (ft.life<=0) floatingTexts.splice(i,1);
+  }
+}
+function drawCombatTexts() {
+  for (const ft of floatingTexts) {
+    const sx=ft.x-camera.x, sy=ft.y-camera.y;
+    const alpha=Math.min(1,ft.life/(ft.maxLife*0.5));
+    ctx.save(); ctx.globalAlpha=alpha; ctx.font="bold 18px Tahoma"; ctx.textAlign="center";
+    ctx.lineWidth=3; ctx.strokeStyle="#000000"; ctx.strokeText(ft.text,sx,sy);
+    ctx.fillStyle=ft.color; ctx.fillText(ft.text,sx,sy); ctx.restore();
+  }
+}
 let move = { x: 0, y: 0 };
 let moveTarget = null, selectedTool = "hand", interactionTimer = 0;
 const TOOL_INFO = {
@@ -994,7 +1028,14 @@ function attack(targetId=null) {
   if (!target) { showToast("برای حمله به موجود نزدیک‌تر شو"); return; }
   if(target.hp-player.attackPower<=0&&target.kind==="templeBoss"&&!bagCanAddBatch([{key:"crystal",amount:2+templeFloor},{key:"templeMosaic",amount:1}])){showToast("برای غنیمت نگهبان معبد، اول در کوله جا باز کن 🎒");return;}
   if(target.hp-player.attackPower<=0&&target.kind==="guardian"&&!bagCanAdd(2,"crystal")){showToast("برای برداشتن کریستال نگهبان، اول در کوله جا باز کن 🎒");return;}
-  target.hp -= player.attackPower;
+  const damage = player.attackPower;
+  target.hp -= damage;
+  spawnDamageText(target.x, target.y - 40, "-" + damage, "#ff6b6b");
+  spawnHitSpark(target.x, target.y);
+  screenShake = 8;
+  const kbAngle = Math.atan2(target.y - player.y, target.x - player.x);
+  target.x += Math.cos(kbAngle) * 12;
+  target.y += Math.sin(kbAngle) * 12;
   if (target.hp <= 0) {
     target.alive=false;
     target.respawnTimer=target.kind==="guardian"?28:18;
@@ -1605,6 +1646,7 @@ function update(dt) {
   if (!templeMode && !caveMode && !homeInterior && !townMode) updateWeather(dt);
   if(townMode)townSchedule(dt);
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt); templeTrapCooldown=Math.max(0,templeTrapCooldown-dt);
+  updateCombatEffects(dt);
   const activeEnemies = templeMode ? templeEnemies : (caveMode || homeInterior || townMode) ? (caveMode ? caveEnemies : []) : enemies;
   for(const enemy of activeEnemies){
     if(!enemy.alive){
@@ -3405,7 +3447,14 @@ function loop(time) {
   lastTime = time;
   update(dt);
   updateParticles(dt);
+  // Clear without a transform first, then shake the complete game canvas as one layer.
+  ctx.save();
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,viewW,viewH);
+  if (screenShake > 0) ctx.translate((Math.random()-0.5)*screenShake,(Math.random()-0.5)*screenShake);
   draw();
+  drawCombatTexts();
+  ctx.restore();
   if (!$("mapPanel").hidden) drawWorldMap();
   requestAnimationFrame(loop);
 }
