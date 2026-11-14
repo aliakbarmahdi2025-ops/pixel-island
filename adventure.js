@@ -2334,7 +2334,20 @@ function forestPondForChunk(cx,cy){
   return pond;
 }
 let fieldCanvas=null,fieldCtx=null,fieldImg=null,fieldN=0;
+// Stage 57: source-inspired forest ground art. Assets are loaded once and baked into cached chunks.
+const forestGroundArt=new Image(),forestGrassArt=new Image();
+let forestGroundArtReady=false,forestGrassArtReady=false;
+function invalidateForestArtCache(){releaseGroundCaches();}
+forestGroundArt.onload=()=>{forestGroundArtReady=true;invalidateForestArtCache();};
+forestGrassArt.onload=()=>{forestGrassArtReady=true;invalidateForestArtCache();};
+forestGroundArt.src="assets/forest-ground.svg";
+forestGrassArt.src="assets/grass-blades.svg";
 function paintForestField(g,ox,oy,size,pond){
+  // The natural grass texture is world-anchored, so neighboring cached chunks join without visible seams.
+  if(forestGroundArtReady){
+    const pattern=g.createPattern(forestGroundArt,"repeat");
+    if(pattern){g.save();g.translate(-ox,-oy);g.fillStyle=pattern;g.fillRect(ox,oy,size,size);g.restore();}
+  }
   const n=size/FIELD_PX;
   if(fieldN!==n){fieldCanvas=document.createElement("canvas");fieldCanvas.width=fieldCanvas.height=n;fieldCtx=fieldCanvas.getContext("2d");fieldImg=fieldCtx.createImageData(n,n);fieldN=n;}
   const d=fieldImg.data;
@@ -2343,7 +2356,7 @@ function paintForestField(g,ox,oy,size,pond){
     // grass: two noise scales -> five greens, ordered-dithered so zones blend like hand-placed pixel art
     const gv=(.6*vnoise(wx/220+11,wy/220+7)+.4*vnoise(wx/64+3,wy/64+29)-.5)*2.3+.5;
     let gi=Math.floor(gv*5+(b-.5)*.9);gi=gi<0?0:gi>4?4:gi;
-    let c=GRASS_RGB[gi];
+    let c=GRASS_RGB[gi],isPondPixel=false;
     // organic dirt patches
     if(vnoise(wx/140+53,wy/140+97)+(b-.5)*.09>.7){
       let di=Math.floor(vnoise(wx/22+5,wy/22+9)*3+(b-.5)*.8);di=di<0?0:di>2?2:di;c=DIRT_RGB[di];
@@ -2355,10 +2368,10 @@ function paintForestField(g,ox,oy,size,pond){
       if(dd<1.45){
         dd*=1+.4*(vnoise(wx/20+pond.seed,wy/20+pond.seed*.7)-.5);
         const q=dd+(b-.5)*.07;
-        if(q<.5)c=WATER_RGB[0];else if(q<.78)c=WATER_RGB[1];else if(q<.94)c=WATER_RGB[2];else if(q<1.02)c=WATER_RGB[3];else if(q<1.14)c=WATER_RGB[4];
+        if(q<.5){c=WATER_RGB[0];isPondPixel=true;}else if(q<.78){c=WATER_RGB[1];isPondPixel=true;}else if(q<.94){c=WATER_RGB[2];isPondPixel=true;}else if(q<1.02){c=WATER_RGB[3];isPondPixel=true;}else if(q<1.14){c=WATER_RGB[4];isPondPixel=true;}
       }
     }
-    const o=(ay*n+ax)*4;d[o]=c[0];d[o+1]=c[1];d[o+2]=c[2];d[o+3]=255;
+    const o=(ay*n+ax)*4;d[o]=c[0];d[o+1]=c[1];d[o+2]=c[2];d[o+3]=isPondPixel?255:(forestGroundArtReady?188:255);
   }
   fieldCtx.putImageData(fieldImg,0,0);
   g.save();g.imageSmoothingEnabled=false;g.drawImage(fieldCanvas,0,0,size,size);g.restore();
@@ -2387,6 +2400,25 @@ function paintPondDecor(ctx,pond,ox,oy){
     ctx.fillStyle="#5d6862";ctx.fillRect(sx-4,sy-3,9,6);ctx.fillStyle="#8c978c";ctx.fillRect(sx-3,sy-3,5,2);
   }
 }
+function paintForestGrassTufts(g,cx,cy,size,near){
+  if(!forestGrassArtReady)return;
+  const count=17;
+  g.save();g.imageSmoothingEnabled=false;
+  for(let k=0;k<count;k++){
+    const h=terrainHash(cx*71+k*17+911,cy*83+k*29+353);
+    const h2=terrainHash(cx*97+k*31+127,cy*53+k*19+619);
+    const wx=cx*size+22+h* (size-44),wy=cy*size+22+h2*(size-44);
+    if(near(wx,wy,48))continue;
+    // Keep the clumps away from chunk edges so no sprite is clipped by the cache boundary.
+    const sw=76+Math.floor(terrainHash(k+cx*13,cy+29)*58),sx=Math.floor(terrainHash(k+cx*7,cy+41)*(512-sw));
+    const dw=30+terrainHash(k+cx*23,cy+61)*32,dh=24+terrainHash(k+cx*37,cy+73)*24;
+    const dx=Math.max(5,Math.min(size-dw-5,wx-cx*size-dw*.5));
+    const dy=Math.max(5,Math.min(size-dh-5,wy-cy*size-dh*.65));
+    g.globalAlpha=.72+terrainHash(k+cx*5,cy+89)*.25;
+    g.drawImage(forestGrassArt,sx,0,sw,292,Math.round(dx),Math.round(dy),Math.round(dw),Math.round(dh));
+  }
+  g.restore();
+}
 function paintForestChunk(g,cx,cy,size){
   const t=WORLD.tile,C=GROUND_CHUNK_TILES,x0=cx*C,y0=cy*C,ox=cx*size,oy=cy*size;
   const pond=forestPondForChunk(cx,cy);
@@ -2398,6 +2430,8 @@ function paintForestChunk(g,cx,cy,size){
   if(pond)paintPondDecor(g,pond,ox,oy);
   const cells=size/96;
   for(let j=0;j<cells;j++)for(let i=0;i<cells;i++){if(near(ox+i*96+48,oy+j*96+48,40))continue;paintForestDetailCell(g,ox/96+i,oy/96+j,i*96,j*96);}
+  // Layer varied grass silhouettes over the ground, below trees, rocks, crops and the player.
+  paintForestGrassTufts(g,cx,cy,size,near);
 }
 // Per-frame water life (only for ponds on screen): drifting ripple ring + a few glints. A handful of tiny draws.
 function drawForestWaterFx(){
