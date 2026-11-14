@@ -50,10 +50,15 @@ let activeMineLuck = "normal", activeMineLuckDay = 0;
 
 let townMode = false, townReturn = {x:2240,y:900}, townNpcIndex = 0;
 let shopInteriorMode=false, shopInteriorType=null, shopInteriorReturn={x:800,y:875};
+let restaurantMode=false,restaurantReturn={x:1200,y:1600},restaurantSelectedItem=null,restaurantBuffs={attack:0,speed:0};
+let restaurantWaiter={x:245,y:430,targetX:245,targetY:430,timer:1};
 let backpackTier = 0, furnitureOwned = {bed:false,table:false,chair:false};
 const backpackCaps = [15,20,30];
 const townFriendship = {mina:0,hana:0,nahid:0,saeed:0,rezaei:0,naderi:0};
 const townStock = {bread:0,seeds:0,apple:0};
+const RESTAURANT_MENU=[
+{id:"nimehru",name:"نیمرو",icon:"🍳",price:15,desc:"انرژی +۱۵",energy:15},{id:"omelet",name:"املت",icon:"🥘",price:25,desc:"انرژی +۳۰",energy:30},{id:"fries",name:"سیب‌زمینی سرخ‌شده",icon:"🍟",price:20,desc:"انرژی +۲۰",energy:20},{id:"pizza",name:"پیتزا",icon:"🍕",price:60,desc:"انرژی +۵۰، جان +۱",energy:50,health:1},{id:"kebab",name:"کباب کوبیده",icon:"🍢",price:80,desc:"انرژی +۶۰، قدرت حمله +۱ (۵ دقیقه)",energy:60,attack:300},{id:"ghormeh",name:"قورمه سبزی",icon:"🥣",price:70,desc:"انرژی +۵۰، جان +۲",energy:50,health:2},{id:"salad_shirazi",name:"سالاد شیرازی",icon:"🥗",price:30,desc:"انرژی +۲۰، سرعت +۱۰٪",energy:20,speed:120},{id:"soup",name:"سوپ جو",icon:"🍲",price:25,desc:"انرژی +۲۵، جان +۱",energy:25,health:1},{id:"cake",name:"کیک شکلاتی",icon:"🍰",price:40,desc:"انرژی +۴۰",energy:40},{id:"tea",name:"چای",icon:"☕",price:10,desc:"انرژی +۱۰",energy:10}
+];
 const TOWN = {w:2400,h:1800};
 const townPeople = [
 {id:"mina",name:"مینا",role:"همسایه مهربان",x:450,y:650,color:"#d94f91",hair:"#693b39"},
@@ -1081,7 +1086,7 @@ function attack(targetId=null) {
   if(target.hp-player.attackPower<=0&&target.kind==="templeBoss"&&!bagCanAddBatch([{key:"crystal",amount:2+templeFloor},{key:"templeMosaic",amount:1}])){showToast("برای غنیمت نگهبان معبد، اول در کوله جا باز کن 🎒");return;}
   if(target.hp-player.attackPower<=0&&target.kind==="guardian"&&!bagCanAdd(2,"crystal")){showToast("برای برداشتن کریستال نگهبان، اول در کوله جا باز کن 🎒");return;}
   if (!useEnergy(2)) return;
-  const damage = player.attackPower;
+  const damage = player.attackPower+(restaurantBuffs.attack>0?1:0);
   target.hp -= damage;
   spawnDamageText(target.x, target.y - 40, "-" + damage, "#ff6b6b");
   spawnHitSpark(target.x, target.y);
@@ -1173,6 +1178,7 @@ function canvasWorldTap(e){
   e.preventDefault();
   const wx=e.clientX+camera.x,wy=e.clientY+camera.y;
   if(!caveMode&&!townMode&&!templeMode&&!homeInterior){const f=furnaces.find(v=>Math.hypot(wx-v.x,wy-v.y)<42);if(f){setWorldTarget("furnace",f.x,f.y,{id:f.id});return;}if(inventorySelected==="bag:furnaceItem"){placeFurnace(wx,wy);return;}}
+  if(restaurantMode){if(Math.hypot(wx-450,wy-610)<82){leaveRestaurant();return;}if(Math.hypot(wx-450,wy-245)<82){openRestaurantUI();return;}setWorldTarget("ground",wx,wy);return;}
   if(shopInteriorMode){
     const wx=e.clientX+camera.x,wy=e.clientY+camera.y;
     if(Math.hypot(wx-800,wy-610)<105){exitShopInterior();return;}
@@ -1192,6 +1198,7 @@ function canvasWorldTap(e){
     if(inside(L.fire,8)){toggleHouseHeater();return;}
     return;
   }
+  if(townMode&&Math.hypot(wx-700,wy-1360)<82){const hour=worldClock/60;if(hour>=18&&hour<24)enterRestaurant();else showToast("رستوران صالح از ساعت ۱۸ تا ۲۴ باز است ⏰");return;}
   if(townMode&&Math.hypot(wx-1200,wy-1650)<90){transitionTown(false);return;}
   // Direct door taps enter the matching walk-in shop/workshop interior.
   if(townMode&&Math.hypot(wx-1850,wy-570)<72){enterShopInterior("naderi");return;}
@@ -1453,7 +1460,7 @@ function drawWorldMap(){
 }
 
 function syncXpPanel() {
-  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel", "livestockPanel", "bridgePanel", "templePanel", "mapPanel", "elevatorPanel"];
+  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel", "livestockPanel", "bridgePanel", "templePanel", "mapPanel", "elevatorPanel", "restaurantPanel"];
   const hud = $("hud");
   const xp = $("xpPanel");
   xp.hidden = panelIds.some(id => !$(id).hidden);
@@ -1711,10 +1718,12 @@ function buyUpgrade(type) {
 function update(dt) {
   fishingCooldown=Math.max(0,fishingCooldown-dt);
   updateFurnaces(dt);
+  restaurantBuffs.attack=Math.max(0,restaurantBuffs.attack-dt);restaurantBuffs.speed=Math.max(0,restaurantBuffs.speed-dt);
+  if(restaurantMode){restaurantWaiter.timer-=dt;if(restaurantWaiter.timer<=0){const stops=[[245,430],[655,430],[450,350],[330,520],[570,520]],next=stops[Math.floor(Math.random()*stops.length)];restaurantWaiter.targetX=next[0];restaurantWaiter.targetY=next[1];restaurantWaiter.timer=2.8+Math.random()*1.5;}const dx=restaurantWaiter.targetX-restaurantWaiter.x,dy=restaurantWaiter.targetY-restaurantWaiter.y,d=Math.hypot(dx,dy);if(d>3){restaurantWaiter.x+=dx/d*58*dt;restaurantWaiter.y+=dy/d*58*dt;}}
   worldClock += dt * 8;
   if(worldClock >= 1440){worldClock -= 1440;worldDay++;activateDailyForecast();onNewFarmDay();saveQuietly();}
   if (!templeMode && !caveMode && !homeInterior && !townMode) updateWeather(dt);
-  if(townMode&&!shopInteriorMode)townSchedule(dt);
+  if(townMode&&!shopInteriorMode&&!restaurantMode)townSchedule(dt);
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt); templeTrapCooldown=Math.max(0,templeTrapCooldown-dt);
   updateCombatEffects(dt);
   let debuffChanged=false;
@@ -1776,6 +1785,7 @@ function update(dt) {
     if (Math.abs(dx) > Math.abs(dy)) playerFacing = dx > 0 ? "right" : "left";
     else playerFacing = dy > 0 ? "down" : "up";
     let currentSpeed = player.speed;
+    if(restaurantBuffs.speed>0)currentSpeed*=1.10;
     if (currentWeather === "snow") currentSpeed *= 0.8;
     else if (currentWeather === "fog") currentSpeed *= 0.9;
     if(playerDebuffs.slow>0)currentSpeed*=0.55;
@@ -1790,8 +1800,8 @@ function update(dt) {
   tickWorldInteraction(dt);
   audioEnvironment(dt);
   animTime += dt;
-  const mw = shopInteriorMode ? 900 : templeMode ? TEMPLE.w : caveMode ? CAVE.w : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
-  const mh = shopInteriorMode ? 650 : templeMode ? TEMPLE.h : caveMode ? CAVE.h : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h;
+  const mw = (shopInteriorMode||restaurantMode) ? 900 : templeMode ? TEMPLE.w : caveMode ? CAVE.w : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
+  const mh = (shopInteriorMode||restaurantMode) ? 650 : templeMode ? TEMPLE.h : caveMode ? CAVE.h : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h;
   player.x=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mw-((caveMode || homeInterior || townMode)?55:24),player.x));
   player.y=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mh-((caveMode || homeInterior || townMode)?55:24),player.y));
   camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
@@ -1804,7 +1814,7 @@ function update(dt) {
   $("townClock").hidden=templeMode||homeInterior||caveMode;
   {const hh=Math.floor(worldClock/60),mm=Math.floor(worldClock%60),night=hh>=20||hh<6;$("townClock").textContent=(night?"🌙 ":"☀️ ")+String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0")+" • روز "+worldDay;}
   $("farmBtn").hidden=true;
-  const nearTownPerson=townMode&&!shopInteriorMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
+  const nearTownPerson=townMode&&!shopInteriorMode&&!restaurantMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
   $("townNpcBtn").hidden=true;
   $("townNpcBtn").textContent=nearTownPerson?"💬 صحبت با "+nearTownPerson.name:"💬 صحبت با اهالی";
   $("shopInteriorEnterBtn").hidden=!(nearTownPerson&&(nearTownPerson.id==="naderi"||nearTownPerson.id==="rezaei"))||shopInteriorMode;
@@ -2115,8 +2125,8 @@ function buyCropSeed(type){
 }
 function sellFarmCrops(){let count=0,total=0;for(const [key,crop] of Object.entries(FARM_CROPS)){const n=bag[key]||0;count+=n;total+=n*crop.price;bag[key]=0;}if(!count){showToast("محصولی برای فروش نداری");return;}player.coins+=total;updateUI();updateTownShop();saveQuietly();showToast("آقای نادری محصولاتت رو خرید! +"+total+" سکه 🪙");}
 function sellFish(){const prices={carp:10,perch:16,trout:24};let total=0,count=0;for(const [k,v] of Object.entries(prices)){const n=bag[k]||0;count+=n;total+=n*v;bag[k]=0;}if(!count){showToast("ماهی برای فروش نداری");return;}player.coins+=total;updateUI();updateTownShop();saveQuietly();showToast(count+" ماهی فروختی؛ +"+total+" سکه 🪙");}
-function drawShopPortrait(id){
- const canvas=$("shopPortraitCanvas");
+function drawShopPortrait(id,targetId="shopPortraitCanvas"){
+ const canvas=$(targetId);
  if(!canvas)return;
  const ctx=canvas.getContext("2d");
  if(!ctx)return;
@@ -2137,6 +2147,10 @@ function drawShopPortrait(id){
   px(35,59,12,5,"#493027");px(53,59,12,5,"#493027");px(45,58,10,5,"#493027");
   px(43,67,14,2,"#985b55");px(42,70,16,2,"#493027");px(30,55,4,2,"#e8b69a");px(66,55,4,2,"#d49a7d");
   px(33,78,14,7,"#e6ece7");px(53,78,14,7,"#e6ece7");
+ }else if(id==="saleh"){
+  px(8,78,84,22,"#f4f2e9");px(20,73,60,9,"#ffffff");px(39,65,22,16,"#b97e5d");px(24,31,52,38,"#d8a17f");px(19,42,9,20,"#c68e70");px(72,42,9,20,"#c68e70");
+  px(20,18,60,24,"#3b2923");px(15,28,12,22,"#3b2923");px(73,27,12,22,"#3b2923");for(let i=0;i<6;i++){px(19+i*10,13,9,10,"#493128");px(22+i*10,10,5,5,"#654638");}
+  px(20,5,60,13,"#ffffff");px(27,0,46,9,"#f6f3e9");px(38,-4,24,8,"#ffffff");px(31,43,7,5,"#30251f");px(61,43,7,5,"#30251f");px(45,48,9,10,"#bd8060");px(41,61,18,3,"#8f4f4c");px(38,60,3,2,"#8f4f4c");px(59,60,3,2,"#8f4f4c");px(42,78,16,8,"#d8d8d2");px(47,77,6,8,"#d6b76d");
  }else{
   const sprite=makePixelTownSprite(id,0);
   if(sprite)ctx.drawImage(sprite,15,5,50,50,0,0,100,100);
@@ -2316,6 +2330,27 @@ function exitShopInterior(){
  player.x=shopInteriorReturn.x;player.y=shopInteriorReturn.y;
  $("shopInteriorExitBtn").hidden=true;saveQuietly();showToast("به شهر برگشتی 🏘️");
 }
+function enterRestaurant(){if(!townMode||restaurantMode)return;restaurantReturn={x:player.x,y:player.y};restaurantMode=true;player.x=450;player.y=520;moveTarget=null;camera.x=0;camera.y=0;restaurantWaiter={x:245,y:430,targetX:245,targetY:430,timer:1};$("restaurantExitBtn").hidden=false;playGameSound("pickup");showToast("به رستوران شب صالح خوش اومدی 🌙");}
+function leaveRestaurant(){if(!restaurantMode)return;restaurantMode=false;moveTarget=null;player.x=restaurantReturn.x;player.y=restaurantReturn.y+60;$("restaurantExitBtn").hidden=true;$("restaurantPanel").hidden=true;syncXpPanel();saveQuietly();showToast("به شهر سبز برگشتی 🏘️");}
+function drawRestaurantInterior(){
+ ctx.fillStyle="#17100d";ctx.fillRect(0,0,viewW,viewH);ctx.save();ctx.translate(-camera.x,-camera.y);ctx.fillStyle="#6d4935";ctx.fillRect(0,0,900,650);ctx.fillStyle="#e9c99a";ctx.fillRect(24,22,852,405);
+ for(let x=35;x<870;x+=76){ctx.fillStyle="#d7b786";ctx.fillRect(x,28,5,392);}ctx.fillStyle="#523528";ctx.fillRect(24,414,852,14);ctx.fillStyle="#936448";ctx.fillRect(24,428,852,198);
+ for(let y=438;y<625;y+=30){ctx.fillStyle="#744b35";ctx.fillRect(24,y,852,2);}for(let x=30;x<875;x+=58){ctx.fillStyle="#80563c";ctx.fillRect(x,428,2,198);}
+ ctx.fillStyle="#513628";ctx.fillRect(75,75,145,112);ctx.fillStyle="#243c4c";ctx.fillRect(83,83,129,96);ctx.fillStyle="#e5b96e";ctx.fillRect(105,105,8,8);ctx.fillRect(157,124,5,5);ctx.fillRect(188,94,4,4);
+ ctx.fillStyle="#5b3827";ctx.fillRect(675,75,145,112);ctx.fillStyle="#243c4c";ctx.fillRect(683,83,129,96);ctx.fillStyle="#e5b96e";ctx.fillRect(711,111,7,7);ctx.fillRect(760,95,5,5);ctx.fillRect(791,143,4,4);
+ [[230,360],[670,360],[450,475]].forEach(([x,y])=>{ctx.fillStyle="#503123";ctx.fillRect(x-54,y-12,22,48);ctx.fillRect(x+32,y-12,22,48);ctx.fillStyle="#8a5636";ctx.beginPath();ctx.ellipse(x,y,55,35,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#d6bd91";ctx.beginPath();ctx.ellipse(x,y-5,52,31,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#f5e7c7";ctx.fillRect(x-25,y-9,20,14);ctx.fillRect(x+13,y-9,20,14);ctx.fillStyle="#d58b43";ctx.fillRect(x-3,y-22,6,15);ctx.fillStyle="#ffe5a0";ctx.fillRect(x-2,y-25,4,4);});
+ ctx.fillStyle="#553526";ctx.fillRect(300,190,300,86);ctx.fillStyle="#a9774e";ctx.fillRect(288,180,324,18);ctx.fillStyle="#d7b98c";ctx.fillRect(315,202,270,62);ctx.fillStyle="#73452e";ctx.fillRect(330,213,240,42);ctx.fillStyle="#f1d9ad";ctx.font="bold 18px Tahoma";ctx.textAlign="center";ctx.fillText("آشپزخانه صالح",450,238);
+ ctx.fillStyle="#29201b";ctx.beginPath();ctx.ellipse(450,171,26,7,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#f4f1e8";ctx.fillRect(426,126,48,48);ctx.fillStyle="#d7d4ca";ctx.fillRect(433,135,34,30);ctx.fillStyle="#c88f70";ctx.fillRect(434,95,32,31);ctx.fillStyle="#3c2a24";ctx.fillRect(432,88,36,13);ctx.fillStyle="#fff";ctx.fillRect(431,76,38,14);ctx.fillRect(437,68,26,12);ctx.fillRect(444,64,13,9);ctx.fillStyle="#3a2a24";ctx.fillRect(440,107,4,4);ctx.fillRect(456,107,4,4);ctx.fillStyle="#9b554d";ctx.fillRect(444,118,12,2);
+ ctx.fillStyle="#35251d";ctx.fillRect(55,225,145,112);ctx.strokeStyle="#d8b978";ctx.lineWidth=4;ctx.strokeRect(55,225,145,112);ctx.fillStyle="#f2dfb9";ctx.font="bold 13px Tahoma";ctx.fillText("منوی امشب",127,250);ctx.font="11px Tahoma";ctx.fillText("غذای گرم • چای",127,273);ctx.fillText("آشپزی تازه",127,293);
+ ctx.fillStyle="#3c3026";ctx.fillRect(680,230,7,44);ctx.fillRect(732,230,7,44);ctx.strokeStyle="#c4a36b";ctx.lineWidth=3;ctx.beginPath();ctx.arc(683,279,14,0,Math.PI);ctx.arc(735,279,14,0,Math.PI);ctx.stroke();
+ const wx=restaurantWaiter.x,wy=restaurantWaiter.y;ctx.fillStyle="rgba(25,18,14,.25)";ctx.beginPath();ctx.ellipse(wx,wy+7,15,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#f3f0e8";ctx.fillRect(wx-11,wy-31,22,31);ctx.fillStyle="#242b35";ctx.fillRect(wx-10,wy-3,9,13);ctx.fillRect(wx+2,wy-3,9,13);ctx.fillStyle="#c68f70";ctx.fillRect(wx-9,wy-49,18,18);ctx.fillStyle="#30251f";ctx.fillRect(wx-10,wy-51,20,7);ctx.fillStyle="#222";ctx.fillRect(wx-5,wy-41,3,3);ctx.fillRect(wx+3,wy-41,3,3);ctx.fillStyle="#d6b66c";ctx.fillRect(wx-3,wy-30,6,7);ctx.fillStyle="#fff1cc";ctx.font="bold 11px Tahoma";ctx.fillText("گارسون",wx,wy-57);
+ ctx.fillStyle="#42291f";ctx.fillRect(405,575,90,55);ctx.fillStyle="#9b6841";ctx.fillRect(411,580,78,48);ctx.fillStyle="#f2d08a";ctx.beginPath();ctx.arc(478,604,4,0,Math.PI*2);ctx.fill();ctx.fillStyle="#fff0cf";ctx.font="bold 13px Tahoma";ctx.fillText("خروج",450,619);ctx.fillStyle="#fff1cf";ctx.font="bold 12px Tahoma";ctx.fillText("برای سفارش روی صالح بزن",450,34);ctx.textAlign="start";ctx.restore();
+}
+function openRestaurantUI(){if(!restaurantMode)return;$("restaurantPanel").hidden=false;drawShopPortrait("saleh","restaurantPortrait");restaurantSelectedItem=null;$("restaurantDialogue").textContent="سلام! من صالحم. غذای تازه و گرم چی میل داری؟";$("restaurantItemList").innerHTML="";
+ RESTAURANT_MENU.forEach(item=>{const div=document.createElement("button");div.type="button";div.className="restaurant-item";div.innerHTML='<span class="restaurant-item-icon">'+item.icon+'</span><span class="restaurant-item-name">'+item.name+'</span><b>'+item.price+' 🪙</b>';div.addEventListener("click",()=>{restaurantSelectedItem=item;document.querySelectorAll("#restaurantItemList .restaurant-item").forEach(el=>el.classList.toggle("selected",el===div));$("restaurantItemDetails").innerHTML="<b>"+item.icon+" "+item.name+"</b><span>"+item.desc+"</span>";$("restaurantItemPrice").textContent="قیمت: "+item.price+" 🪙";refreshRestaurantBuyButton();});$("restaurantItemList").appendChild(div);});
+ $("restaurantItemDetails").innerHTML='<p class="empty-detail">برای دیدن جزئیات، یک غذا انتخاب کن.</p>';$("restaurantItemPrice").textContent="";refreshRestaurantBuyButton();syncXpPanel();}
+function refreshRestaurantBuyButton(){const btn=$("restaurantBuyBtn"),item=restaurantSelectedItem;btn.disabled=!item||player.coins<item.price;btn.textContent=!item?"انتخاب غذا":player.coins<item.price?"سکه کافی نیست":"سفارش غذا";}
+function buyRestaurantFood(){const item=restaurantSelectedItem;if(!item||player.coins<item.price){refreshRestaurantBuyButton();return;}player.coins-=item.price;player.energy=Math.min(player.maxEnergy,player.energy+item.energy);if(item.health)player.health=Math.min(player.maxHealth,player.health+item.health);if(item.attack)restaurantBuffs.attack=Math.max(restaurantBuffs.attack,item.attack);if(item.speed)restaurantBuffs.speed=Math.max(restaurantBuffs.speed,item.speed);playGameSound("pickup");updateUI();saveQuietly();refreshRestaurantBuyButton();$("restaurantDialogue").textContent="نوش جان! امیدوارم انرژی تازه‌ای گرفته باشی 🍽️";showToast(item.name+" سفارش داده شد!");}
 function drawShopInterior(){
  const w=900,h=650,wood=shopInteriorType==="naderi";
  ctx.fillStyle="#211811";ctx.fillRect(0,0,viewW,viewH);
@@ -2442,6 +2477,8 @@ function drawTown(){
   drawTownBuilding(750,600,"خانه قدیمی","#6d8b61","home");
   drawTownBuilding(1850,500,"فروشگاه نادری","#b86d3c","shop");
   drawTownBuilding(1850,850,"کارگاه رضایی","#4b8b50","shop");
+  drawTownBuilding(700,1300,"رستوران شب","#c63f32","shop");
+  const rX=700-camera.x,rY=1300-camera.y;ctx.fillStyle="#ffca55";ctx.beginPath();ctx.arc(rX,rY-86,14,0,Math.PI*2);ctx.fill();ctx.fillStyle="#5b261d";ctx.font="bold 9px Tahoma";ctx.textAlign="center";ctx.fillText("۱۸-۲۴",rX,rY-83);ctx.textAlign="start";
   drawTownBuilding(1500,1400,"اتاق نگهبانی","#637e78","guard");
 
   // Benches, flower pots, trees and lamps are kept in world coordinates.
@@ -3917,6 +3954,7 @@ function drawChest(){const x=CHEST_POS.x-camera.x,y=CHEST_POS.y-camera.y;if(x<-5
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
   if (templeMode||townMode) releaseGroundCaches();
+  if(restaurantMode){drawRestaurantInterior();drawPlayer();return;}
   if(shopInteriorMode){drawShopInterior();drawPlayer();return;}
   if (templeMode) { drawTempleGround(); for(const e of templeEnemies){if(e.alive)drawTempleEnemy(e);} drawPlayer(); return; }
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
@@ -3964,6 +4002,9 @@ function loop(time) {
   if (!$("mapPanel").hidden) drawWorldMap();
   requestAnimationFrame(loop);
 }
+$("restaurantBuyBtn").addEventListener("click",buyRestaurantFood);
+$("closeRestaurant").addEventListener("click",()=>{$("restaurantPanel").hidden=true;syncXpPanel();});
+$("restaurantExitBtn").addEventListener("click",leaveRestaurant);
 if(mineMode)buildMineFloor(mineFloor,{arrive:"keep"});
 updateUI();
 updateHotbar();
