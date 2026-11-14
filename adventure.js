@@ -1947,7 +1947,7 @@ function openTownShop(){
   const hour=worldClock/60;
   if(hour<8||hour>=20){const h=Math.floor(hour),m=Math.floor((hour-h)*60);showToast("مغازه نادری از ۸ صبح تا ۸ شب بازه؛ ساعت بازی "+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+" است. 🌙");return;}
  }
- shopReturn={x:player.x,y:player.y};shopInterior=p.id;townMode=false;player.x=500;player.y=575;moveTarget=null;playerMoving=false;
+ shopReturn={x:player.x,y:player.y};shopInterior=p.id;townMode=false;player.x=500;player.y=480;moveTarget=null;playerMoving=false;
  $("townNpcPanel").hidden=true;$("townShopPanel").hidden=true;$("carpenterPanel").hidden=true;
  showToast(p.id==="naderi"?"وارد فروشگاه آقای نادری شدی 🛍️":"وارد کارگاه خانم رضایی شدی 🪚");
  saveQuietly();syncXpPanel();
@@ -3874,7 +3874,7 @@ function drawShopInterior(){
 }
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
-  if (templeMode||townMode) releaseGroundCaches();
+  if (templeMode||townMode||shopInterior) releaseGroundCaches();
   if (templeMode) { drawTempleGround(); for(const e of templeEnemies){if(e.alive)drawTempleEnemy(e);} drawPlayer(); return; }
   if (shopInterior) { drawShopInterior(); drawPlayer(); drawParticles(); return; }
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
