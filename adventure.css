@@ -248,3 +248,7 @@ button:disabled{opacity:.38;filter:grayscale(.65)}
 #mineBtn:active{transform:translateX(-50%) translateY(2px)}
 #elevatorPanel .upgrade-list button{min-height:46px;border-radius:12px;background:linear-gradient(180deg,#4a5b66,#2c3943);border-color:#9fb8c6}
 #elevatorPanel .upgrade-list button:disabled{opacity:.5;filter:grayscale(.6)}
+/* Stage 62 — energy and temporary mine debuffs. */
+#energyText{color:#f2d18c}
+#statusEffects{position:fixed;top:calc(env(safe-area-inset-top,0px) + 116px);left:9px;display:flex;gap:6px;z-index:6;pointer-events:none}
+.status-buff{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid #c87970;border-radius:50%;background:#17251ded;box-shadow:0 2px 9px #0008;font-size:17px}
