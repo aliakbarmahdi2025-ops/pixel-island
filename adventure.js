@@ -2239,11 +2239,19 @@ function drawGroundChunks(kind, paintChunk){
 function paintForestTile(ctx,x,y,px,py,t){
   const h=terrainHash(x,y);
   // Stage 2: the base colour, ridge hills, paver squares and per-tile discs were replaced by paintForestField()/ponds below.
-  // Tiny ground grain keeps the grass from reading as a flat repeating grid.
-  for(let k=0;k<5;k++){
-   const gx=px+4+((x*13+y*7+k*17)%39),gy=py+5+((x*5+y*19+k*11)%37);
-   ctx.fillStyle=k%2?"rgba(27,61,35,.22)":"rgba(190,205,119,.18)";
-   ctx.fillRect(gx,gy,k%3===0?4:2,1);
+  // Small hand-placed-looking grass clusters, distributed deterministically per world tile.
+  for(let k=0;k<3;k++){
+   const gx=px+5+((x*13+y*7+k*17)%37),gy=py+6+((x*5+y*19+k*11)%35);
+   const shade=(k+(x*3+y*5))%3;
+   ctx.fillStyle=shade===0?"rgba(24,55,31,.42)":shade===1?"rgba(174,205,112,.48)":"rgba(43,91,43,.36)";
+   ctx.fillRect(gx,gy,2,2);
+   if((x+y+k)%2===0){ctx.fillRect(gx+2,gy-2,2,2);ctx.fillRect(gx+4,gy,2,2);}
+  }
+  // A few short blades break up the ground plane without turning every tile into tall grass.
+  if(h>.58&&h<.78){
+   const bx=px+8+(x*11+y*3)%28,by=py+12+(x*7+y*13)%25;
+   ctx.fillStyle="#285b35";ctx.fillRect(bx,by+3,2,6);ctx.fillRect(bx+5,by+1,2,8);ctx.fillRect(bx+10,by+4,2,5);
+   ctx.fillStyle="#8fbd6c";ctx.fillRect(bx-1,by+1,3,2);ctx.fillRect(bx+4,by-1,3,2);ctx.fillRect(bx+9,by+2,3,2);
   }
   // Tufts, clover and little wildflowers are seeded by tile coordinates.
   if(h>.27&&h<.47){
@@ -2298,11 +2306,11 @@ function paintForestDetailCell(ctx,gx,gy,x,y){
 }
 /* ===== Stage 2 — forest ground: continuous pixel-art terrain, dirt patches and real ponds =====
    Decoration only: nothing here is read by gameplay, saving or rand(). All values come from terrainHash(world coords). */
-const FIELD_PX = 3;   // one "art pixel" of the terrain = 3 css px, so soft colour zones stay crisp and chunky
+const FIELD_PX = 2;   // finer 2 CSS-pixel art grain for a visibly richer HD pixel-art ground
 const BAYER4 = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v=>(v+.5)/16);
 function hexRGB(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
-const GRASS_RGB = ["#386637","#426f3e","#4b7d43","#568a4a","#629656"].map(hexRGB);
-const DIRT_RGB  = ["#7a6845","#8a7650","#9a8659"].map(hexRGB);
+const GRASS_RGB = ["#294f31","#315c35","#396a3b","#437743","#4d854a","#599352","#68a15d","#79ad68","#8abb73"].map(hexRGB);
+const DIRT_RGB  = ["#655238","#755f40","#866e49","#987d52","#a68b5d"].map(hexRGB);
 const WATER_RGB = ["#1f5163","#2a6b7c","#4a98a4","#a4cdb8","#33572f"].map(hexRGB);   // deep, mid, shallow, shore, wet-bank
 function vnoise(x,y){
   const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy,u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);
@@ -2341,13 +2349,25 @@ function paintForestField(g,ox,oy,size,pond){
   for(let ay=0;ay<n;ay++)for(let ax=0;ax<n;ax++){
     const wx=ox+ax*FIELD_PX+1.5,wy=oy+ay*FIELD_PX+1.5,b=BAYER4[(ay&3)*4+(ax&3)];
     // grass: two noise scales -> five greens, ordered-dithered so zones blend like hand-placed pixel art
-    const gv=(.6*vnoise(wx/220+11,wy/220+7)+.4*vnoise(wx/64+3,wy/64+29)-.5)*2.3+.5;
-    let gi=Math.floor(gv*5+(b-.5)*.9);gi=gi<0?0:gi>4?4:gi;
+    const broad=vnoise(wx/250+11,wy/250+7);
+    const mid=vnoise(wx/76+3,wy/76+29);
+    const fine=vnoise(wx/19+31,wy/19+47);
+    const grain=vnoise(wx/7+83,wy/7+61);
+    const gv=(.48*broad+.34*mid+.13*fine+.05*grain-.5)*2.55+.5;
+    let gi=Math.floor(gv*GRASS_RGB.length+(b-.5)*.95);
+    gi=gi<0?0:gi>=GRASS_RGB.length?GRASS_RGB.length-1:gi;
     let c=GRASS_RGB[gi];
-    // organic dirt patches
-    if(vnoise(wx/140+53,wy/140+97)+(b-.5)*.09>.7){
-      let di=Math.floor(vnoise(wx/22+5,wy/22+9)*3+(b-.5)*.8);di=di<0?0:di>2?2:di;c=DIRT_RGB[di];
+    // Broken, irregular earth patches with several soil shades rather than smooth round blobs.
+    const soil=vnoise(wx/155+53,wy/155+97)+.22*vnoise(wx/31+5,wy/31+9);
+    if(soil+(b-.5)*.11>.79){
+      let di=Math.floor((.72*vnoise(wx/25+5,wy/25+9)+.28*fine)*DIRT_RGB.length+(b-.5)*.7);
+      di=di<0?0:di>=DIRT_RGB.length?DIRT_RGB.length-1:di;
+      c=DIRT_RGB[di];
     }
+    // Fine pixel flecks: tiny light blades and deep green pockets create a hand-painted grass surface.
+    const fleck=grain+(terrainHash(ax+ox*3,ay+oy*5)-.5)*.18;
+    if(fleck>.79&&soil<.78)c=[Math.min(255,c[0]+18),Math.min(255,c[1]+25),Math.min(255,c[2]+12)];
+    else if(fleck<.16&&soil<.78)c=[Math.max(0,c[0]-13),Math.max(0,c[1]-17),Math.max(0,c[2]-9)];
     // pond: wobbly outline, depth bands, light shore, dark wet bank
     if(pond){
       const dx=(wx-pond.x)/pond.rx,dy=(wy-pond.y)/pond.ry;
