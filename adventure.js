@@ -2533,15 +2533,15 @@ function drawTownBuilding(x,y,label,roof,kind){
 function makePixelTownSpriteFront(id, frame) {
  const c=document.createElement("canvas");c.width=80;c.height=112;
  const g=c.getContext("2d");
- const mina=id==="mina",hana=id==="hana",saeed=id==="saeed",naderi=id==="naderi";
+ const mina=id==="mina",hana=id==="hana",nahid=id==="nahid",rezaei=id==="rezaei",saeed=id==="saeed",naderi=id==="naderi";
  const walk=frame===1?-2:frame===2?2:0;
  const skin="#e9b99c",skinHi="#f7d4bb",skinShade="#c98f78";
- const hair=mina?"#65402f":hana?"#29232d":"#302b2b";
- const hairHi=mina?"#a36c49":hana?"#62515f":"#64504a";
- const top=mina?"#d94f91":hana?"#347fb6":"#52677a";
- const topHi=mina?"#f58bb5":hana?"#79b8dc":"#8da1ad";
- const topShade=mina?"#9f376b":hana?"#205b89":"#354b5b";
- const bottom=saeed?"#3c4148":mina?"#403447":"#d0d1d8";
+ const hair=mina?"#65402f":hana?"#29232d":nahid?"#673b40":rezaei?"#74483a":"#302b2b";
+ const hairHi=mina?"#a36c49":hana?"#62515f":nahid?"#98605d":rezaei?"#a87958":"#64504a";
+ const top=mina?"#d94f91":hana?"#347fb6":nahid?"#9b3e60":rezaei?"#4b8b50":saeed?"#33465b":"#52677a";
+ const topHi=mina?"#f58bb5":hana?"#79b8dc":nahid?"#d27c91":rezaei?"#8fbd79":saeed?"#8294a5":"#8da1ad";
+ const topShade=mina?"#9f376b":hana?"#205b89":nahid?"#642b43":rezaei?"#315f3a":saeed?"#202d3a":"#354b5b";
+ const bottom=saeed||naderi?"#3c4148":mina||nahid?"#403447":rezaei?"#5b4635":"#d0d1d8";
  const boot="#292b32";
  const px=(x,y,w,h,col)=>{g.fillStyle=col;g.fillRect(x,y,w,h);};
  // Ground shadow, boots and separated legs.
@@ -2607,6 +2607,8 @@ function makePixelTownSpriteFront(id, frame) {
  else{px(31,43,22,3,hair);px(35,45,14,4,hair);}
  // Character-specific accents.
  if(mina){px(59,54,3,7,"#f3cf75");px(60,55,2,3,"#fff1b8");px(24,47,3,8,"#f6a6c6");}
+ if(nahid){px(23,53,4,12,"#d7a2a0");px(53,57,4,11,"#d7a2a0");px(37,51,6,3,"#e5c58d");}
+ if(rezaei){px(31,51,18,24,"#8b5a2b");px(29,49,4,19,"#6b4226");px(47,49,4,19,"#6b4226");px(35,58,10,2,"#d4a16a");px(37,67,7,2,"#d4a16a");}
  if(hana){px(38,47,5,5,"#e8edf4");px(39,48,3,3,"#f5d98d");px(54,77,3,5,"#7ba9d0");}
  if(saeed){px(34,48,4,5,"#d7d4c9");px(42,48,4,5,"#d7d4c9");}
   if(naderi){px(27,30,13,8,"#6d7778");px(45,30,13,8,"#6d7778");px(39,32,7,2,"#6d7778");px(29,32,9,4,"#b9dce0");px(47,32,9,4,"#b9dce0");}
@@ -2679,7 +2681,6 @@ function makePixelTownSprite(id, frame=0, dir="down") {
   g.fillStyle="#302b2b";g.fillRect(right?43:29,43,14,4);
  }
  if(id==="mina"||id==="hana"){g.fillStyle=hair;g.fillRect(right?23:50,31,9,40);g.fillRect(right?29:43,57,7,13);}
- if(!right){g.save();g.translate(80,0);g.scale(-1,1);const flipped=document.createElement("canvas");flipped.width=80;flipped.height=112;flipped.getContext("2d").drawImage(c,0,0);g.restore();return flipped;}
  return c;
 }
 
