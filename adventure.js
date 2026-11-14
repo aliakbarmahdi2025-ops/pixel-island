@@ -63,6 +63,104 @@ const FARM_CROPS = {
  snowturnip:{name:"شلغم برفی",icon:"❄️",season:"winter",days:6,price:40,seed:16,color:"#d9e4e8"}
 };
 const FARM_SEASONS={spring:"بهار 🌸",summer:"تابستان ☀️",autumn:"پاییز 🍂",winter:"زمستان ❄️"};
+
+/* Stage 59 — dynamic outdoor weather */
+let currentWeather = "sunny";
+let weatherTimer = 300;
+let weatherTransition = 1;
+let lightningFlash = 0;
+let weatherParticles = [];
+const WEATHER_TYPES = ["sunny", "sunny", "cloudy", "rain", "thunder"];
+
+function updateWeather(dt) {
+  weatherTimer -= dt;
+  if (weatherTimer <= 0) {
+    weatherTimer = 180 + Math.random() * 240;
+    const nextWeather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
+    if (nextWeather !== currentWeather) {
+      currentWeather = nextWeather;
+      weatherTransition = 0;
+      if (currentWeather === "rain") showToast("باران شروع شد 🌧️ (مزرعه خودکار آبیاری شد)");
+      if (currentWeather === "thunder") showToast("طوفان و رعد و برق شروع شد ⛈️");
+      if (currentWeather === "sunny") showToast("آسمان صاف شد ☀️");
+      if (currentWeather === "cloudy") showToast("هوا ابری شد ☁️");
+    }
+  }
+
+  if (weatherTransition < 1) weatherTransition = Math.min(1, weatherTransition + dt * 0.5);
+
+  if (lightningFlash > 0) lightningFlash = Math.max(0, lightningFlash - dt * 2.5);
+  if (currentWeather === "thunder" && Math.random() < dt * 0.15) {
+    lightningFlash = 1;
+    playGameSound("attack"); // صدای موقت رعد؛ صدای اختصاصی در مرحله صوتی قابل جایگزینی است
+  }
+
+  // Rain waters growing crops for the current in-game day without consuming can water.
+  if (currentWeather === "rain" || currentWeather === "thunder") {
+    for (const p of farmPlots) {
+      if (p.state === "growing" && p.wateredDay !== worldDay) p.wateredDay = worldDay;
+    }
+  }
+
+  if (currentWeather === "rain" || currentWeather === "thunder") {
+    const maxParticles = currentWeather === "thunder" ? 150 : 80;
+    while (weatherParticles.length < maxParticles * weatherTransition) {
+      weatherParticles.push({
+        x: camera.x + Math.random() * viewW * 1.5 - viewW * 0.25,
+        y: camera.y - Math.random() * viewH,
+        speed: 600 + Math.random() * 400,
+        wind: currentWeather === "thunder" ? -200 : -50
+      });
+    }
+  }
+
+  for (let i = weatherParticles.length - 1; i >= 0; i--) {
+    const p = weatherParticles[i];
+    p.y += p.speed * dt;
+    p.x += p.wind * dt;
+    if (p.y > camera.y + viewH + 50 || p.x < camera.x - 100 || p.x > camera.x + viewW + 100) {
+      if (weatherParticles.length > (currentWeather === "rain" || currentWeather === "thunder" ? 10 : 0)) {
+        weatherParticles.splice(i, 1);
+      } else {
+        p.y = camera.y - 50;
+        p.x = camera.x + Math.random() * viewW;
+      }
+    }
+  }
+
+  if (currentWeather !== "rain" && currentWeather !== "thunder" && weatherParticles.length > 0) {
+    if (Math.random() < dt * 2) weatherParticles.pop();
+  }
+}
+
+function drawWeather() {
+  ctx.save();
+  ctx.strokeStyle = "rgba(170, 200, 255, 0.6)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (const p of weatherParticles) {
+    const sx = p.x - camera.x;
+    const sy = p.y - camera.y;
+    if (sx < -50 || sx > viewW + 50 || sy < -50 || sy > viewH + 50) continue;
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + p.wind * 0.03, sy + 15);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  if (currentWeather === "cloudy" || currentWeather === "rain" || currentWeather === "thunder") {
+    let cloudAlpha = currentWeather === "cloudy" ? 0.15 : 0.25;
+    if (currentWeather === "thunder") cloudAlpha = 0.35;
+    ctx.fillStyle = `rgba(20, 30, 40, ${cloudAlpha * weatherTransition})`;
+    ctx.fillRect(0, 0, viewW, viewH);
+  }
+
+  if (lightningFlash > 0) {
+    ctx.fillStyle = `rgba(255, 255, 255, ${lightningFlash * 0.8})`;
+    ctx.fillRect(0, 0, viewW, viewH);
+  }
+}
+
 let farmSeedStock=Object.fromEntries(Object.keys(FARM_CROPS).map(k=>[k,0]));
 let wateringCanWater=20;
 const WATERING_CAN_MAX=20;
@@ -1467,6 +1565,7 @@ function update(dt) {
   updateFurnaces(dt);
   worldClock += dt * 8;
   if(worldClock >= 1440){worldClock -= 1440;worldDay++;onNewFarmDay();saveQuietly();}
+  if (!templeMode && !caveMode && !homeInterior && !townMode) updateWeather(dt);
   if(townMode)townSchedule(dt);
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt); templeTrapCooldown=Math.max(0,templeTrapCooldown-dt);
   const activeEnemies = templeMode ? templeEnemies : (caveMode || homeInterior || townMode) ? (caveMode ? caveEnemies : []) : enemies;
@@ -3256,6 +3355,7 @@ function draw() {
   drawPlayer();
   drawParticles();
   drawNightOverlay();
+  if (!caveMode) drawWeather();
   ctx.strokeStyle = "#d6f0a8"; ctx.lineWidth = 3;
   ctx.strokeRect(2-camera.x,2-camera.y,(caveMode?CAVE.w:WORLD.w)-4,(caveMode?CAVE.h:WORLD.h)-4);
   if(!caveMode){drawMineEntrance();}
