@@ -2643,56 +2643,237 @@ function drawForestNpc() {
  const x=forestNpc.x-camera.x,y=forestNpc.y-camera.y;
  const near=Math.hypot(player.x-forestNpc.x,player.y-forestNpc.y)<145;
  if(x< -70||x>viewW+70||y< -90||y>viewH+70)return;
- drawPixelPerson(x,y+39,{hair:"#aaa99f",hairHi:"#e6e0d0",skin:"#c99475",skinLight:"#edc2a2",top:"#3f6650",topHi:"#91b58a",bottom:"#45423b",boots:"#302d29",accent:"#d9bd7e"},{step:forestNpc.walking?Math.sin(animTime*11)*2.1:Math.sin(animTime*2.2)*.35,armSwing:forestNpc.walking?Math.sin(animTime*11)*.34:Math.sin(animTime*1.7)*.025,bob:forestNpc.walking?Math.abs(Math.sin(animTime*11))*.8:Math.sin(animTime*2.4)*.6,facing:forestNpc.facing||"down",scale:.88,beard:true,beardColor:"#d7d3c8",old:true});
+ drawPixelPerson(x,y+39,{hair:"#aaa99f",hairHi:"#e6e0d0",skin:"#c99475",skinLight:"#edc2a2",top:"#3f6650",topHi:"#91b58a",bottom:"#45423b",boots:"#302d29",accent:"#d9bd7e"},{walking:!!forestNpc.walking,step:forestNpc.walking?Math.sin(animTime*11)*2.1:Math.sin(animTime*2.2)*.35,armSwing:forestNpc.walking?Math.sin(animTime*11)*.34:Math.sin(animTime*1.7)*.025,bob:forestNpc.walking?Math.abs(Math.sin(animTime*11))*.8:Math.sin(animTime*2.4)*.6,facing:forestNpc.facing||"down",scale:.88,beard:true,beardColor:"#d7d3c8",old:true});
  ctx.save();ctx.translate(x,y+39);ctx.scale(.88,.88);ctx.fillStyle="#a85e43";ctx.fillRect(-8,-43,16,5);ctx.fillRect(2,-39,5,10);ctx.fillStyle="#e0bd79";ctx.fillRect(-7,-43,3,2);ctx.fillStyle="#70513a";ctx.fillRect(8,-28,8,11);ctx.fillStyle="#b78a58";ctx.fillRect(9,-27,6,3);ctx.restore();
  if(!npcQuest.claimed){ctx.fillStyle="#ffe58a";ctx.font="bold 17px Tahoma";ctx.textAlign="center";ctx.fillText("!",x,y-57);}
  ctx.fillStyle="#fff2c7";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.lineWidth=3;ctx.strokeStyle="#34432e";ctx.strokeText(forestNpc.name+" • "+forestNpc.role,x,y-47);ctx.fillText(forestNpc.name+" • "+forestNpc.role,x,y-47);ctx.textAlign="start";
 }
 
+// ── کمکی: تیره/روشن کردن رنگ هگز ──
+function shadeHex(hex,factor){
+  if(!hex||hex[0]!=="#"||hex.length<7)return hex;
+  const r=Math.max(0,Math.min(255,Math.round(parseInt(hex.slice(1,3),16)*factor)));
+  const g=Math.max(0,Math.min(255,Math.round(parseInt(hex.slice(3,5),16)*factor)));
+  const b=Math.max(0,Math.min(255,Math.round(parseInt(hex.slice(5,7),16)*factor)));
+  return "#"+r.toString(16).padStart(2,"0")+g.toString(16).padStart(2,"0")+b.toString(16).padStart(2,"0");
+}
+// ── کاراکتر پیکسلی با ۴ جهت و ۴ فریم راه رفتن (سبک Stardew، پیکسل تمیز) ──
 function drawPixelPerson(x,base,p,opts={}){
- const step=opts.step||0,bob=opts.bob||0,scale=opts.scale||1;
- ctx.save();ctx.translate(x,base);ctx.scale(scale,scale);x=0;base=0;
- ctx.fillStyle="rgba(14,20,17,.34)";ctx.beginPath();ctx.ellipse(x,base+1,13,4.5,0,0,Math.PI*2);ctx.fill();
- // legs, boots and small alternating stride
- ctx.fillStyle=p.bottom;ctx.fillRect(x-7,base-19+step,6,16);ctx.fillRect(x+1,base-19-step,6,16);
- ctx.fillStyle=p.boots;ctx.fillRect(x-9,base-5+step,9,5);ctx.fillRect(x+1,base-5-step,10,5);
- ctx.fillStyle="#77736a";ctx.fillRect(x-8,base-2+step,6,1);ctx.fillRect(x+2,base-2-step,6,1);
- // torso silhouette and sleeves
- ctx.fillStyle=p.top;ctx.beginPath();ctx.moveTo(x-8,base-46+bob);ctx.lineTo(x+8,base-46+bob);ctx.lineTo(x+12,base-21+bob);ctx.lineTo(x+8,base-17+bob);ctx.lineTo(x-8,base-17+bob);ctx.lineTo(x-12,base-21+bob);ctx.closePath();ctx.fill();
- ctx.fillStyle=p.topHi;ctx.fillRect(x-7,base-44+bob,14,3);ctx.fillRect(x-10,base-38+bob,3,13);ctx.fillRect(x+7,base-38+bob,3,13);
- const armSwing=opts.armSwing||0;
- ctx.save();ctx.translate(x-10,base-37+bob);ctx.rotate(armSwing);
- ctx.fillStyle=p.top;ctx.fillRect(-3,0,5,14);ctx.fillStyle=p.skin;ctx.fillRect(-3,12,5,7);ctx.restore();
- ctx.save();ctx.translate(x+10,base-37+bob);ctx.rotate(-armSwing);
- ctx.fillStyle=p.top;ctx.fillRect(-2,0,5,14);ctx.fillStyle=p.skin;ctx.fillRect(-2,12,5,7);ctx.restore();
- // seams, belt and small fabric highlights
- ctx.fillStyle=p.accent;ctx.fillRect(x-1,base-42+bob,2,12);ctx.fillRect(x-8,base-20+bob,16,2);
- ctx.fillStyle="rgba(20,27,25,.28)";ctx.fillRect(x-7,base-31+bob,2,8);ctx.fillRect(x+5,base-31+bob,2,8);
- // neck and face
- ctx.fillStyle=p.skin;ctx.fillRect(x-4,base-51+bob,8,7);
- ctx.fillStyle=p.skinLight||"#efc3a0";ctx.beginPath();ctx.roundRect(x-9,base-70+bob,18,20,4);ctx.fill();
- ctx.fillStyle=p.skin;ctx.fillRect(x-10,base-62+bob,2,6);ctx.fillRect(x+8,base-62+bob,2,6);
- // hair cap, fringe and side locks
- ctx.fillStyle=p.hair;ctx.beginPath();ctx.moveTo(x-10,base-60+bob);ctx.lineTo(x-10,base-68+bob);ctx.lineTo(x-5,base-74+bob);ctx.lineTo(x+5,base-74+bob);ctx.lineTo(x+11,base-68+bob);ctx.lineTo(x+10,base-57+bob);ctx.lineTo(x+6,base-63+bob);ctx.lineTo(x-4,base-62+bob);ctx.closePath();ctx.fill();
- ctx.fillStyle=p.hairHi||"#9a7658";ctx.fillRect(x-6,base-70+bob,5,2);ctx.fillRect(x+2,base-72+bob,4,2);
- ctx.fillStyle=p.hair;ctx.fillRect(x-10,base-63+bob,3,9);ctx.fillRect(x+7,base-63+bob,3,8);
- if(opts.longHair){ctx.fillRect(x-11,base-59+bob,3,17);ctx.fillRect(x+8,base-59+bob,3,16);}
- // Direction-aware eyes: side views show one centered eye, never a stray highlight.
- const eyeY=base-61+bob;
- if(opts.facing==="left"){ctx.fillStyle="#fff0d9";ctx.fillRect(x-6,eyeY,4,3);ctx.fillStyle="#49352f";ctx.fillRect(x-6,eyeY,2,3);ctx.fillStyle="#2c2522";ctx.fillRect(x-6,eyeY,1,2);}
- else if(opts.facing==="right"){ctx.fillStyle="#fff0d9";ctx.fillRect(x+2,eyeY,4,3);ctx.fillStyle="#49352f";ctx.fillRect(x+4,eyeY,2,3);ctx.fillStyle="#2c2522";ctx.fillRect(x+5,eyeY,1,2);}
- else{ctx.fillStyle="#49352f";ctx.fillRect(x-6,eyeY,2,2);ctx.fillRect(x+4,eyeY,2,2);ctx.fillStyle="#fff0d9";ctx.fillRect(x-6,eyeY,1,1);ctx.fillRect(x+4,eyeY,1,1);}
- ctx.fillStyle="#b77d65";ctx.fillRect(x-1,base-57+bob,2,2);ctx.fillStyle="#8f5552";ctx.fillRect(x-2,base-53+bob,4,1);
- if(opts.beard){
-   const beard=opts.beardColor||p.hair;
-   ctx.fillStyle=beard;ctx.fillRect(x-7,base-55+bob,14,5);ctx.fillRect(x-9,base-58+bob,4,6);ctx.fillRect(x+6,base-58+bob,4,6);ctx.fillRect(x-6,base-50+bob,12,4);ctx.fillRect(x-4,base-46+bob,8,3);
-   ctx.fillStyle="rgba(255,255,245,.7)";ctx.fillRect(x-5,base-54+bob,3,2);ctx.fillRect(x+2,base-49+bob,3,2);
- }
- if(opts.old){
-   ctx.fillStyle="#9c715f";ctx.fillRect(x-7,base-59+bob,3,1);ctx.fillRect(x+4,base-59+bob,3,1);ctx.fillRect(x-2,base-55+bob,4,1);
-   ctx.fillStyle="#eee6d8";ctx.fillRect(x-7,base-72+bob,5,2);ctx.fillRect(x+2,base-72+bob,5,2);
- }
- ctx.restore();
+  const facing=opts.facing||"down";
+  const scale=opts.scale||1;
+  const walking=opts.walking!==undefined?!!opts.walking:Math.abs(opts.step||0)>0.5;
+  const bob=opts.bob||0;
+  const isUp=facing==="up",isLeft=facing==="left",isRight=facing==="right",isDown=!isUp&&!isLeft&&!isRight;
+
+  // فازها
+  const wf=walking?Math.floor(animTime*8)%4:0;              // ۰=خنثی ۱=چپ جلو ۲=عبور ۳=راست جلو
+  const blinkPhase=(animTime*0.45)%1;
+  const blinking=blinkPhase>0.93&&blinkPhase<0.97;
+  const headBob=walking?(wf===0||wf===1||wf===3?-1:0):0;
+
+  // رنگ‌ها با shade خودکار
+  const hair=p.hair||"#3a2a1e";
+  const hairHi=p.hairHi||shadeHex(hair,1.5);
+  const skin=p.skin||"#d7a17e";
+  const skinLight=p.skinLight||"#f0c5a2";
+  const skinShade=p.skinShade||shadeHex(skin,0.8);
+  const top=p.top||"#294967";
+  const topHi=p.topHi||shadeHex(top,1.3);
+  const topShade=p.topShade||shadeHex(top,0.7);
+  const bottom=p.bottom||"#393c46";
+  const bottomShade=shadeHex(bottom,0.75);
+  const boots=p.boots||"#252b34";
+  const bootsHi=shadeHex(boots,1.5);
+  const accent=p.accent||"#d8c49a";
+
+  ctx.save();
+  ctx.translate(Math.round(x),Math.round(base+bob));
+  ctx.scale(scale,scale);
+  ctx.imageSmoothingEnabled=false;
+
+  // ── سایه‌ی زمین (با گام تغییر می‌کنه) ──
+  ctx.fillStyle="rgba(14,20,17,.32)";
+  ctx.beginPath();
+  ctx.ellipse(0,1,11,4,0,0,Math.PI*2);
+  ctx.fill();
+
+  // آفست‌های فریم
+  let legL=0,legR=0,armL=0,armR=0;
+  const armMotion=Math.max(-1,Math.min(1,opts.armSwing||0));
+  if(walking){
+    if(wf===1){legL=-2;legR=2;armL=2;armR=-2;}
+    else if(wf===3){legL=2;legR=-2;armL=-2;armR=2;}
+  }
+  armL+=Math.round(armMotion*3);
+  armR-=Math.round(armMotion*3);
+
+  // ── پاها ──
+  if(isLeft||isRight){
+    // نمای پروفایل: یک پا جلو، یک پا عقب
+    const sign=isLeft?-1:1;
+    // پای عقب (تیره‌تر)
+    ctx.fillStyle=bottomShade;
+    ctx.fillRect(sign*2,-20+(-legR),5,18);
+    ctx.fillStyle=boots;
+    ctx.fillRect(sign*2-1,-6+(-legR),6,6);
+    // پای جلو
+    ctx.fillStyle=bottom;
+    ctx.fillRect(sign*-1,-20+(-legL),5,18);
+    ctx.fillStyle=boots;
+    ctx.fillRect(sign*-1-1,-6+(-legL),6,6);
+    ctx.fillStyle=bootsHi;
+    ctx.fillRect(sign*-1-1,-4+(-legL),5,1);
+  }else{
+    // نمای جلو/عقب: دو پا کنار هم
+    const liftL=walking&&wf===3?-3:0;
+    const liftR=walking&&wf===1?-3:0;
+    // پای چپ
+    ctx.fillStyle=bottomShade;
+    ctx.fillRect(-6,-20,5,16);
+    ctx.fillStyle=bottom;
+    ctx.fillRect(-6,-20+liftL,4,14);
+    ctx.fillStyle=boots;
+    ctx.fillRect(-7,-6+liftL,6,6);
+    ctx.fillStyle=bootsHi;
+    ctx.fillRect(-7,-4+liftL,5,1);
+    // پای راست
+    ctx.fillStyle=bottomShade;
+    ctx.fillRect(1,-20,5,16);
+    ctx.fillStyle=bottom;
+    ctx.fillRect(2,-20+liftR,4,14);
+    ctx.fillStyle=boots;
+    ctx.fillRect(1,-6+liftR,6,6);
+    ctx.fillStyle=bootsHi;
+    ctx.fillRect(2,-4+liftR,5,1);
+  }
+
+  // ── بالاتنه ──
+  const bodyY=-42+headBob;
+  ctx.fillStyle=topShade;
+  ctx.fillRect(-8,bodyY,16,22);
+  ctx.fillStyle=top;
+  ctx.fillRect(-7,bodyY,14,20);
+  ctx.fillStyle=topHi;
+  ctx.fillRect(-6,bodyY,12,2);
+  // کمربند
+  ctx.fillStyle=accent;
+  ctx.fillRect(-7,bodyY+18,14,2);
+  // یقه (فقط جلو)
+  if(isDown){
+    ctx.fillStyle=topHi;
+    ctx.fillRect(-4,bodyY+1,8,2);
+  }
+
+  // ── دست‌ها ──
+  if(isLeft||isRight){
+    // پروفایل: یک دست جلو، یک دست عقب
+    const sign=isLeft?-1:1;
+    // دست عقب
+    ctx.fillStyle=topShade;
+    ctx.fillRect(sign*6,bodyY+4-armR,3,10);
+    ctx.fillStyle=skin;
+    ctx.fillRect(sign*6,bodyY+13-armR,3,3);
+    // دست جلو
+    ctx.fillStyle=top;
+    ctx.fillRect(sign*-5,bodyY+4+armL,3,10);
+    ctx.fillStyle=skin;
+    ctx.fillRect(sign*-5,bodyY+13+armL,3,3);
+  }else{
+    // نمای جلو/عقب
+    ctx.fillStyle=topShade;
+    ctx.fillRect(-11,bodyY+4+armL,3,10);
+    ctx.fillStyle=top;
+    ctx.fillRect(-10,bodyY+4+armL,2,9);
+    ctx.fillStyle=skin;
+    ctx.fillRect(-11,bodyY+13+armL,3,3);
+    ctx.fillStyle=topShade;
+    ctx.fillRect(7,bodyY+4+armR,3,10);
+    ctx.fillStyle=top;
+    ctx.fillRect(8,bodyY+4+armR,2,9);
+    ctx.fillStyle=skin;
+    ctx.fillRect(7,bodyY+13+armR,3,3);
+  }
+
+  // ── گردن ──
+  ctx.fillStyle=skinShade;
+  ctx.fillRect(-3,-44+headBob,6,3);
+
+  // ── سر ──
+  const headY=-60+headBob;
+  ctx.fillStyle=skin;
+  ctx.fillRect(-7,headY,14,16);
+  ctx.fillStyle=skinLight;
+  ctx.fillRect(-6,headY+1,12,14);
+
+  // ── صورت ──
+  if(isDown){
+    // چشم‌ها
+    ctx.fillStyle="#2a1f1a";
+    if(blinking){
+      ctx.fillRect(-4,headY+7,3,1);
+      ctx.fillRect(1,headY+7,3,1);
+    }else{
+      ctx.fillRect(-4,headY+6,2,3);
+      ctx.fillRect(2,headY+6,2,3);
+      ctx.fillStyle="#fff";
+      ctx.fillRect(-4,headY+7,1,1);
+      ctx.fillRect(2,headY+7,1,1);
+    }
+    // بینی
+    ctx.fillStyle=skinShade;
+    ctx.fillRect(-1,headY+10,2,1);
+    // دهان
+    ctx.fillStyle="#a85f62";
+    ctx.fillRect(-2,headY+12,4,1);
+  }else if(isLeft){
+    ctx.fillStyle="#2a1f1a";
+    if(blinking){ctx.fillRect(-5,headY+7,3,1);}
+    else{ctx.fillRect(-5,headY+6,2,3);ctx.fillStyle="#fff";ctx.fillRect(-5,headY+7,1,1);}
+    ctx.fillStyle="#a85f62";
+    ctx.fillRect(-6,headY+12,2,1);
+  }else if(isRight){
+    ctx.fillStyle="#2a1f1a";
+    if(blinking){ctx.fillRect(2,headY+7,3,1);}
+    else{ctx.fillRect(3,headY+6,2,3);ctx.fillStyle="#fff";ctx.fillRect(3,headY+7,1,1);}
+    ctx.fillStyle="#a85f62";
+    ctx.fillRect(4,headY+12,2,1);
+  }
+
+  // ── مو ──
+  const hairY=headY-8;
+  ctx.fillStyle=hair;
+  if(isDown){
+    ctx.fillRect(-8,hairY,16,8);
+    ctx.fillRect(-8,hairY+4,3,6);
+    ctx.fillRect(5,hairY+4,3,6);
+  }else if(isUp){
+    ctx.fillRect(-8,hairY,16,12);
+    ctx.fillRect(-7,hairY+10,14,4);
+    ctx.fillRect(-6,hairY+14,12,2);
+  }else{
+    ctx.fillRect(-8,hairY,16,10);
+    ctx.fillRect(isLeft?5:-8,hairY+6,3,5);
+  }
+  ctx.fillStyle=hairHi;
+  ctx.fillRect(-5,hairY+2,4,2);
+  ctx.fillRect(2,hairY+1,4,1);
+
+  // ── ریش ──
+  if(opts.beard){
+    ctx.fillStyle=opts.beardColor||"#d7d3c8";
+    ctx.fillRect(-6,headY+12,12,4);
+    ctx.fillRect(-5,headY+14,10,2);
+    ctx.fillRect(-3,headY+16,6,2);
+  }
+
+  // ── چین‌های پیری ──
+  if(opts.old){
+    ctx.fillStyle="rgba(60,40,30,.3)";
+    ctx.fillRect(-6,headY+4,2,1);
+    ctx.fillRect(4,headY+4,2,1);
+  }
+
+  ctx.restore();
 }
 function drawPlayer(){
  const x=player.x-camera.x,y=player.y-camera.y;
@@ -2701,7 +2882,7 @@ function drawPlayer(){
  const actionSwing=playerActionTimer>0?Math.sin(actionPhase*Math.PI):0;
  const idleBreath=Math.sin(animTime*1.8)*.45;
  const armSwing=playerActionTimer>0?actionSwing*(playerActionType==="attack"?1.12:.82):playerMoving?Math.sin(animTime*13)*.48:idleBreath*.08;
- drawPixelPerson(x,y+36,{hair:"#50382a",hairHi:"#98704f",skin:"#d7a17e",skinLight:"#f0c5a2",top:"#294967",topHi:"#5e8caf",bottom:"#393c46",boots:"#252b34",accent:"#d8c49a"},{step:leg,armSwing,bob:playerMoving?Math.abs(Math.sin(animTime*13))*1.2:idleBreath,facing:playerFacing,scale:.82});
+ drawPixelPerson(x,y+36,{hair:"#50382a",hairHi:"#98704f",skin:"#d7a17e",skinLight:"#f0c5a2",top:"#294967",topHi:"#5e8caf",bottom:"#393c46",boots:"#252b34",accent:"#d8c49a"},{walking:playerMoving,step:leg,armSwing,bob:playerMoving?Math.abs(Math.sin(animTime*13))*1.2:idleBreath,facing:playerFacing,scale:.82});
  // Visible armor is drawn over the base outfit and follows the player animation.
  const armor=player.armorLevel||0;
  if(armor>0){
