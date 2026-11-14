@@ -12,6 +12,7 @@
   <header id="hud">
     <div class="status">
       <span>❤️ <b id="health">5</b></span>
+      <span>⚡ <b id="energyText">100/100</b></span>
       <span>⭐ سطح <b id="level">1</b></span>
       <span>🪙 <b id="coins">0</b></span>
     </div>
@@ -37,6 +38,7 @@
     <button id="closeBackup" type="button">بستن</button>
   </section>
   <input id="importSaveFile" type="file" accept=".json,application/json" hidden>
+  <div id="statusEffects" aria-live="polite"></div>
   <section id="xpPanel" aria-label="تجربه بازیکن">
     <div class="xp-label"><span>⭐ تجربه</span><b id="xpText">0 / 50 XP</b></div>
     <div class="xp-track"><div id="xpFill"></div></div>
