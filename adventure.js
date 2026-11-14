@@ -64,6 +64,8 @@ const FARM_CROPS = {
 };
 const FARM_SEASONS={spring:"بهار 🌸",summer:"تابستان ☀️",autumn:"پاییز 🍂",winter:"زمستان ❄️"};
 let farmSeedStock=Object.fromEntries(Object.keys(FARM_CROPS).map(k=>[k,0]));
+let wateringCanWater=20;
+const WATERING_CAN_MAX=20;
 const farmPlots = [];
 const LIVESTOCK_PEN = { x: 980, y: 700 };
 let livestock = { chickens: 0, cows: 0, chickenFedDay: -1, cowFedDay: -1, chickenDays: 0, cowDays: 0, eggsReady: 0, milkReady: 0 };
@@ -77,7 +79,7 @@ let move = { x: 0, y: 0 };
 let moveTarget = null, selectedTool = "hand", interactionTimer = 0;
 const TOOL_INFO = {
  hand:{icon:"🖐️",label:"دست خالی"}, fishingRod:{icon:"🎣",label:"چوب ماهیگیری"}, axe:{icon:"🪓",label:"تبر"}, pickaxe:{icon:"⛏️",label:"کلنگ"},
- shovel:{icon:"🪏",label:"بیل"}, watering:{icon:"💧",label:"آب‌پاش"},
+ shovel:{icon:"🪏",label:"بیل"}, watering:{icon:"💧",label:"آب‌پاش"}, scythe:{icon:"🌾",label:"داس"},
  sword:{icon:"⚔️",label:"شمشیر"}, seeds:{icon:"🌱",label:"بذر"}
 };
 let toastTimer = 0;
@@ -250,6 +252,7 @@ function load() {
     homeInterior = !!data.homeInterior; if (data.homeReturn) homeReturn = data.homeReturn;
     townMode=!!data.townMode;if(data.townReturn)townReturn=data.townReturn;if(data.townFriendship)Object.assign(townFriendship,data.townFriendship);if(data.townStock)Object.assign(townStock,data.townStock);
     if(Number.isFinite(data.worldClock))worldClock=data.worldClock;if(Number.isFinite(data.worldDay))worldDay=data.worldDay;
+    wateringCanWater=Number.isFinite(data.wateringCanWater)?Math.max(0,Math.min(WATERING_CAN_MAX,Math.floor(data.wateringCanWater))):WATERING_CAN_MAX;
     if(data.farmSeedStock&&typeof data.farmSeedStock==="object")Object.keys(farmSeedStock).forEach(k=>farmSeedStock[k]=Math.max(0,Number(data.farmSeedStock[k])||0));
     if((bag.seeds||0)>0){farmSeedStock.carrot+=(bag.seeds||0);bag.seeds=0;}
     if(Array.isArray(data.farmPlots)){farmPlots.length=0;data.farmPlots.forEach((p,i)=>{if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y)){const plot={...p,id:Number.isFinite(p.id)?p.id:i};if(Math.hypot(plot.x-LIVESTOCK_PEN.x,plot.y-LIVESTOCK_PEN.y)<150){plot.x+=220+(i%3)*64;plot.y+=Math.floor(i/3)*64;}farmPlots.push(plot);}});}
@@ -266,7 +269,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
+      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -872,7 +875,7 @@ function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, farmPlots, farmSeedStock, livestock
+      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
     }));
   } catch (e) {}
 }
@@ -979,6 +982,7 @@ function canvasWorldTap(e){
   }
   if(caveMode){const node=near(activeNodes(),48);if(node){setWorldTarget("resource",node.x,node.y,{id:node.id});return;}}
   if(!caveMode&&!townMode&&!homeInterior){    if(selectedTool==="fishingRod"){const pond=nearestPondAt(wx,wy);if(pond){setWorldTarget("fish",pond.x,pond.y);return;}showToast("برای ماهیگیری روی آب یک برکه بزن 🎣");return;}
+    if(selectedTool==="watering"){const pond=nearestPondAt(wx,wy);if(pond){setWorldTarget("waterRefill",pond.x,pond.y);return;}}
     const node=near(activeNodes(),48);
     if(node){setWorldTarget("resource",node.x,node.y,{id:node.id});return;}
     const plot=near(farmPlots,38);
@@ -1014,7 +1018,7 @@ function tickWorldInteraction(dt){
     if(person){t.x=person.x;t.y=person.y;}
   }else if(t.type==="forestNpc"){t.x=forestNpc.x;t.y=forestNpc.y;}
   const d=Math.hypot(player.x-t.x,player.y-t.y);
-  const stops={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,fish:22,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,furnace:48,mine:50};
+  const stops={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,fish:22,waterRefill:22,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,furnace:48,mine:50};
   if(d>(stops[t.type]??10))return;
   playerMoving=false;
   if(t.type==="ground"){moveTarget=null;return;}
@@ -1041,7 +1045,8 @@ function tickWorldInteraction(dt){
     const idx=townPeople.findIndex(p=>p.id===t.id);
     if(idx>=0){townNpcIndex=idx;openTownNpc();}
     moveTarget=null;
-  }else if(t.type==="farmWater"){farmWater();playGameSound("water");moveTarget=null;}
+  }else if(t.type==="waterRefill"){refillWateringCan();moveTarget=null;}
+   else if(t.type==="farmWater"){farmWater();moveTarget=null;}
   else if(t.type==="farmPlant"){farmPlant();moveTarget=null;}
   else if(t.type==="farmHarvest"){farmHarvest();moveTarget=null;}
   else if(t.type==="farmTill"){farmTill(t.x,t.y);moveTarget=null;}
@@ -1617,7 +1622,8 @@ function inventoryItems(){
   {id:"gear:axe",name:"تبر",icon:"🪓",count:tiers[toolLevels.axe]||"چوبی",kind:"ابزار",detail:"فقط برای درخت و الیاف",equip:"axe"},
   {id:"gear:pickaxe",name:"کلنگ",icon:"⛏️",count:tiers[toolLevels.pickaxe]||"چوبی",kind:"ابزار",detail:"برای سنگ و معدن",equip:"pickaxe"},
   {id:"gear:shovel",name:"بیل",icon:"🪏",count:tiers[toolLevels.shovel]||"چوبی",kind:"ابزار",detail:"برای شخم و شن",equip:"shovel"},
-  {id:"gear:watering",name:"آب‌پاش",icon:"💧",count:"ابزار",kind:"ابزار",detail:"برای آبیاری",equip:"watering"},
+  {id:"gear:watering",name:"آب‌پاش",icon:"💧",count:wateringCanWater+"/"+WATERING_CAN_MAX,kind:"ابزار",detail:"برای آبیاری؛ برای پر کردن روی برکه بزن",equip:"watering"},
+   {id:"gear:scythe",name:"داس",icon:"🌾",count:"ابزار",kind:"ابزار",detail:"برای برداشت محصولات رسیده",equip:"scythe"},
   {id:"gear:sword",name:"شمشیر",icon:"⚔️",count:"قدرت "+player.attackPower,kind:"سلاح",detail:"برای نبرد",equip:"sword"},
   {id:"gear:armor",name:"زره",icon:"🛡️",count:["بدون زره","آهنی","کریستالی"][Math.max(0,Math.min(2,player.armorLevel||0))],kind:"تجهیزات",detail:"کاهش آسیب دریافتی"},
   {id:"gear:boots",name:"چکمه",icon:"🥾",count:"سرعت "+player.speed,kind:"تجهیزات",detail:"افزایش سرعت حرکت"}
@@ -1740,6 +1746,7 @@ function updateFarmUI(){
  $("farmSeason").textContent=FARM_SEASONS[season]+" • روز "+getFarmSeasonDay()+" از ۲۸";
  $("farmPlotsGrid").innerHTML=farmPlots.map((q,i)=>'<button type="button" data-plot="'+i+'" class="'+(i===selectedFarmPlot?'selected':'')+'">'+(q.crop?FARM_CROPS[q.crop].icon+" "+FARM_CROPS[q.crop].name:q.state==="tilled"?"زمین آماده کاشت":"زمین خالی")+(q.state==="growing"?" • "+q.growth+"/"+(q.harvests>0&&FARM_CROPS[q.crop].regrow?FARM_CROPS[q.crop].regrow:FARM_CROPS[q.crop].days)+" روز":"")+'</button>').join("");
  $("farmPlotStatus").textContent=!p?"برای ساخت مزرعه، کنار زمین دلخواهت بایست و «شخم زدن اینجا» را بزن.":p.state==="tilled"?"این زمین شخم خورده و آماده کاشت است.":p.state==="growing"?(FARM_CROPS[p.crop].name+" • رشد "+p.growth+"/"+(p.harvests>0&&FARM_CROPS[p.crop].regrow?FARM_CROPS[p.crop].regrow:FARM_CROPS[p.crop].days)+" روز • "+(p.growth>=(p.harvests>0&&FARM_CROPS[p.crop].regrow?FARM_CROPS[p.crop].regrow:FARM_CROPS[p.crop].days)?"آماده برداشت 🧺":p.wateredDay===worldDay?"امروز آبیاری شده 💧":"امروز هنوز آب نخورده 💧")):"زمین خالی است.";
+  $("farmPlotStatus").textContent+="\nآب آب‌پاش: "+wateringCanWater+" / "+WATERING_CAN_MAX+" 💧";
  $("farmSeeds").textContent=Object.keys(FARM_CROPS).filter(k=>farmSeedStock[k]>0).map(k=>FARM_CROPS[k].icon+" "+farmSeedStock[k]).join(" • ")||"هنوز بذری نداری";
  $("farmCrop").value=selectedCrop;
  $("farmCropInfo").textContent=crop.icon+" "+crop.name+" • رشد "+crop.days+" روز • فروش "+crop.price+" سکه"+(crop.regrow?" • برداشت دوباره هر "+crop.regrow+" روز":"")+" • فصل "+FARM_SEASONS[crop.season];
@@ -1768,12 +1775,24 @@ function farmPlant(){
  farmSeedStock[selectedCrop]--;p.state="growing";p.crop=selectedCrop;p.growth=0;p.harvests=0;p.wateredDay=-1;
  updateUI();updateFarmUI();saveQuietly();showToast(crop.name+" کاشته شد! هر روز آبیاریش کن 🌱");
 }
+function refillWateringCan(){
+ if(selectedTool!=="watering"){showToast("برای پر کردن آب‌پاش، اول خود آب‌پاش رو انتخاب کن 💧");return;}
+ if(wateringCanWater>=WATERING_CAN_MAX){showToast("آب‌پاش کاملاً پره 💧");return;}
+ wateringCanWater=WATERING_CAN_MAX;updateFarmUI();updateUI();saveQuietly();playGameSound("water");showToast("آب‌پاش از برکه پر شد! 💧 ("+WATERING_CAN_MAX+"/"+WATERING_CAN_MAX+")");
+}
 function farmWater(){
- const p=farmPlots[selectedFarmPlot];if(!p||p.state!=="growing"||p.wateredDay===worldDay)return;
- const crop=FARM_CROPS[p.crop],target=p.harvests>0&&crop.regrow?crop.regrow:crop.days;
- if(p.growth>=target)return;p.wateredDay=worldDay;updateFarmUI();saveQuietly();showToast("محصول آبیاری شد 💧 فردا رشد می‌کنه!");
+ if(selectedTool!=="watering"){showToast("برای آبیاری باید آب‌پاش رو از نوار ابزار انتخاب کنی 💧");return;}
+ const p=farmPlots[selectedFarmPlot];
+ if(!p||p.state!=="growing"){showToast("روی یک محصول در حال رشد بزن 🌱");return;}
+ if(p.wateredDay===worldDay){showToast("این زمین امروز قبلاً آبیاری شده است 💧");return;}
+ const crop=FARM_CROPS[p.crop];if(!crop)return;
+ const target=p.harvests>0&&crop.regrow?crop.regrow:crop.days;
+ if(p.growth>=target){showToast("این محصول رسیده و آماده‌ی برداشته؛ نیازی به آبیاری نداره 🌾");return;}
+ if(wateringCanWater<=0){showToast("آب‌پاش خالیه؛ روی برکه بزن تا دوباره پرش کنی 🌊");return;}
+ wateringCanWater--;p.wateredDay=worldDay;updateFarmUI();updateUI();saveQuietly();playGameSound("water");showToast("محصول آبیاری شد 💧 آب باقی‌مانده: "+wateringCanWater+"/"+WATERING_CAN_MAX);
 }
 function farmHarvest(){
+ if(selectedTool!=="scythe"){showToast("برای برداشت محصول باید داس رو از نوار ابزار انتخاب کنی 🌾");return;}
  const p=farmPlots[selectedFarmPlot];if(!p||p.state!=="growing")return;
  const crop=FARM_CROPS[p.crop],target=p.harvests>0&&crop.regrow?crop.regrow:crop.days;
  if(p.growth<target)return;
