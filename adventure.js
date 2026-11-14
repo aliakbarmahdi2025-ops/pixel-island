@@ -49,6 +49,7 @@ let tvForecast = { day: 0, weather: "sunny", mineLuck: "normal" };
 let activeMineLuck = "normal", activeMineLuckDay = 0;
 
 let townMode = false, townReturn = {x:2240,y:900}, townNpcIndex = 0;
+let shopInteriorMode=false, shopInteriorType=null, shopInteriorReturn={x:800,y:875};
 let backpackTier = 0, furnitureOwned = {bed:false,table:false,chair:false};
 const backpackCaps = [15,20,30];
 const townFriendship = {mina:0,hana:0,nahid:0,saeed:0,rezaei:0,naderi:0};
@@ -1172,6 +1173,16 @@ function canvasWorldTap(e){
   e.preventDefault();
   const wx=e.clientX+camera.x,wy=e.clientY+camera.y;
   if(!caveMode&&!townMode&&!templeMode&&!homeInterior){const f=furnaces.find(v=>Math.hypot(wx-v.x,wy-v.y)<42);if(f){setWorldTarget("furnace",f.x,f.y,{id:f.id});return;}if(inventorySelected==="bag:furnaceItem"){placeFurnace(wx,wy);return;}}
+  if(shopInteriorMode){
+    const wx=e.clientX+camera.x,wy=e.clientY+camera.y;
+    if(Math.hypot(wx-800,wy-610)<105){exitShopInterior();return;}
+    if(Math.hypot(wx-800,wy-245)<92){
+      if(shopInteriorType==="naderi"){townNpcIndex=townPeople.findIndex(p=>p.id==="naderi");openTownShop();}
+      else{townNpcIndex=townPeople.findIndex(p=>p.id==="rezaei");$("carpenterPanel").hidden=false;updateCarpenterUI();syncXpPanel();}
+      return;
+    }
+    setWorldTarget("ground",wx,wy);return;
+  }
   if(homeInterior){
     const L=getHomeInteriorLayout(),px=e.clientX,py=e.clientY;
     const inside=(r,pad=0)=>px>=r.x-pad&&px<=r.x+r.w+pad&&py>=r.y-pad&&py<=r.y+r.h+pad;
@@ -1295,7 +1306,7 @@ $("farmTill").addEventListener("click",farmTill);$("farmPlant").addEventListener
 $("farmCrop").addEventListener("change",e=>{selectedCrop=e.target.value;updateFarmUI();});$("sellCrops").addEventListener("click",sellFarmCrops);$("sellFish").addEventListener("click",sellFish);
 $("openLivestock").addEventListener("click",openLivestockPanel);$("closeLivestock").addEventListener("click",()=>{$("livestockPanel").hidden=true;syncXpPanel();});$("buyChicken").addEventListener("click",()=>buyLivestock("chicken"));$("buyCow").addEventListener("click",()=>buyLivestock("cow"));$("feedChicken").addEventListener("click",()=>feedLivestock("chicken"));$("feedCow").addEventListener("click",()=>feedLivestock("cow"));$("collectEggs").addEventListener("click",()=>collectAnimalProduct("egg"));$("collectMilk").addEventListener("click",()=>collectAnimalProduct("milk"));$("sellAnimalProducts").addEventListener("click",sellAnimalProducts);
 $("npcBtn").addEventListener("click", openNpcDialogue);
-$("townBtn").addEventListener("click",()=>transitionTown(true));$("townExitBtn").addEventListener("click",()=>transitionTown(false));$("townNpcBtn").addEventListener("click",openTownNpc);$("townNpcTalk").addEventListener("click",nextTownDialogue);$("townNpcShop").addEventListener("click",openTownShop);$("carpenterClose").addEventListener("click",()=>{$("carpenterPanel").hidden=true;syncXpPanel();});$("carpenterBuild").addEventListener("click",carpenterBuild);$("carpenterUpgrade").addEventListener("click",carpenterUpgrade);$("furnitureBed").addEventListener("click",()=>buildFurniture("bed"));$("furnitureTable").addEventListener("click",()=>buildFurniture("table"));$("furnitureChair").addEventListener("click",()=>buildFurniture("chair"));$("backpackUpgrade").addEventListener("click",upgradeBackpack);$("townNpcClose").addEventListener("click",()=>{$("townNpcPanel").hidden=true;syncXpPanel();});$("townShopClose").addEventListener("click",()=>{$("townShopPanel").hidden=true;syncXpPanel();});$("buyBread").addEventListener("click",()=>buyTownItem("bread"));$("buySeeds").addEventListener("click",()=>buyCropSeed(selectedCrop));$("seedShopList").addEventListener("click",e=>{const b=e.target.closest("[data-seed]");if(!b)return;selectedCrop=b.dataset.seed;updateTownShop();});$("buyApple").addEventListener("click",()=>buyTownItem("apple"));
+$("shopInteriorExitBtn").addEventListener("click",exitShopInterior);$("townBtn").addEventListener("click",()=>transitionTown(true));$("townExitBtn").addEventListener("click",()=>transitionTown(false));$("shopInteriorEnterBtn").addEventListener("click",()=>{const p=townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115&&(p.id==="naderi"||p.id==="rezaei"));if(p)enterShopInterior(p.id);});$("townNpcBtn").addEventListener("click",openTownNpc);$("townNpcTalk").addEventListener("click",nextTownDialogue);$("townNpcShop").addEventListener("click",openTownShop);$("carpenterClose").addEventListener("click",()=>{$("carpenterPanel").hidden=true;syncXpPanel();});$("carpenterBuild").addEventListener("click",carpenterBuild);$("carpenterUpgrade").addEventListener("click",carpenterUpgrade);$("furnitureBed").addEventListener("click",()=>buildFurniture("bed"));$("furnitureTable").addEventListener("click",()=>buildFurniture("table"));$("furnitureChair").addEventListener("click",()=>buildFurniture("chair"));$("backpackUpgrade").addEventListener("click",upgradeBackpack);$("townNpcClose").addEventListener("click",()=>{$("townNpcPanel").hidden=true;syncXpPanel();});$("townShopClose").addEventListener("click",()=>{$("townShopPanel").hidden=true;syncXpPanel();});$("buyBread").addEventListener("click",()=>buyTownItem("bread"));$("buySeeds").addEventListener("click",()=>buyCropSeed(selectedCrop));$("seedShopList").addEventListener("click",e=>{const b=e.target.closest("[data-seed]");if(!b)return;selectedCrop=b.dataset.seed;updateTownShop();});$("buyApple").addEventListener("click",()=>buyTownItem("apple"));
 $("eatBread").addEventListener("click",()=>consumeTownFood("bread"));
 $("eatApple").addEventListener("click",()=>consumeTownFood("apple"));
 $("npcNext").addEventListener("click", advanceNpcDialogue);
@@ -1700,7 +1711,7 @@ function update(dt) {
   worldClock += dt * 8;
   if(worldClock >= 1440){worldClock -= 1440;worldDay++;activateDailyForecast();onNewFarmDay();saveQuietly();}
   if (!templeMode && !caveMode && !homeInterior && !townMode) updateWeather(dt);
-  if(townMode)townSchedule(dt);
+  if(townMode&&!shopInteriorMode)townSchedule(dt);
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt); templeTrapCooldown=Math.max(0,templeTrapCooldown-dt);
   updateCombatEffects(dt);
   let debuffChanged=false;
@@ -1776,22 +1787,25 @@ function update(dt) {
   tickWorldInteraction(dt);
   audioEnvironment(dt);
   animTime += dt;
-  const mw = templeMode ? TEMPLE.w : caveMode ? CAVE.w : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
-  const mh = templeMode ? TEMPLE.h : caveMode ? CAVE.h : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h;
+  const mw = shopInteriorMode ? 900 : templeMode ? TEMPLE.w : caveMode ? CAVE.w : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
+  const mh = shopInteriorMode ? 650 : templeMode ? TEMPLE.h : caveMode ? CAVE.h : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h;
   player.x=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mw-((caveMode || homeInterior || townMode)?55:24),player.x));
   player.y=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mh-((caveMode || homeInterior || townMode)?55:24),player.y));
   camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
   $("homeBtn").hidden=true;$("townBtn").hidden=true;$("townExitBtn").hidden=true;
+  $("shopInteriorExitBtn").hidden=!shopInteriorMode;
   const bridgeDistance=Math.hypot(player.x-2525,player.y-1710),gateDistance=Math.hypot(player.x-3000,player.y-1710);
   $("bridgeBtn").hidden=templeMode||townMode||caveMode||homeInterior||(bridgeStage>=3?gateDistance>125:bridgeDistance>145);
   $("bridgeBtn").textContent=bridgeStage>=3?"🏛️ دروازه معبد":"🌉 پل باستانی";
   $("townClock").hidden=templeMode||homeInterior||caveMode;
   {const hh=Math.floor(worldClock/60),mm=Math.floor(worldClock%60),night=hh>=20||hh<6;$("townClock").textContent=(night?"🌙 ":"☀️ ")+String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0")+" • روز "+worldDay;}
   $("farmBtn").hidden=true;
-  const nearTownPerson=townMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
+  const nearTownPerson=townMode&&!shopInteriorMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
   $("townNpcBtn").hidden=true;
   $("townNpcBtn").textContent=nearTownPerson?"💬 صحبت با "+nearTownPerson.name:"💬 صحبت با اهالی";
+  $("shopInteriorEnterBtn").hidden=!(nearTownPerson&&(nearTownPerson.id==="naderi"||nearTownPerson.id==="rezaei"))||shopInteriorMode;
+  if(nearTownPerson&&nearTownPerson.id==="naderi")$("shopInteriorEnterBtn").textContent="🏪 ورود به مغازه";else $("shopInteriorEnterBtn").textContent="🪚 ورود به کارگاه";
   $("npcBtn").hidden = true;
   $("homeBtn").hidden = templeMode || townMode || caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
   $("homeBtn").textContent = homeInterior ? "🚪 خروج از خانه" : "🏡 خانه";
@@ -2270,6 +2284,74 @@ function drawFarmPlots(){
    ctx.restore();
   }
  }
+}
+function enterShopInterior(type){
+ if(!townMode||!["naderi","rezaei"].includes(type))return;
+ shopInteriorReturn={x:player.x,y:player.y};shopInteriorType=type;shopInteriorMode=true;
+ player.x=800;player.y=500;moveTarget=null;camera.x=0;camera.y=0;
+ $("shopInteriorExitBtn").hidden=false;
+ showToast(type==="naderi"?"وارد مغازه آقای نادری شدی 🏪":"وارد کارگاه خانم رضایی شدی 🪚");
+}
+function exitShopInterior(){
+ if(!shopInteriorMode)return;
+ shopInteriorMode=false;shopInteriorType=null;moveTarget=null;
+ player.x=shopInteriorReturn.x;player.y=shopInteriorReturn.y;
+ $("shopInteriorExitBtn").hidden=true;saveQuietly();showToast("به شهر برگشتی 🏘️");
+}
+function drawShopInterior(){
+ const w=900,h=650,wood=shopInteriorType==="naderi";
+ ctx.fillStyle="#211811";ctx.fillRect(0,0,viewW,viewH);
+ ctx.fillStyle=wood?"#ead8b5":"#76513b";ctx.fillRect(35,28,830,590);
+ // warm timber floor with perspective boards
+ ctx.fillStyle=wood?"#a87950":"#4a3025";ctx.fillRect(35,430,830,188);
+ for(let y=438;y<618;y+=30){ctx.fillStyle=wood?"#c08b5c":"#634331";ctx.fillRect(35,y,830,2);}
+ for(let x=45;x<865;x+=58){ctx.fillStyle=wood?"#8d603f":"#38251e";ctx.fillRect(x,430,2,188);}
+ // wall panels and beams
+ ctx.fillStyle=wood?"#f4e6c8":"#624333";ctx.fillRect(35,28,830,402);
+ for(let x=45;x<865;x+=92){ctx.fillStyle=wood?"#dfc99f":"#503426";ctx.fillRect(x,30,5,398);}
+ ctx.fillStyle=wood?"#76503a":"#35251d";ctx.fillRect(35,410,830,20);
+ // shelves / workshop wall storage
+ if(wood){
+   ctx.fillStyle="#4a2e21";ctx.fillRect(105,92,690,175);
+   for(let y of [174,256]){ctx.fillStyle="#8a5b38";ctx.fillRect(112,y,676,12);}
+   const colors=["#d96e55","#7d9b67","#6d91b5","#d6a64f","#9874a8"];
+   for(let row=0;row<2;row++)for(let i=0;i<11;i++){
+     const x=125+i*60,y=112+row*82;
+     ctx.fillStyle="#f4e6c8";ctx.fillRect(x+7,y,22,7);
+     ctx.fillStyle=colors[(i+row*2)%colors.length];ctx.fillRect(x+3,y+7,30,43);
+     ctx.fillStyle="rgba(255,255,255,.48)";ctx.fillRect(x+7,y+12,4,16);
+     ctx.fillStyle="#f7e9c5";ctx.fillRect(x+10,y+29,16,11);
+   }
+   ctx.fillStyle="#8e4b37";ctx.fillRect(300,330,300,88);ctx.fillStyle="#c08b5c";ctx.fillRect(290,320,320,18);
+   ctx.fillStyle="#455b68";ctx.fillRect(430,295,54,26);ctx.fillStyle="#b9d1d6";ctx.fillRect(442,287,30,8);
+   ctx.fillStyle="#d7ae53";ctx.beginPath();ctx.arc(535,315,9,Math.PI,0);ctx.fill();
+   ctx.fillStyle="#7a2d26";ctx.fillRect(355,462,190,72);ctx.strokeStyle="#e7c779";ctx.lineWidth=4;ctx.strokeRect(355,462,190,72);
+ }else{
+   ctx.fillStyle="#34241b";ctx.fillRect(92,92,716,168);
+   // pegboard and tools
+   ctx.fillStyle="#9c7957";ctx.fillRect(112,108,676,132);
+   for(let x=130;x<780;x+=22)for(let y=124;y<232;y+=22){ctx.fillStyle="#654631";ctx.fillRect(x,y,3,3);}
+   ctx.fillStyle="#9aa7a9";ctx.fillRect(220,130,9,88);ctx.fillRect(198,130,52,12);
+   ctx.fillStyle="#7a5034";ctx.fillRect(370,124,10,96);ctx.fillStyle="#aab5b8";ctx.fillRect(350,124,50,13);
+   ctx.fillStyle="#a7b0aa";ctx.fillRect(540,132,62,8);ctx.fillStyle="#805437";ctx.fillRect(565,140,10,78);
+   ctx.fillStyle="#315d42";ctx.fillRect(650,118,105,94);ctx.strokeStyle="#c7a77b";ctx.lineWidth=5;ctx.strokeRect(650,118,105,94);
+   ctx.fillStyle="#f1e4c5";ctx.fillRect(664,135,32,3);ctx.fillRect(690,154,44,3);ctx.fillRect(668,178,54,3);
+   // logs and workbench
+   for(let row=0;row<3;row++)for(let i=0;i<4-row;i++){const x=105+i*32,y=345-row*22;ctx.fillStyle="#98633e";ctx.fillRect(x,y,54,19);ctx.fillStyle="#d1a174";ctx.fillRect(x,y,54,4);ctx.fillStyle="#5a3827";ctx.beginPath();ctx.arc(x+27,y+10,6,0,Math.PI*2);ctx.fill();}
+   ctx.fillStyle="#4b3022";ctx.fillRect(260,350,390,82);ctx.fillStyle="#a87950";ctx.fillRect(248,337,414,18);
+   ctx.fillStyle="#aeb8bb";ctx.fillRect(330,326,38,8);ctx.fillStyle="#795235";ctx.fillRect(540,318,8,22);ctx.fillStyle="#aeb8bb";ctx.fillRect(530,316,28,8);
+ }
+ // NPC behind the counter / workbench
+ const id=shopInteriorType==="naderi"?"naderi":"rezaei";
+ const sprite=getTownSpriteFrames(id)[0];
+ ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(sprite,760,175,80,112);ctx.restore();
+ ctx.fillStyle=wood?"#493027":"#f7e8c9";ctx.font="bold 15px Tahoma";ctx.textAlign="center";ctx.fillText(wood?"آقای نادری":"خانم رضایی",800,160);
+ // doorway and instruction
+ ctx.fillStyle="#38241b";ctx.fillRect(735,565,130,53);ctx.fillStyle="#d4b47a";ctx.fillRect(747,577,106,41);
+ ctx.fillStyle="#fff0cf";ctx.font="bold 13px Tahoma";ctx.fillText("🚪 خروج",800,605);
+ ctx.fillStyle="#fff4dc";ctx.font="bold 13px Tahoma";ctx.fillText("برای تعامل روی فروشنده بزن",viewW/2,viewH-18);
+ const shade=ctx.createRadialGradient(viewW/2,viewH/2,100,viewW/2,viewH/2,Math.max(viewW,viewH)*.75);
+ shade.addColorStop(0,"rgba(0,0,0,0)");shade.addColorStop(1,"rgba(0,0,0,.34)");ctx.fillStyle=shade;ctx.fillRect(0,0,viewW,viewH);
 }
 function drawTown(){
   const w=TOWN.w,h=TOWN.h,tile=40;
@@ -3777,6 +3859,7 @@ function drawChest(){const x=CHEST_POS.x-camera.x,y=CHEST_POS.y-camera.y;if(x<-5
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
   if (templeMode||townMode) releaseGroundCaches();
+  if(shopInteriorMode){drawShopInterior();drawPlayer();return;}
   if (templeMode) { drawTempleGround(); for(const e of templeEnemies){if(e.alive)drawTempleEnemy(e);} drawPlayer(); return; }
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
   if(townMode){drawTown();drawTownPeople();drawPlayer();drawParticles();drawNightOverlay();return;}
