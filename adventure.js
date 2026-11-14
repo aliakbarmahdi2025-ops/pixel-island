@@ -54,14 +54,14 @@ let backpackTier = 0, furnitureOwned = {bed:false,table:false,chair:false};
 const backpackCaps = [15,20,30];
 const townFriendship = {mina:0,hana:0,nahid:0,saeed:0,rezaei:0,naderi:0};
 const townStock = {bread:0,seeds:0,apple:0};
-const TOWN = {w:1600,h:1200};
+const TOWN = {w:2400,h:1800};
 const townPeople = [
-{id:"mina",name:"مینا",role:"همسایه مهربان",x:470,y:560,color:"#d94f91",hair:"#693b39"},
-{id:"hana",name:"حنا",role:"خواهر مینا",x:560,y:590,color:"#348fc0",hair:"#292431"},
-{id:"nahid",name:"ناهید",role:"مادر مینا و حنا",x:420,y:650,color:"#9b3e60",hair:"#673b40"},
-{id:"saeed",name:"سعید",role:"نگهبان شهر",x:180,y:590,color:"#33465b",hair:"#28252b"},
-{id:"rezaei",name:"خانم رضایی",role:"نجار روستا",x:1120,y:530,color:"#4b8b50",hair:"#74483a"},
-{id:"naderi",name:"آقای نادری",role:"فروشنده و بذر‌فروش",x:1370,y:530,color:"#52677a",hair:"#302b2b"}
+{id:"mina",name:"مینا",role:"همسایه مهربان",x:450,y:650,color:"#d94f91",hair:"#693b39"},
+{id:"hana",name:"حنا",role:"خواهر مینا",x:550,y:700,color:"#348fc0",hair:"#292431"},
+{id:"nahid",name:"ناهید",role:"مادر مینا و حنا",x:350,y:750,color:"#9b3e60",hair:"#673b40"},
+{id:"saeed",name:"سعید",role:"نگهبان شهر",x:1200,y:1450,color:"#33465b",hair:"#28252b"},
+{id:"rezaei",name:"خانم رضایی",role:"نجار روستا",x:1850,y:900,color:"#4b8b50",hair:"#74483a"},
+{id:"naderi",name:"آقای نادری",role:"فروشنده و بذر‌فروش",x:1850,y:600,color:"#52677a",hair:"#302b2b"}
 ];
 
 let worldClock = 9 * 60, worldDay = 1, selectedFarmPlot = -1, selectedCrop = "carrot";
@@ -1192,7 +1192,10 @@ function canvasWorldTap(e){
     if(inside(L.fire,8)){toggleHouseHeater();return;}
     return;
   }
-  if(townMode&&Math.hypot(wx-800,wy-1110)<90){transitionTown(false);return;}
+  if(townMode&&Math.hypot(wx-1200,wy-1650)<90){transitionTown(false);return;}
+  // Direct door taps enter the matching walk-in shop/workshop interior.
+  if(townMode&&Math.hypot(wx-1850,wy-570)<72){enterShopInterior("naderi");return;}
+  if(townMode&&Math.hypot(wx-1850,wy-920)<72){enterShopInterior("rezaei");return;}
   if(mineMode&&mineTap(wx,wy))return;
   if(!templeMode&&!townMode&&!caveMode&&!homeInterior){
     if(Math.hypot(wx-MINE_ENTRANCE.x,wy-MINE_ENTRANCE.y)<88){enterMine();return;}
@@ -1382,7 +1385,7 @@ function getWorldMapState(){
   }
   if(townMode){
     const points=townPeople.map(p=>({x:p.x,y:p.y,label:p.name,color:p.id==="naderi"?"#e6c477":p.id==="rezaei"?"#8ed08d":"#9dc7d7",kind:"npc"}));
-    points.push({x:800,y:1110,label:"خروج جنگل",color:"#d8c18c",kind:"exit"});
+    points.push({x:1200,y:1700,label:"خروج جنگل",color:"#d8c18c",kind:"exit"});
     return {key:"town",title:"شهر سبز",w:TOWN.w,h:TOWN.h,points,legend:"🟡 تو • 🔵 اهالی شهر • 🟨 فروشگاه‌ها و خروجی"};
   }
   if(mineMode)return mineMapState();
@@ -1814,19 +1817,34 @@ function update(dt) {
 
 function transitionTown(enter){
  $("townFade").classList.add("active");
- setTimeout(()=>{if(enter){townReturn={x:player.x,y:player.y};townMode=true;caveMode=false;homeInterior=false;player.x=800;player.y=875;showToast("به شهر سبز خوش اومدی! 🏘️");}else{townMode=false;player.x=townReturn.x;player.y=townReturn.y;showToast("به جنگل برگشتی 🌲");}$("townFade").classList.remove("active");saveQuietly();},240);
+ setTimeout(()=>{
+   if(enter){
+     townReturn={x:player.x,y:player.y};townMode=true;caveMode=false;homeInterior=false;shopInteriorMode=false;
+     player.x=1200;player.y=1600;moveTarget=null;camera.x=0;camera.y=0;
+     showToast("به شهر سبز خوش اومدی! 🏘️");
+   }else{
+     townMode=false;shopInteriorMode=false;player.x=townReturn.x;player.y=townReturn.y;moveTarget=null;
+     showToast("به جنگل برگشتی 🌲");
+   }
+   $("townFade").classList.remove("active");saveQuietly();
+ },240);
 }
 function townSchedule(dt=0){
  const hour=worldClock/60,night=hour>=21||hour<7;
  const plans={
-  mina: night?[470,500]:hour<12?[470,560]:hour<17?[690,540]:[950,670],
-  hana: night?[570,520]:hour<11?[620,480]:hour<16?[920,590]:[720,740],
-  nahid: night?[420,650]:hour<9?[420,650]:hour<18?[535,420]:[420,650],
-  saeed: night?[180,590]:hour<12?[240,570]:hour<17?[800,1060]:[240,570],
-  rezaei: night?[1120,610]:hour<20?[1120,530]:[1120,610]
+  mina: night?[450,650]:hour<12?[600,900]:hour<17?[1200,1050]:[450,650],
+  hana: night?[550,700]:hour<11?[800,700]:hour<16?[1300,1000]:[550,700],
+  nahid: night?[350,750]:hour<9?[500,800]:hour<18?[1000,1100]:[350,750],
+  saeed: night?[1200,1450]:hour<12?[1200,1500]:hour<17?[1200,1100]:[1200,1450],
+  rezaei: night?[1850,900]:hour<20?[1850,940]:[1850,900],
+  naderi: night?[1850,600]:hour<20?[1850,650]:[1850,600]
  };
- townPeople.forEach(p=>{const target=plans[p.id];if(!target)return;const dx=target[0]-p.x,dy=target[1]-p.y,d=Math.hypot(dx,dy);if(d>2&&dt>0){const step=Math.min(d,48*dt);p.x+=dx/d*step;p.y+=dy/d*step;p.walking=true;}else p.walking=false;});
- // Keep residents from walking through one another; a small personal-space force separates nearby NPCs.
+ townPeople.forEach(p=>{
+   const target=plans[p.id];if(!target)return;
+   const dx=target[0]-p.x,dy=target[1]-p.y,d=Math.hypot(dx,dy);
+   if(d>2&&dt>0){const step=Math.min(d,48*dt);p.x+=dx/d*step;p.y+=dy/d*step;p.walking=true;}
+   else p.walking=false;
+ });
  for(let a=0;a<townPeople.length;a++)for(let b=a+1;b<townPeople.length;b++){
   const p=townPeople[a],q=townPeople[b],dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);
   if(d>0&&d<44){const push=(44-d)*0.5;p.x-=dx/d*push;p.y-=dy/d*push;q.x+=dx/d*push;q.y+=dy/d*push;}
@@ -2354,56 +2372,96 @@ function drawShopInterior(){
  shade.addColorStop(0,"rgba(0,0,0,0)");shade.addColorStop(1,"rgba(0,0,0,.34)");ctx.fillStyle=shade;ctx.fillRect(0,0,viewW,viewH);
 }
 function drawTown(){
-  const w=TOWN.w,h=TOWN.h,tile=40;
-  ctx.fillStyle="#bca77b";ctx.fillRect(0,0,viewW,viewH);
-  const sx=Math.floor(camera.x/tile),sy=Math.floor(camera.y/tile),ex=Math.ceil((camera.x+viewW)/tile),ey=Math.ceil((camera.y+viewH)/tile);
+  const tile=40;
+  // Soft green meadow base with deterministic pixel-art grass texture.
+  ctx.fillStyle="#6e9e5a";ctx.fillRect(0,0,viewW,viewH);
+  const sx=Math.floor(camera.x/tile),sy=Math.floor(camera.y/tile);
+  const ex=Math.ceil((camera.x+viewW)/tile),ey=Math.ceil((camera.y+viewH)/tile);
   for(let gy=sy;gy<=ey;gy++)for(let gx=sx;gx<=ex;gx++){
-    const n=(gx*31+gy*17+gx*gy*3)%11;
-    ctx.fillStyle=n<3?"#c7b487":n<7?"#d1bd91":"#cbb78b";
-    ctx.fillRect(gx*tile-camera.x,gy*tile-camera.y,tile+1,tile+1);
-    if(n===2||n===8){ctx.fillStyle="#b39d73";ctx.fillRect(gx*tile+8-camera.x,gy*tile+13-camera.y,3,2);ctx.fillRect(gx*tile+27-camera.x,gy*tile+30-camera.y,2,3);}
-    if(n===1||n===6){ctx.fillStyle="#b09a72";ctx.fillRect(gx*tile+5-camera.x,gy*tile+6-camera.y,8,1);ctx.fillRect(gx*tile+26-camera.x,gy*tile+27-camera.y,6,1);}
-    if(n===4){ctx.fillStyle="#e0cea5";ctx.fillRect(gx*tile+17-camera.x,gy*tile+9-camera.y,2,2);ctx.fillRect(gx*tile+31-camera.x,gy*tile+33-camera.y,3,2);}
+    const n=Math.abs((gx*13+gy*7+gx*gy*3)%9);
+    ctx.fillStyle=n<3?"#77a863":n<6?"#6e9e5a":"#659555";
+    const x=gx*tile-camera.x,y=gy*tile-camera.y;
+    ctx.fillRect(x,y,tile+1,tile+1);
+    if(n===1||n===5){ctx.fillStyle="#8bb873";ctx.fillRect(x+8,y+11,5,2);ctx.fillRect(x+27,y+29,4,2);}
+    if(n===3){ctx.fillStyle="#547f49";ctx.fillRect(x+18,y+8,2,5);ctx.fillRect(x+21,y+12,3,2);}
   }
-  // A winding, worn stone road connects the gate to the square.
-  ctx.fillStyle="#a58c65";ctx.beginPath();ctx.moveTo(680-camera.x,1200-camera.y);ctx.lineTo(920-camera.x,1200-camera.y);ctx.lineTo(900-camera.x,810-camera.y);ctx.lineTo(880-camera.x,700-camera.y);ctx.lineTo(720-camera.x,700-camera.y);ctx.lineTo(700-camera.x,820-camera.y);ctx.closePath();ctx.fill();
-  for(let y=730;y<1190;y+=42)for(let x=710;x<900;x+=48){const xx=x-camera.x,yy=y-camera.y;ctx.fillStyle=((x+y)%3)?"#c8b58d":"#bca77f";ctx.fillRect(xx,yy,42,31);ctx.strokeStyle="#a58e69";ctx.lineWidth=1;ctx.strokeRect(xx,yy,42,31);ctx.fillStyle="#e2d0a9";ctx.fillRect(xx+5,yy+5,12,2);ctx.fillStyle="#9d8866";ctx.fillRect(xx+30,yy+20,5,2);}
-  // Main square, cobbles and decorative border.
-  ctx.fillStyle="#a98f68";ctx.fillRect(500-camera.x,380-camera.y,620,450);
-  ctx.fillStyle="#d1bd91";ctx.fillRect(514-camera.x,394-camera.y,592,422);
-  for(let y=405;y<810;y+=34)for(let x=525;x<1090;x+=44){const xx=x-camera.x,yy=y-camera.y;ctx.fillStyle=((x/44+y/34|0)%2)?"#c7b487":"#d9c69a";ctx.fillRect(xx,yy,39,28);ctx.strokeStyle="#b5a078";ctx.lineWidth=1;ctx.strokeRect(xx,yy,39,28);ctx.fillStyle="#e5d4ae";ctx.fillRect(xx+4,yy+4,10,2);ctx.fillStyle="#ad9871";ctx.fillRect(xx+27,yy+20,5,2);}
-  // Small grass gardens around the town.
-  [[70,160,260,150],[1260,150,260,180],[90,850,300,260],[1200,880,300,220],[470,90,650,150]].forEach(g=>{ctx.fillStyle="#73965a";ctx.fillRect(g[0]-camera.x,g[1]-camera.y,g[2],g[3]);ctx.fillStyle="#8daf6b";for(let i=0;i<18;i++){const px=g[0]+(i*47)%g[2],py=g[1]+(i*31)%g[3];ctx.fillRect(px-camera.x,py-camera.y,8,5);}});
-  // Fountain with stone lip, water highlights and animated ripples.
-  const fx=810-camera.x,fy=590-camera.y,pulse=Math.sin(animTime*2.5);
-  ctx.fillStyle="#76634c";ctx.beginPath();ctx.ellipse(fx,fy+8,103,68,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="#e1d2ad";ctx.beginPath();ctx.ellipse(fx,fy,96,62,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="#5da9b2";ctx.beginPath();ctx.ellipse(fx,fy-3,82,49,0,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle="#a6e2d8";ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(fx,fy-4,48+Math.sin(animTime*2)*5,25+Math.cos(animTime*2)*3,0,0,Math.PI*2);ctx.stroke();
-  ctx.fillStyle="#d9cba8";ctx.fillRect(fx-12,fy-46,24,34);ctx.fillStyle="#7f9d91";ctx.fillRect(fx-17,fy-51,34,8);
-  ctx.strokeStyle="#d9f7e9";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(fx,fy-50);ctx.quadraticCurveTo(fx-8,fy-70+pulse*3,fx,fy-82);ctx.quadraticCurveTo(fx+8,fy-70-pulse*3,fx,fy-50);ctx.stroke();
-  // Iranian-inspired low-rise homes and shops.
-  drawTownBuilding(340,350,"خانه مینا و حنا","#a65343","home");
-  drawTownBuilding(535,300,"خانه ناهید","#b77c4c","home");
-  drawTownBuilding(1160,345,"نجاری خانم رضایی","#a84e3e","shop");
-  drawTownBuilding(1430,420,"فروشگاه نادری","#b86d3c","shop");
-  drawTownBuilding(180,430,"اتاق نگهبانی","#637e78","guard");
-  drawTownBuilding(1260,760,"خانه قدیمی","#9a6550","home");
-  // Windowside flower pots, shrubs, street lamps, benches.
-  [[270,470],[420,470],[475,420],[620,390],[1070,430],[1250,480],[1360,510],[1510,800]].forEach((p,i)=>drawFlowerPot(p[0]-camera.x,p[1]-camera.y,i));
-  [[650,850],[1020,850],[280,740],[1320,670]].forEach(p=>drawBench(p[0]-camera.x,p[1]-camera.y));
-  [[560,760],[1080,760],[760,340],[980,350],[250,650],[1450,650]].forEach(p=>drawTownLamp(p[0]-camera.x,p[1]-camera.y));
-  [[100,260],[270,900],[450,920],[1080,930],[1500,900],[1500,230],[950,210],[650,180]].forEach((p,i)=>drawTownTree(p[0]-camera.x,p[1]-camera.y,i));
-  // Town entrance gate and readable exit marker at the southern edge.
-  const gx=800-camera.x,gy=1110-camera.y;
+
+  // Main north-south cobblestone avenue, aligned with the southern forest gate.
+  const roadLeft=1050-camera.x,roadTop=0-camera.y,roadW=300;
+  ctx.fillStyle="#9b8973";ctx.fillRect(roadLeft,roadTop,roadW,TOWN.h);
+  for(let y=Math.max(0,Math.floor(camera.y/40)*40);y<Math.min(TOWN.h,camera.y+viewH+40);y+=40){
+    for(let x=1050;x<1350;x+=40){
+      const tx=x-camera.x,ty=y-camera.y;
+      ctx.fillStyle=((x/40+y/40)%2)?"#b3a18c":"#aa987f";
+      ctx.fillRect(tx+2,ty+2,36,36);
+      ctx.strokeStyle="#8c7a65";ctx.lineWidth=1;ctx.strokeRect(tx+1,ty+1,38,38);
+      ctx.fillStyle="#c7b69e";ctx.fillRect(tx+7,ty+7,10,2);
+    }
+  }
+
+  // A calm side lane serves the homes on the western side.
+  ctx.fillStyle="#927e68";ctx.fillRect(300-camera.x,790-camera.y,690,100);
+  for(let y=790;y<890;y+=34)for(let x=300;x<990;x+=42){
+    const tx=x-camera.x,ty=y-camera.y;
+    ctx.fillStyle=((x+y)%3)?"#b7a38a":"#a9957c";
+    ctx.fillRect(tx+2,ty+2,38,30);
+    ctx.strokeStyle="#89755f";ctx.lineWidth=1;ctx.strokeRect(tx+2,ty+2,38,30);
+  }
+
+  // Central paved plaza and its fountain.
+  const plazaX=1200-camera.x,plazaY=1000-camera.y;
+  ctx.fillStyle="#8e7b65";ctx.beginPath();ctx.arc(plazaX,plazaY,232,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#c2b09b";ctx.beginPath();ctx.arc(plazaX,plazaY,220,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#d4c4b1";ctx.beginPath();ctx.arc(plazaX,plazaY,202,0,Math.PI*2);ctx.fill();
+  for(let a=0;a<Math.PI*2;a+=Math.PI/8){
+    ctx.strokeStyle="#b6a58f";ctx.lineWidth=2;ctx.beginPath();
+    ctx.moveTo(plazaX+Math.cos(a)*145,plazaY+Math.sin(a)*145);
+    ctx.lineTo(plazaX+Math.cos(a)*194,plazaY+Math.sin(a)*194);ctx.stroke();
+  }
+  const pulse=Math.sin(animTime*2.5);
+  ctx.fillStyle="#76634c";ctx.beginPath();ctx.ellipse(plazaX,plazaY+9,82,60,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#cfd8dc";ctx.beginPath();ctx.ellipse(plazaX,plazaY,76,55,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#4fc3f7";ctx.beginPath();ctx.ellipse(plazaX,plazaY-3,64,44,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="#b3e5fc";ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(plazaX,plazaY-4,42+Math.sin(animTime*2)*5,25+Math.cos(animTime*2)*3,0,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle="#e0e0e0";ctx.fillRect(plazaX-13,plazaY-14,26,36);
+  ctx.fillStyle="#607d8b";ctx.fillRect(plazaX-20,plazaY-21,40,8);
+  ctx.strokeStyle="#e1f5fe";ctx.lineWidth=4;ctx.beginPath();
+  ctx.moveTo(plazaX,plazaY-20);ctx.quadraticCurveTo(plazaX-9,plazaY-48+pulse*4,plazaX,plazaY-66);
+  ctx.quadraticCurveTo(plazaX+9,plazaY-48-pulse*4,plazaX,plazaY-20);ctx.stroke();
+  ctx.fillStyle="#d9f5ff";ctx.fillRect(plazaX-3,plazaY-73+Math.sin(animTime*5)*3,6,7);
+
+  // Small garden pockets around the residential lane and outer road.
+  [[70,170,220,170],[1450,130,300,210],[70,1080,250,300],[1510,1120,250,300],[470,120,500,110]].forEach((g,idx)=>{
+    ctx.fillStyle=idx%2?"#72985b":"#789f60";ctx.fillRect(g[0]-camera.x,g[1]-camera.y,g[2],g[3]);
+    for(let i=0;i<22;i++){const px=g[0]+(i*47)%g[2],py=g[1]+(i*31)%g[3];ctx.fillStyle=i%2?"#8dbb70":"#628d50";ctx.fillRect(px-camera.x,py-camera.y,7,4);}
+  });
+
+  // Residential quarter, shops and the small guard post.
+  drawTownBuilding(450,550,"خانه مینا و حنا","#a65343","home");
+  drawTownBuilding(350,950,"خانه ناهید","#b77c4c","home");
+  drawTownBuilding(750,600,"خانه قدیمی","#6d8b61","home");
+  drawTownBuilding(1850,500,"فروشگاه نادری","#b86d3c","shop");
+  drawTownBuilding(1850,850,"کارگاه رضایی","#4b8b50","shop");
+  drawTownBuilding(1500,1400,"اتاق نگهبانی","#637e78","guard");
+
+  // Benches, flower pots, trees and lamps are kept in world coordinates.
+  [[900,900],[1500,1100],[780,1120],[1450,760]].forEach(p=>drawBench(p[0]-camera.x,p[1]-camera.y));
+  [[420,690],[610,690],[320,1080],[1820,630],[1880,980],[1460,1450]].forEach((p,i)=>drawFlowerPot(p[0]-camera.x,p[1]-camera.y,i));
+  [[300,300],[800,300],[1600,300],[2100,300],[300,1200],[800,1200],[1800,1300],[2100,1300],[700,1500],[1650,1600]].forEach((p,i)=>drawTownTree(p[0]-camera.x,p[1]-camera.y,i));
+  [[1100,600],[1300,600],[1100,1400],[1300,1400],[1550,700],[1550,1050]].forEach(p=>drawTownLamp(p[0]-camera.x,p[1]-camera.y));
+
+  // Southern forest gate and the town name sign.
+  const gx=1200-camera.x,gy=1700-camera.y;
   ctx.fillStyle="#5e4029";ctx.fillRect(gx-66,gy-92,12,108);ctx.fillRect(gx+54,gy-92,12,108);ctx.fillRect(gx-66,gy-92,132,12);
-  ctx.fillStyle="#9b673d";ctx.fillRect(gx-48,gy-78,96,55);ctx.strokeStyle="#e7c98d";ctx.lineWidth=3;ctx.strokeRect(gx-48,gy-78,96,55);
+  ctx.fillStyle="#9b673d";ctx.fillRect(gx-48,gy-78,96,55);
+  ctx.strokeStyle="#e7c98d";ctx.lineWidth=3;ctx.strokeRect(gx-48,gy-78,96,55);
   ctx.fillStyle="#fff0cb";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("جنگل",gx,gy-45);
-  ctx.fillStyle="#f5e7c6";ctx.font="bold 17px Tahoma";ctx.fillText("شهر سبز",800-camera.x,115-camera.y);
+  ctx.fillStyle="#f5e7c6";ctx.font="bold 17px Tahoma";ctx.fillText("شهر سبز",gx,gy-110);
+
   const hour=worldClock/60;
-  if(hour>=20||hour<6){ctx.fillStyle="rgba(22,35,70,.34)";ctx.fillRect(0,0,viewW,viewH);}
-  else if(hour>=18){ctx.fillStyle="rgba(227,126,65,.14)";ctx.fillRect(0,0,viewW,viewH);}
-  else if(hour<8){ctx.fillStyle="rgba(255,203,133,.10)";ctx.fillRect(0,0,viewW,viewH);}
+  if(hour>=20||hour<6){ctx.fillStyle="rgba(22,35,70,.38)";ctx.fillRect(0,0,viewW,viewH);}
+  else if(hour>=18){ctx.fillStyle="rgba(227,126,65,.18)";ctx.fillRect(0,0,viewW,viewH);}
+  else if(hour<8){ctx.fillStyle="rgba(255,203,133,.12)";ctx.fillRect(0,0,viewW,viewH);}
   ctx.textAlign="start";
 }
 function drawTownTree(x,y,i){
