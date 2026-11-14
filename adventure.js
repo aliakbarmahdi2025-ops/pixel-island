@@ -1447,7 +1447,7 @@ function drawWorldMap(){
 }
 
 function syncXpPanel() {
-  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel", "livestockPanel", "bridgePanel", "templePanel", "mapPanel", "elevatorPanel"];
+  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "carpenterPanel", "farmPanel", "livestockPanel", "bridgePanel", "templePanel", "mapPanel", "elevatorPanel"];
   const hud = $("hud");
   const xp = $("xpPanel");
   xp.hidden = panelIds.some(id => !$(id).hidden);
