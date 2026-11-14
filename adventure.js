@@ -897,8 +897,10 @@ function updateHotbar(){
 function chooseTool(tool){
   if(!TOOL_INFO[tool])return;
   selectedTool=tool;updateHotbar();
-  if(tool==="seeds")openFarmPanel();
-  else showToast(TOOL_INFO[tool].label+" انتخاب شد");
+  if(tool==="seeds"){
+    const crop=FARM_CROPS[selectedCrop];
+    showToast("بذر "+(crop?crop.name:"")+" انتخاب شد؛ روی زمین شخم‌خورده بزن 🌱");
+  }else showToast(TOOL_INFO[tool].label+" انتخاب شد");
 }
 
 $("soundBtn").addEventListener("click",()=>{
