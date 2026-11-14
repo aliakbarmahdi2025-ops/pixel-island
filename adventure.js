@@ -561,8 +561,46 @@ makeWorld();
 makeCave();
 if(caveMode&&!mineMode){caveMode=false;player.x=caveReturn.x;player.y=caveReturn.y;}
 function makeEnemies() {
-  // Slimes no longer spawn in the forest; they live in the cave now.
+  // Stage 69 — three lightweight forest encounters, kept clear of landmarks and saved farm objects.
+  const candidates = [
+    [1480,690],[1760,1170],[2200,1240],[1280,1380],
+    [2400,600],[900,1300],[2500,1400],[1600,1800],
+    [1980,700],[1150,1450],[2320,1550]
+  ];
   enemies = [];
+  const safeLandmark = (x,y) =>
+    Math.hypot(x-playerHome.x,y-playerHome.y)>230 &&
+    Math.hypot(x-samanHome.x,y-samanHome.y)>230 &&
+    Math.hypot(x-forestNpc.x,y-forestNpc.y)>170 &&
+    Math.hypot(x-2310,y-900)>190 &&
+    Math.hypot(x-1800,y-1640)>190 &&
+    Math.hypot(x-CHEST_POS.x,y-CHEST_POS.y)>150 &&
+    Math.hypot(x-LIVESTOCK_PEN.x,y-LIVESTOCK_PEN.y)>190 &&
+    Math.hypot(x-2525,y-1710)>180 &&
+    Math.abs(x-2700)>140;
+  const safeTerrain = (x,y) =>
+    !resources.some(r=>Math.hypot(x-r.x,y-r.y)<58) &&
+    !farmPlots.some(p=>Math.hypot(x-p.x,y-p.y)<100) &&
+    !furnaces.some(f=>Math.hypot(x-f.x,y-f.y)<100);
+  const addBoar = (x,y) => enemies.push({
+    id:"forest-boar-"+enemies.length,kind:"forestBoar",
+    x,y,spawnX:x,spawnY:y,hp:3,max:3,alive:true,respawnTimer:0
+  });
+  for(const [x,y] of candidates){
+    if(!safeLandmark(x,y)||Math.hypot(x-player.x,y-player.y)<220)continue;
+    if(!safeTerrain(x,y)||enemies.some(e=>Math.hypot(x-e.x,y-e.y)<300))continue;
+    addBoar(x,y);
+    if(enemies.length===3)break;
+  }
+  // Saved player positions can block the first pass; use farther fallback spots if needed.
+  if(enemies.length<3){
+    for(const [x,y] of candidates){
+      if(!safeLandmark(x,y)||Math.hypot(x-player.x,y-player.y)<150)continue;
+      if(!safeTerrain(x,y)||enemies.some(e=>Math.hypot(x-e.x,y-e.y)<300))continue;
+      addBoar(x,y);
+      if(enemies.length===3)break;
+    }
+  }
 }
 makeEnemies();
 if(templeMode)createTempleEnemies();
@@ -1101,6 +1139,7 @@ function attack(targetId=null) {
     if(target.kind==="templeBoss"){templeBosses[templeFloor]=true;player.coins+=25+templeFloor*10;bag.crystal=(bag.crystal||0)+2+templeFloor;bag.templeMosaic=(bag.templeMosaic||0)+1;progressNpcCrystal(2+templeFloor);addXP(35+templeFloor*10);updateUI();saveQuietly();showToast("نگهبان معبد شکست خورد! غنیمت کمیاب گرفتی 🏛️");}
     else if(target.kind==="templeSentinel"){addXP(10+templeFloor*2);if(Math.random()<.45&&bagCanAdd(1,"crystal"))bag.crystal=(bag.crystal||0)+1;updateUI();saveQuietly();showToast("نگهبان تالار شکست خورد!");}
     else if(target.kind==="guardian"){lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+18,y:target.y+12,type:"crystal",qty:2,rarity:"rare"});player.coins+=10;bag.crystal=(bag.crystal||0)+2;progressNpcCrystal(2);const leveled=addXP(25);updateUI();saveQuietly();showToast(leveled?"نگهبان کریستالی شکست خورد! +۱۰ سکه و ۲ کریستال؛ سطح جدید ⭐":"نگهبان کریستالی شکست خورد! +۱۰ سکه، ۲ کریستال و ۲۵ تجربه 💎");}
+    else if(target.kind==="forestBoar"){player.coins+=6;const leveled=addXP(12);if(roll<.22)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+14,y:target.y+10,type:"potion",qty:1,rarity:"uncommon"});updateUI();saveQuietly();showToast(leveled?"گراز جنگلی شکست خورد! +۶ سکه و سطح جدید ⭐":"گراز جنگلی شکست خورد! +۶ سکه و ۱۲ تجربه 🐗");}
     else {quests.slime=Math.min(3,quests.slime+1);const leveled=addXP(15);if(roll<0.38)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"coin",qty:3+Math.floor(Math.random()*5),rarity:"common"});else if(roll<0.62)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"stone",qty:1,rarity:"common"});else if(roll<0.82)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"iron",qty:1,rarity:"uncommon"});else if(roll<0.94)lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"potion",qty:1,rarity:"rare"});else lootDrops.push({id:"drop-"+Date.now()+"-"+Math.random(),x:target.x+12,y:target.y+10,type:"crystal",qty:1,rarity:"rare"});updateUI();saveQuietly();showToast(leveled?"اسلایم غار شکست خورد! سطح جدید ⭐":"اسلایم غار شکست خورد! +۱۵ تجربه؛ شاید غنیمت انداخته باشد 💎");}
   } else showToast("ضربه زدی! ❤️ جان دشمن: "+target.hp);
 }
@@ -1411,9 +1450,10 @@ function getWorldMapState(){
     {x:2310,y:900,label:"شهر سبز",color:"#8fc5d4",kind:"town"},
     {x:2080,y:1450,label:"غار",color:"#80cbd4",kind:"cave"},
     {x:MINE_ENTRANCE.x,y:MINE_ENTRANCE.y,label:"معدن",color:"#c9a56a",kind:"cave"},
-    {x:bridgeStage>=3?3000:2525,y:1710,label:bridgeStage>=3?"دروازه معبد":"پل باستانی",color:"#e2bd78",kind:"temple"}
+    {x:bridgeStage>=3?3000:2525,y:1710,label:bridgeStage>=3?"دروازه معبد":"پل باستانی",color:"#e2bd78",kind:"temple"},
+    ...enemies.filter(e=>e.alive&&e.kind==="forestBoar").map(e=>({x:e.x,y:e.y,label:"گراز",color:"#b77852",kind:"enemy"}))
   ];
-  return {key:"forest",title:"جنگل بزرگ",w:WORLD.w,h:WORLD.h,points,riverX:2700,legend:"🟡 تو • 🏡 خانه • 🧙 سامان • 🏘️ شهر • 🕳️ غار • 🌉 پل و معبد"};
+  return {key:"forest",title:"جنگل بزرگ",w:WORLD.w,h:WORLD.h,points,riverX:2700,legend:"🟡 تو • 🐗 گرازهای جنگلی • 🏡 خانه • 🧙 سامان • 🏘️ شهر • 🕳️ غار • 🌉 پل و معبد"};
 }
 function drawWorldMap(){
   const canvas=$("mapCanvas"),mapCtx=canvas.getContext("2d");
@@ -1739,6 +1779,7 @@ function update(dt) {
     const ex=player.x-enemy.x,ey=player.y-enemy.y,distance=Math.hypot(ex,ey)||1;
     let chaseSpeed = templeMode ? 56+templeFloor*6+(enemy.kind==="templeBoss"?12:0) : caveMode ? 48 : 72;
     if(enemy.kind==="worm")chaseSpeed=62;
+    if(enemy.kind==="forestBoar")chaseSpeed=58;
     if(enemy.kind==="fairy"){chaseSpeed=48;enemy.y+=Math.sin(animTime*4+enemy.spawnX*.01)*13*dt;}
     if(enemy.kind==="mimic")chaseSpeed=34;
     const attackRange=enemy.kind==="fairy"?48:enemy.kind==="mimic"?42:30;
@@ -3306,6 +3347,27 @@ function drawRock(r) {
  ctx.fillStyle="#303b38";ctx.fillRect(x-3,y-5,2,7);ctx.fillRect(x+13,y-7,2,4);
  ctx.strokeStyle="rgba(25,36,33,.55)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+1,y-12);ctx.lineTo(x-2,y-7);ctx.lineTo(x+1,y-3);ctx.stroke();
 }
+function drawForestBoar(e) {
+  const x=e.x-camera.x,y=e.y-camera.y,bob=Math.sin(animTime*4+e.spawnX*.01)*1.2;
+  ctx.fillStyle="rgba(10,18,12,.34)";
+  ctx.beginPath();ctx.ellipse(x,y+13,23,7,0,0,Math.PI*2);ctx.fill();
+  ctx.save();ctx.translate(x,y+bob);
+  ctx.fillStyle="#332a22";ctx.fillRect(-19,-11,34,20);
+  ctx.fillStyle="#62442f";ctx.fillRect(-16,-17,27,12);
+  ctx.fillStyle="#80583a";ctx.fillRect(-11,-18,16,5);
+  ctx.fillStyle="#4a3326";ctx.fillRect(7,-17,15,15);
+  ctx.fillStyle="#6b4930";ctx.fillRect(15,-13,10,9);
+  ctx.fillStyle="#3b2b22";ctx.fillRect(19,-9,8,5);
+  ctx.fillStyle="#2b241f";ctx.fillRect(8,-25,7,10);ctx.fillRect(16,-23,6,8);
+  ctx.fillStyle="#e8d7b4";ctx.fillRect(18,-4,3,6);
+  ctx.fillStyle="#f0d18a";ctx.fillRect(15,-15,3,3);
+  ctx.fillStyle="#30251d";ctx.fillRect(-14,6,6,10);ctx.fillRect(-2,6,6,10);ctx.fillRect(12,5,6,11);
+  ctx.fillStyle="#8b6240";ctx.fillRect(-14,7,4,3);ctx.fillRect(-2,7,4,3);ctx.fillRect(12,6,4,3);
+  ctx.restore();
+  ctx.fillStyle="#1c211c";ctx.fillRect(x-20,y-31,40,5);
+  ctx.fillStyle="#d86f58";ctx.fillRect(x-19,y-30,38*Math.max(0,e.hp/e.max),3);
+}
+
 function drawIron(r) {
  drawRock(r);const x=r.x-camera.x,y=r.y-camera.y;
  ctx.fillStyle="#9b593e";ctx.fillRect(x-7,y-6,6,5);ctx.fillRect(x+5,y+1,7,5);
@@ -3973,7 +4035,7 @@ function draw() {
     else if(MINE_ORES[r.type]) drawOreNode(r);
   }
   const visibleEnemies = caveMode ? caveEnemies : enemies;
-  for(const e of visibleEnemies){if(!e.alive)continue;if(e.x<camera.x-60||e.x>camera.x+viewW+60||e.y<camera.y-60||e.y>camera.y+viewH+60)continue;if(e.kind==="slime")drawSlime(e);else if(e.kind==="mimic")drawMimic(e);else if(e.kind==="worm")drawWorm(e);else if(e.kind==="fairy")drawFairy(e);else drawCrystalGuardian(e);}
+  for(const e of visibleEnemies){if(!e.alive)continue;if(e.x<camera.x-60||e.x>camera.x+viewW+60||e.y<camera.y-60||e.y>camera.y+viewH+60)continue;if(e.kind==="slime")drawSlime(e);else if(e.kind==="mimic")drawMimic(e);else if(e.kind==="worm")drawWorm(e);else if(e.kind==="fairy")drawFairy(e);else if(e.kind==="forestBoar")drawForestBoar(e);else drawCrystalGuardian(e);}
   drawLootDrops();
   if(!caveMode) drawForestNpc();
   if(!caveMode){const sx=2310-camera.x,sy=900-camera.y;ctx.fillStyle="#65452c";ctx.fillRect(sx-4,sy-2,8,50);ctx.fillStyle="#b77b3e";ctx.fillRect(sx-43,sy-38,86,34);ctx.strokeStyle="#f0d49a";ctx.lineWidth=3;ctx.strokeRect(sx-43,sy-38,86,34);ctx.fillStyle="#fff0c2";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("شهر سبز",sx,sy-16);ctx.textAlign="start";}
