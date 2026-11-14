@@ -255,7 +255,7 @@ function load() {
     wateringCanWater=Number.isFinite(data.wateringCanWater)?Math.max(0,Math.min(WATERING_CAN_MAX,Math.floor(data.wateringCanWater))):WATERING_CAN_MAX;
     if(data.farmSeedStock&&typeof data.farmSeedStock==="object")Object.keys(farmSeedStock).forEach(k=>farmSeedStock[k]=Math.max(0,Number(data.farmSeedStock[k])||0));
     if((bag.seeds||0)>0){farmSeedStock.carrot+=(bag.seeds||0);bag.seeds=0;}
-    if(Array.isArray(data.farmPlots)){farmPlots.length=0;data.farmPlots.forEach((p,i)=>{if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y)){const plot={...p,id:Number.isFinite(p.id)?p.id:i};if(Math.hypot(plot.x-LIVESTOCK_PEN.x,plot.y-LIVESTOCK_PEN.y)<150){plot.x+=220+(i%3)*64;plot.y+=Math.floor(i/3)*64;}farmPlots.push(plot);}});}
+    if(Array.isArray(data.farmPlots)){farmPlots.length=0;data.farmPlots.forEach((p,i)=>{if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y)){const plot={...p,id:Number.isFinite(p.id)?p.id:i,tilledDay:Number.isFinite(p.tilledDay)?p.tilledDay:-1};if(Math.hypot(plot.x-LIVESTOCK_PEN.x,plot.y-LIVESTOCK_PEN.y)<150){plot.x+=220+(i%3)*64;plot.y+=Math.floor(i/3)*64;}farmPlots.push(plot);}});}
     if(data.livestock&&typeof data.livestock==="object")livestock={...livestock,...data.livestock};
     livestock.chickens=Math.max(0,Math.min(4,Number(livestock.chickens)||0));
     livestock.cows=Math.max(0,Math.min(2,Number(livestock.cows)||0));
@@ -1695,12 +1695,13 @@ function onNewFarmDay(){
  updateQuestUI();
  const season=getFarmSeason(),seasonChanged=getFarmSeasonDay()===1;
  for(const p of farmPlots){
+  if(p.state==="tilled"&&!p.crop&&Number.isFinite(p.tilledDay)&&p.tilledDay>=0&&worldDay>p.tilledDay){p.state="empty";p.tilledDay=-1;p.wateredDay=-1;}
   if(p.state==="growing"&&p.crop&&p.wateredDay===worldDay-1){
    const crop=FARM_CROPS[p.crop],target=p.harvests>0&&crop.regrow?crop.regrow:crop.days;
    p.growth=Math.min(target,p.growth+1);
   }
   p.wateredDay=-1;
-  if(seasonChanged&&p.state==="growing"&&p.crop&&FARM_CROPS[p.crop].season!==season){p.state="tilled";p.crop=null;p.growth=0;p.harvests=0;}
+  if(seasonChanged&&p.state==="growing"&&p.crop&&FARM_CROPS[p.crop].season!==season){p.state="tilled";p.crop=null;p.growth=0;p.harvests=0;p.tilledDay=-1;}
  }
  showToast("روز "+getFarmSeasonDay()+" از "+FARM_SEASONS[season]+" شروع شد! 🌅");
  updateFarmUI();
@@ -1745,7 +1746,7 @@ function updateFarmUI(){
  const season=getFarmSeason(),crop=FARM_CROPS[selectedCrop],p=farmPlots[selectedFarmPlot];
  $("farmSeason").textContent=FARM_SEASONS[season]+" • روز "+getFarmSeasonDay()+" از ۲۸";
  $("farmPlotsGrid").innerHTML=farmPlots.map((q,i)=>'<button type="button" data-plot="'+i+'" class="'+(i===selectedFarmPlot?'selected':'')+'">'+(q.crop?FARM_CROPS[q.crop].icon+" "+FARM_CROPS[q.crop].name:q.state==="tilled"?"زمین آماده کاشت":"زمین خالی")+(q.state==="growing"?" • "+q.growth+"/"+(q.harvests>0&&FARM_CROPS[q.crop].regrow?FARM_CROPS[q.crop].regrow:FARM_CROPS[q.crop].days)+" روز":"")+'</button>').join("");
- $("farmPlotStatus").textContent=!p?"برای ساخت مزرعه، کنار زمین دلخواهت بایست و «شخم زدن اینجا» را بزن.":p.state==="tilled"?"این زمین شخم خورده و آماده کاشت است.":p.state==="growing"?(FARM_CROPS[p.crop].name+" • رشد "+p.growth+"/"+(p.harvests>0&&FARM_CROPS[p.crop].regrow?FARM_CROPS[p.crop].regrow:FARM_CROPS[p.crop].days)+" روز • "+(p.growth>=(p.harvests>0&&FARM_CROPS[p.crop].regrow?FARM_CROPS[p.crop].regrow:FARM_CROPS[p.crop].days)?"آماده برداشت 🧺":p.wateredDay===worldDay?"امروز آبیاری شده 💧":"امروز هنوز آب نخورده 💧")):"زمین خالی است.";
+ $("farmPlotStatus").textContent=!p?"برای ساخت مزرعه، کنار زمین دلخواهت بایست و «شخم زدن اینجا» را بزن.":p.state==="tilled"?"این زمین شخم خورده و آماده کاشت است. "+(p.wateredDay===worldDay?"امروز آبیاری شده 💧 ":"")+(Number.isFinite(p.tilledDay)&&p.tilledDay>=0?"تا پایان امروز فرصت کاشت داری.":""):p.state==="growing"?(FARM_CROPS[p.crop].name+" • رشد "+p.growth+"/"+(p.harvests>0&&FARM_CROPS[p.crop].regrow?FARM_CROPS[p.crop].regrow:FARM_CROPS[p.crop].days)+" روز • "+(p.growth>=(p.harvests>0&&FARM_CROPS[p.crop].regrow?FARM_CROPS[p.crop].regrow:FARM_CROPS[p.crop].days)?"آماده برداشت 🧺":p.wateredDay===worldDay?"امروز آبیاری شده 💧":"امروز هنوز آب نخورده 💧")):"زمین خالی است.";
   $("farmPlotStatus").textContent+="\nآب آب‌پاش: "+wateringCanWater+" / "+WATERING_CAN_MAX+" 💧";
  $("farmSeeds").textContent=Object.keys(FARM_CROPS).filter(k=>farmSeedStock[k]>0).map(k=>FARM_CROPS[k].icon+" "+farmSeedStock[k]).join(" • ")||"هنوز بذری نداری";
  $("farmCrop").value=selectedCrop;
@@ -1753,7 +1754,7 @@ function updateFarmUI(){
  $("farmTill").textContent=p?"🪴 شخم زدن زمین انتخاب‌شده":"🪴 شخم زدن اینجا";
  $("farmTill").disabled=!!p&&p.state!=="empty";
  $("farmPlant").disabled=!p||p.state!=="tilled"||farmSeedStock[selectedCrop]<1||crop.season!==season;
- $("farmWater").disabled=!p||p.state!=="growing"||p.growth>=(p.harvests>0&&FARM_CROPS[p.crop].regrow?FARM_CROPS[p.crop].regrow:FARM_CROPS[p.crop].days)||p.wateredDay===worldDay;
+ $("farmWater").disabled=!p||(p.state!=="growing"&&p.state!=="tilled")||(p.state==="growing"&&p.growth>=(p.harvests>0&&FARM_CROPS[p.crop].regrow?FARM_CROPS[p.crop].regrow:FARM_CROPS[p.crop].days))||p.wateredDay===worldDay||wateringCanWater<=0;
  $("farmHarvest").disabled=!p||p.state!=="growing"||p.growth<(p.harvests>0&&FARM_CROPS[p.crop].regrow?FARM_CROPS[p.crop].regrow:FARM_CROPS[p.crop].days);
  $("farmPlant").textContent=crop.season===season?"🌱 کاشت "+crop.name:"🔒 مخصوص "+FARM_SEASONS[crop.season];
 }
@@ -1764,15 +1765,15 @@ function farmTill(targetX=null,targetY=null){
  const x=Math.max(64,Math.min(WORLD.w-64,Math.round(rawX/64)*64)),y=Math.max(64,Math.min(WORLD.h-64,Math.round(rawY/64)*64));
  if(Math.abs(x-2700)<115||Math.hypot(x-playerHome.x,y-playerHome.y)<145||Math.hypot(x-samanHome.x,y-samanHome.y)<105||Math.hypot(x-LIVESTOCK_PEN.x,y-LIVESTOCK_PEN.y)<155||resources.some(r=>Math.hypot(r.x-x,r.y-y)<48)){showToast("اینجا جای مناسبی برای شخم نیست؛ از دامداری و ساختمان‌ها فاصله بگیر 🌿");return;}
  const existing=getFarmTileAt(x,y);
- if(existing>=0){if(farmPlots[existing].state==="empty"){selectedFarmPlot=existing;farmPlots[existing].state="tilled";}else{showToast("این زمین قبلاً آماده شده!");return;}}
- else{farmPlots.push({id:farmPlots.length,x,y,state:"tilled",crop:null,growth:0,wateredDay:-1,harvests:0});selectedFarmPlot=farmPlots.length-1;}
+ if(existing>=0){if(farmPlots[existing].state==="empty"){selectedFarmPlot=existing;farmPlots[existing].state="tilled";farmPlots[existing].tilledDay=worldDay;farmPlots[existing].wateredDay=-1;}else{showToast("این زمین قبلاً آماده شده!");return;}}
+ else{farmPlots.push({id:farmPlots.length,x,y,state:"tilled",crop:null,growth:0,wateredDay:-1,harvests:0,tilledDay:worldDay});selectedFarmPlot=farmPlots.length-1;}
  updateFarmUI();saveQuietly();showToast("زمین جدیدت شخم خورد! 🪴");
 }
 function farmPlant(){
  const p=farmPlots[selectedFarmPlot],crop=FARM_CROPS[selectedCrop],season=getFarmSeason();
  if(!p||p.state!=="tilled"||farmSeedStock[selectedCrop]<1)return;
  if(crop.season!==season){showToast("این بذر مخصوص "+FARM_SEASONS[crop.season]+" است!");return;}
- farmSeedStock[selectedCrop]--;p.state="growing";p.crop=selectedCrop;p.growth=0;p.harvests=0;p.wateredDay=-1;
+ farmSeedStock[selectedCrop]--;p.state="growing";p.crop=selectedCrop;p.growth=0;p.harvests=0;p.tilledDay=-1;p.wateredDay=p.wateredDay===worldDay?worldDay:-1;
  updateUI();updateFarmUI();saveQuietly();showToast(crop.name+" کاشته شد! هر روز آبیاریش کن 🌱");
 }
 function refillWateringCan(){
@@ -1783,13 +1784,16 @@ function refillWateringCan(){
 function farmWater(){
  if(selectedTool!=="watering"){showToast("برای آبیاری باید آب‌پاش رو از نوار ابزار انتخاب کنی 💧");return;}
  const p=farmPlots[selectedFarmPlot];
- if(!p||p.state!=="growing"){showToast("روی یک محصول در حال رشد بزن 🌱");return;}
+ if(!p||(p.state!=="growing"&&p.state!=="tilled")){showToast("روی زمین شخم‌خورده یا محصول بزن 💧");return;}
  if(p.wateredDay===worldDay){showToast("این زمین امروز قبلاً آبیاری شده است 💧");return;}
- const crop=FARM_CROPS[p.crop];if(!crop)return;
- const target=p.harvests>0&&crop.regrow?crop.regrow:crop.days;
- if(p.growth>=target){showToast("این محصول رسیده و آماده‌ی برداشته؛ نیازی به آبیاری نداره 🌾");return;}
+ if(p.state==="growing"){
+  const crop=FARM_CROPS[p.crop];if(!crop)return;
+  const target=p.harvests>0&&crop.regrow?crop.regrow:crop.days;
+  if(p.growth>=target){showToast("این محصول رسیده و آماده‌ی برداشته؛ نیازی به آبیاری نداره 🌾");return;}
+ }
  if(wateringCanWater<=0){showToast("آب‌پاش خالیه؛ روی برکه بزن تا دوباره پرش کنی 🌊");return;}
- wateringCanWater--;p.wateredDay=worldDay;updateFarmUI();updateUI();saveQuietly();playGameSound("water");showToast("محصول آبیاری شد 💧 آب باقی‌مانده: "+wateringCanWater+"/"+WATERING_CAN_MAX);
+ wateringCanWater--;p.wateredDay=worldDay;updateFarmUI();updateUI();saveQuietly();playGameSound("water");
+ showToast((p.state==="tilled"?"زمین شخم‌خورده آبیاری شد 💧":"محصول آبیاری شد 💧")+" آب باقی‌مانده: "+wateringCanWater+"/"+WATERING_CAN_MAX);
 }
 function farmHarvest(){
  if(selectedTool!=="scythe"){showToast("برای برداشت محصول باید داس رو از نوار ابزار انتخاب کنی 🌾");return;}
@@ -1799,7 +1803,7 @@ function farmHarvest(){
  if(!bagCanAdd(1,p.crop)){showToast("کوله‌پشتی پره! اول ظرفیتش رو ارتقا بده 🎒");return;}
  bag[p.crop]=(bag[p.crop]||0)+1;progressDailyMission("harvest",1);
  if(crop.regrow){p.harvests=(p.harvests||0)+1;p.growth=0;p.wateredDay=-1;}
- else{p.state="tilled";p.crop=null;p.growth=0;p.harvests=0;p.wateredDay=-1;}
+ else{p.state="tilled";p.crop=null;p.growth=0;p.harvests=0;p.tilledDay=-1;p.wateredDay=-1;}
  updateUI();updateFarmUI();saveQuietly();showToast(crop.name+" برداشت شد! 🧺");
 }
 function buyCropSeed(type){
