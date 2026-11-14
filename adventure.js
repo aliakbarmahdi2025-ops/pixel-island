@@ -2118,13 +2118,13 @@ function updateTownShop(){
  if($("naderiStatus"))updateNaderiUI();
  const cropCount=Object.keys(FARM_CROPS).reduce((n,k)=>n+(bag[k]||0),0);const fishCount=(bag.carp||0)+(bag.perch||0)+(bag.trout||0);$("sellFish").disabled=!fishCount;$("sellFish").textContent="فروش ماهی‌ها • موجودی: "+fishCount;
  $("sellCrops").disabled=!cropCount;$("sellCrops").textContent="فروش محصولات برداشت‌شده • موجودی: "+cropCount;
- $("seedShopList").innerHTML=Object.entries(FARM_CROPS).filter(([,c])=>c.season===getFarmSeason()).map(([k,c])=>{
-  const disabled=player.coins<c.seed||!bagCanAdd(1,k,true);
-  return '<button type="button" data-seed="'+k+'" class="'+(selectedCrop===k?"selected":"")+'" '+(disabled?'disabled':'')+'><span>'+c.icon+" "+c.name+'</span><small>'+c.seed+" سکه • "+c.days+" روز رشد</small></button>';
- }).join("");
  if(!FARM_CROPS[selectedCrop]||FARM_CROPS[selectedCrop].season!==getFarmSeason()){
   selectedCrop=Object.keys(FARM_CROPS).find(k=>FARM_CROPS[k].season===getFarmSeason())||"carrot";
  }
+ $("seedShopList").innerHTML=Object.entries(FARM_CROPS).filter(([,c])=>c.season===getFarmSeason()).map(([k,c])=>{
+  const disabled=player.coins<c.seed||!bagCanAdd(1,k,true);
+  return '<button type="button" data-seed="'+k+'" class="'+(selectedCrop===k?"selected":"")+'" '+(disabled?'disabled':'')+'><span>'+c.icon+" "+c.name+'</span><small>'+c.seed+" سکه • "+c.days+" روز رشد</small></button>";
+ }).join("");
  $("buyBread").hidden=true;$("buyApple").hidden=true;$("eatBread").hidden=true;$("eatApple").hidden=true;
  const crop=FARM_CROPS[selectedCrop];
  $("buySeeds").disabled=!crop||crop.season!==getFarmSeason()||player.coins<crop.seed||!bagCanAdd(1,selectedCrop,true);
