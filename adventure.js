@@ -1932,7 +1932,7 @@ function nextTownDialogue(){
  const lines={mina:["از دیدنت خوشحال شدم. 💗","یه روز بیا با هم توی میدان قدم بزنیم!"],hana:["شهر رو بگرد، کلی جای قشنگ داره!","بعداً باز هم با هم حرف می‌زنیم."],nahid:["هر وقت خسته شدی، کمی استراحت کن.","خوشحالم که شهرمون رو دوست داری."],saeed:["مسیر جنگل از همون دروازه‌ایه که وارد شدی.","روز خوبی داشته باشی!"],rezaei:["برای ساخت و تغییر دکور خانه روی من حساب کن!","چوب و پارچه و شیشه‌ات رو بیار تا خانه‌ات رو قشنگ‌تر کنیم."],naderi:["ظرفیت کوله‌ات رو بالا ببر تا بیشتر جمع کنی.","بذر خوب، مزرعه خوب می‌سازه!"]};
  $("townNpcDialogue").textContent=lines[p.id][(townFriendship[p.id]||0)%lines[p.id].length];townFriendship[p.id]=Math.min(20,(townFriendship[p.id]||0)+1);$("townNpcHeart").textContent="💚 میزان آشنایی: "+townFriendship[p.id];saveQuietly();
 }
-function openTownShop(){const p=townPeople[townNpcIndex];if(!p)return;if(p.id==="rezaei"){$("townNpcPanel").hidden=true;$("carpenterPanel").hidden=false;updateCarpenterUI();syncXpPanel();return;}const hour=worldClock/60;const open=hour>=8&&hour<20;if(!open){const h=Math.floor(hour),m=Math.floor((hour-h)*60);showToast("مغازه نادری از ۸ صبح تا ۸ شب بازه؛ ساعت بازی "+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+" است. 🌙");return;} $("townNpcPanel").hidden=true;$("townShopPanel").hidden=false;updateTownShop();syncXpPanel();}
+function openTownShop(){const p=townPeople[townNpcIndex];if(!p)return;if(p.id==="rezaei"){$("townNpcPanel").hidden=true;$("carpenterPanel").hidden=false;updateCarpenterUI();syncXpPanel();return;}const hour=worldClock/60;const open=hour>=8&&hour<20;if(!open){const h=Math.floor(hour),m=Math.floor((hour-h)*60);showToast("مغازه نادری از ۸ صبح تا ۸ شب بازه؛ ساعت بازی "+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+" است. 🌙");return;} $("townNpcPanel").hidden=true;$("townShopPanel").hidden=false;drawShopPortrait("naderi");updateTownShop();syncXpPanel();}
 function activateDailyForecast(){
   if(tvForecast.day===worldDay){
     currentWeather=tvForecast.weather;
@@ -2083,15 +2083,47 @@ function buyCropSeed(type){
 }
 function sellFarmCrops(){let count=0,total=0;for(const [key,crop] of Object.entries(FARM_CROPS)){const n=bag[key]||0;count+=n;total+=n*crop.price;bag[key]=0;}if(!count){showToast("محصولی برای فروش نداری");return;}player.coins+=total;updateUI();updateTownShop();saveQuietly();showToast("آقای نادری محصولاتت رو خرید! +"+total+" سکه 🪙");}
 function sellFish(){const prices={carp:10,perch:16,trout:24};let total=0,count=0;for(const [k,v] of Object.entries(prices)){const n=bag[k]||0;count+=n;total+=n*v;bag[k]=0;}if(!count){showToast("ماهی برای فروش نداری");return;}player.coins+=total;updateUI();updateTownShop();saveQuietly();showToast(count+" ماهی فروختی؛ +"+total+" سکه 🪙");}
+function drawShopPortrait(id){
+ const canvas=$("shopPortraitCanvas");
+ if(!canvas)return;
+ const ctx=canvas.getContext("2d");
+ if(!ctx)return;
+ ctx.clearRect(0,0,100,100);
+ ctx.imageSmoothingEnabled=false;
+ const px=(x,y,w,h,color)=>{ctx.fillStyle=color;ctx.fillRect(x,y,w,h);};
+ px(0,0,100,100,"#d8c6a5");px(4,4,92,92,"#eadfc8");px(7,7,86,86,"#b7c7bd");
+ if(id==="naderi"){
+  px(8,78,84,22,"#263f50");px(16,73,68,8,"#36596b");px(37,70,26,12,"#d9e1dc");px(44,70,12,20,"#263f50");
+  px(39,61,22,17,"#bd8065");px(19,40,9,20,"#c98d70");px(72,40,9,20,"#b87960");
+  px(25,25,50,39,"#d7a083");px(29,22,42,43,"#e7b69a");px(25,36,5,24,"#c98d70");px(70,36,5,24,"#bd8065");
+  px(31,28,38,8,"#f0c5a8");px(62,39,8,20,"#ca8b70");
+  px(22,17,56,17,"#3b2a24");px(18,25,10,20,"#3b2a24");px(72,25,10,18,"#3b2a24");px(27,14,38,6,"#514039");
+  px(28,27,13,7,"#3b2a24");px(58,26,13,7,"#3b2a24");px(29,34,16,3,"#493027");px(56,34,16,3,"#493027");
+  px(27,38,20,13,"#292b2c");px(53,38,20,13,"#292b2c");px(46,42,8,3,"#292b2c");
+  px(30,41,14,7,"#9fc6c9");px(56,41,14,7,"#9fc6c9");px(32,42,4,2,"#f4f5df");px(58,42,4,2,"#f4f5df");
+  px(35,44,5,4,"#35251f");px(61,44,5,4,"#35251f");px(47,47,7,10,"#c78b70");px(45,55,10,3,"#b87960");
+  px(35,59,12,5,"#493027");px(53,59,12,5,"#493027");px(45,58,10,5,"#493027");
+  px(43,67,14,2,"#985b55");px(42,70,16,2,"#493027");px(30,55,4,2,"#e8b69a");px(66,55,4,2,"#d49a7d");
+  px(33,78,14,7,"#e6ece7");px(53,78,14,7,"#e6ece7");
+ }else{
+  const sprite=makePixelTownSprite(id,0);
+  if(sprite)ctx.drawImage(sprite,15,5,50,50,0,0,100,100);
+ }
+ ctx.strokeStyle="#6c5944";ctx.lineWidth=2;ctx.strokeRect(1,1,98,98);
+ ctx.strokeStyle="#f6e9c9";ctx.lineWidth=1;ctx.strokeRect(4.5,4.5,91,91);
+}
 function updateTownShop(){
  $("townShopHours").textContent="ساعت کاری: ۰۸:۰۰ تا ۲۰:۰۰ • ساعت بازی: "+String(Math.floor(worldClock/60)).padStart(2,"0")+":"+String(Math.floor(worldClock%60)).padStart(2,"0");
  $("townShopStock").textContent="موجودی بذر: "+Object.values(farmSeedStock).reduce((n,v)=>n+v,0)+" • ظرفیت کوله: "+bagUsed()+"/"+backpackCaps[backpackTier]+" • سکه: "+player.coins;
  if($("naderiStatus"))updateNaderiUI();
  const cropCount=Object.keys(FARM_CROPS).reduce((n,k)=>n+(bag[k]||0),0);const fishCount=(bag.carp||0)+(bag.perch||0)+(bag.trout||0);$("sellFish").disabled=!fishCount;$("sellFish").textContent="فروش ماهی‌ها • موجودی: "+fishCount;
  $("sellCrops").disabled=!cropCount;$("sellCrops").textContent="فروش محصولات برداشت‌شده • موجودی: "+cropCount;
- $("seedShopList").innerHTML=Object.entries(FARM_CROPS).map(([k,c])=>{
-  const disabled=c.season!==getFarmSeason()||player.coins<c.seed||!bagCanAdd(1,k,true);
-  return '<button type="button" data-seed="'+k+'" class="'+(selectedCrop===k?"selected":"")+'" '+(disabled?'disabled':'')+'><span>'+c.icon+" "+c.name+'</span><small>'+c.seed+" سکه • "+FARM_SEASONS[c.season]+'</small></button>';
+ if(!FARM_CROPS[selectedCrop]||FARM_CROPS[selectedCrop].season!==getFarmSeason()){
+  selectedCrop=Object.keys(FARM_CROPS).find(k=>FARM_CROPS[k].season===getFarmSeason())||"carrot";
+ }
+ $("seedShopList").innerHTML=Object.entries(FARM_CROPS).filter(([,c])=>c.season===getFarmSeason()).map(([k,c])=>{
+  const disabled=player.coins<c.seed||!bagCanAdd(1,k,true);
+  return '<button type="button" data-seed="'+k+'" class="'+(selectedCrop===k?"selected":"")+'" '+(disabled?'disabled':'')+'><span>'+c.icon+" "+c.name+'</span><small>'+c.seed+" سکه • "+c.days+" روز رشد</small></button>";
  }).join("");
  $("buyBread").hidden=true;$("buyApple").hidden=true;$("eatBread").hidden=true;$("eatApple").hidden=true;
  const crop=FARM_CROPS[selectedCrop];
