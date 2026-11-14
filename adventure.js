@@ -443,9 +443,10 @@ function load() {
     if(data.tvForecast&&typeof data.tvForecast==="object") tvForecast={day:Math.max(0,Math.floor(Number(data.tvForecast.day)||0)),weather:["sunny","rain","cloudy","thunder","snow","fog","windy"].includes(data.tvForecast.weather)?data.tvForecast.weather:"sunny",mineLuck:["normal","lucky","dangerous","cursed"].includes(data.tvForecast.mineLuck)?data.tvForecast.mineLuck:"normal"};
     activeMineLuck=["normal","lucky","dangerous","cursed"].includes(data.activeMineLuck)?data.activeMineLuck:"normal";
     activeMineLuckDay=Math.max(0,Math.floor(Number(data.activeMineLuckDay)||0));
-    if(activeMineLuckDay!==worldDay) { activeMineLuck="normal"; activeMineLuckDay=worldDay; }
     townMode=!!data.townMode;if(data.townReturn)townReturn=data.townReturn;if(data.townFriendship)Object.assign(townFriendship,data.townFriendship);if(data.townStock)Object.assign(townStock,data.townStock);
     if(Number.isFinite(data.worldClock))worldClock=data.worldClock;if(Number.isFinite(data.worldDay))worldDay=data.worldDay;
+    if(activeMineLuckDay!==worldDay) { activeMineLuck="normal"; activeMineLuckDay=worldDay; }
+    if(["sunny","rain","cloudy","thunder","snow","fog","windy"].includes(data.currentWeather))currentWeather=data.currentWeather;
     wateringCanWater=Number.isFinite(data.wateringCanWater)?Math.max(0,Math.min(WATERING_CAN_MAX,Math.floor(data.wateringCanWater))):WATERING_CAN_MAX;
     if(data.farmSeedStock&&typeof data.farmSeedStock==="object")Object.keys(farmSeedStock).forEach(k=>farmSeedStock[k]=Math.max(0,Number(data.farmSeedStock[k])||0));
     if((bag.seeds||0)>0){farmSeedStock.carrot+=(bag.seeds||0);bag.seeds=0;}
@@ -463,7 +464,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, energy: player.energy, maxEnergy: player.maxEnergy, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, houseHeaterOn, tvForecast, activeMineLuck, activeMineLuckDay, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
+      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, houseHeaterOn, tvForecast, activeMineLuck, activeMineLuckDay, currentWeather, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -1174,7 +1175,7 @@ function canvasWorldTap(e){
   if(homeInterior){
     const L=getHomeInteriorLayout(),px=e.clientX,py=e.clientY;
     const inside=(r,pad=0)=>px>=r.x-pad&&px<=r.x+r.w+pad&&py>=r.y-pad&&py<=r.y+r.h+pad;
-    if(inside(L.door,8)){handleHomeButton();return;}
+    if(px>=L.door.x-8*L.scale&&px<=L.door.x+L.door.w+8*L.scale&&py>=L.door.y-42*L.scale-8&&py<=L.door.y+22*L.scale+8){handleHomeButton();return;}
     if(inside(L.bed,8)){sleepInBed();return;}
     if(inside(L.tv,8)){toggleTV();return;}
     if(inside(L.fire,8)){toggleHouseHeater();return;}
