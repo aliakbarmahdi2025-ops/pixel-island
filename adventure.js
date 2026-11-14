@@ -3774,6 +3774,75 @@ function drawCaveEntrance(){
  ctx.fillStyle="#d5c18c";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("غار جنگلی",x,y-100);ctx.textAlign="start";
 }
 function drawChest(){const x=CHEST_POS.x-camera.x,y=CHEST_POS.y-camera.y;if(x<-50||x>viewW+50||y<-50||y>viewH+50)return;ctx.fillStyle="rgba(12,12,10,.22)";ctx.fillRect(x-20,y+12,40,7);ctx.fillStyle="#684329";ctx.fillRect(x-19,y-12,38,25);ctx.fillStyle="#a97843";ctx.fillRect(x-17,y-10,34,8);ctx.fillStyle="#80532f";ctx.fillRect(x-17,y-1,34,12);ctx.fillStyle="#d6b66c";ctx.fillRect(x-3,y-5,6,9);ctx.fillStyle="#f1d994";ctx.fillRect(x-2,y-4,4,3);ctx.fillStyle="#f4e4bc";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText("صندوق",x,y-20);ctx.textAlign="start";}
+function drawShopInterior(){
+ const px=x=>x-camera.x,py=y=>y-camera.y;
+ const rect=(x,y,w,h,color)=>{ctx.fillStyle=color;ctx.fillRect(px(x),py(y),w,h);};
+ const wood=shopInterior==="naderi";
+ // Room shell: deep stone foundation, warm walls and a carefully layered plank floor.
+ rect(0,0,1000,760,"#17130f");rect(35,35,930,690,"#493326");rect(48,48,904,664,wood?"#d5bd8d":"#76513a");
+ rect(55,55,890,170,wood?"#ead9b2":"#60402e");
+ for(let y=70;y<220;y+=34){rect(58,y,884,3,wood?"#c3a477":"#4b3024");for(let x=90+(y%2)*20;x<930;x+=150)rect(x,y+3,3,28,wood?"#c3a477":"#4b3024");}
+ rect(55,215,890,12,wood?"#79513a":"#39271f");rect(55,218,890,4,wood?"#d0a16c":"#a77b50");
+ rect(55,225,890,470,wood?"#9a6846":"#50372b");
+ for(let y=230;y<700;y+=38){
+  rect(58,y,884,2,wood?"#754b34":"#39271f");
+  const offset=(Math.floor(y/38)%2)*58;
+  for(let x=65+offset;x<940;x+=116)rect(x,y+2,2,34,wood?"#b27e55":"#765039");
+  for(let x=78+offset;x<930;x+=232)rect(x,y+7,25,2,wood?"rgba(230,190,132,.24)":"rgba(198,151,105,.15)");
+ }
+ for(const x of [75,925]){rect(x,62,10,150,wood?"#9b704c":"#39271f");rect(x-5,62,20,7,wood?"#e3c18d":"#8b6546");}
+ // Two side windows and curtains make the room feel like a lived-in place.
+ for(const x of [120,850]){
+  rect(x-4,95,88,84,"#5b3929");rect(x,99,80,76,wood?"#83b9c5":"#637d80");
+  rect(x+37,99,5,76,"#5b3929");rect(x,135,80,4,"#5b3929");
+  rect(x-12,88,12,100,wood?"#9d493d":"#80513a");rect(x+80,88,12,100,wood?"#9d493d":"#80513a");
+ }
+ if(wood){
+  // Merchant shelves, colorful jars, seed packets and hanging herb bundles.
+  rect(205,88,590,120,"#56372a");rect(213,96,574,105,"#76503a");
+  for(let row=0;row<2;row++){
+   const sy=103+row*48;rect(218,sy+37,564,8,"#4b3023");rect(220,sy+37,560,3,"#b78655");
+   for(let i=0;i<13;i++){
+    const x=230+i*43,y=sy+(i%3===0?2:6),colors=["#b84f4d","#729c62","#548da5","#d39a4c","#9472a6"];
+    rect(x,y+8,22,24,colors[(i+row*2)%colors.length]);rect(x+3,y+3,16,7,"#e6d4b4");rect(x+6,y+15,12,7,"#f0dcae");rect(x+2,y+10,3,12,"rgba(255,255,255,.35)");rect(x+5,y,12,4,"#d8c7a5");
+   }
+  }
+  for(let i=0;i<4;i++){const x=115+i*55;rect(x,196,3,28,"#58402c");rect(x-7,210,17,12,i%2?"#6f984e":"#c5a34f");rect(x-4,214,3,12,"#426b3b");}
+  rect(800,178,80,35,"#6a4932");rect(808,184,64,23,"#d8c18c");ctx.fillStyle="#5b402c";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText("بذر تازه",px(840),py(199));
+ }else{
+  // Rezaei workshop: tool wall, plans, saw, hammer and stacked timber.
+  rect(200,85,600,122,"#3b2921");rect(208,93,584,106,"#6a4933");
+  for(let x=215;x<790;x+=42)rect(x,96,3,98,"#4c3327");
+  rect(350,105,210,78,"#263d36");rect(357,112,196,64,"#3f6654");
+  ctx.strokeStyle="#e9dfc6";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(px(370),py(160));ctx.lineTo(px(425),py(125));ctx.lineTo(px(490),py(151));ctx.lineTo(px(535),py(122));ctx.stroke();
+  rect(250,111,8,57,"#9b704b");ctx.fillStyle="#b7c2c1";ctx.beginPath();ctx.moveTo(px(260),py(120));ctx.lineTo(px(322),py(137));ctx.lineTo(px(308),py(154));ctx.closePath();ctx.fill();
+  for(let i=0;i<6;i++){ctx.strokeStyle="#e5e0d0";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(px(270+i*7),py(134+i*2));ctx.lineTo(px(275+i*7),py(140+i*2));ctx.stroke();}
+  rect(690,115,8,65,"#a8794e");rect(674,112,42,13,"#9ca8aa");rect(680,116,30,4,"#d6d8d0");rect(735,120,9,50,"#b9c2c1");rect(731,117,17,8,"#d6d8d0");
+  rect(112,270,94,64,"#5b3c2b");for(let i=0;i<4;i++){rect(120+i*19,279,13,45,i%2?"#b47a45":"#8d5e38");rect(124+i*19,282,4,35,"#d0a06a");}
+  for(let i=0;i<5;i++){rect(800+i%2*22,280+i*9,90,8,"#9a6a40");rect(805+i%2*22,280+i*9,80,2,"#c28d58");}
+ }
+ // Hanging lamp and warm pool of light above the shopkeeper.
+ rect(490,70,20,8,"#49352a");rect(496,78,8,18,"#6c5035");rect(476,95,48,7,"#e4bd72");
+ ctx.fillStyle="rgba(255,205,116,.13)";ctx.beginPath();ctx.arc(px(500),py(285),112,0,Math.PI*2);ctx.fill();
+ const npc=makePixelTownSprite(wood?"naderi":"rezaei",0);ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(npc,px(460),py(222),80,112);ctx.restore();
+ ctx.fillStyle=wood?"#4b3023":"#f4e8d2";ctx.font="bold 16px Tahoma";ctx.textAlign="center";ctx.fillText(wood?"آقای نادری":"خانم رضایی",px(500),py(215));
+ // Solid service counter with inset carved panels.
+ rect(255,360,490,76,wood?"#4b3024":"#503326");rect(245,350,510,18,wood?"#b47b4c":"#a9784c");rect(250,350,500,4,"#e1b77b");
+ for(let i=0;i<5;i++){rect(270+i*96,374,82,49,wood?"#79513a":"#795338");rect(278+i*96,382,66,33,wood?"#936344":"#956b45");rect(283+i*96,387,56,2,"rgba(255,220,160,.35)");}
+ if(wood){
+  rect(580,325,65,24,"#344a50");rect(585,319,55,9,"#82979a");rect(592,329,40,11,"#25363b");rect(600,321,22,4,"#d9e5df");
+  ctx.fillStyle="#d7a94d";ctx.beginPath();ctx.arc(px(685),py(342),11,Math.PI,0);ctx.fill();rect(679,342,12,7,"#b77d2c");rect(350,337,48,10,"#d8c18c");rect(358,329,32,8,"#a94f46");
+ }else{
+  rect(350,334,62,7,"#d2b17a");rect(360,325,8,12,"#8e5e39");rect(355,322,18,7,"#b9c0bf");rect(470,330,52,5,"#d4d0c2");
+  for(let i=0;i<5;i++)rect(474+i*9,327,2,3,"#e7e0cc");rect(605,326,7,20,"#9a6b45");rect(595,325,27,7,"#aeb8b8");
+ }
+ // Persian runner, entry mat and a clear exit door.
+ rect(350,505,300,112,"#482b2b");rect(359,514,282,94,"#b27c46");rect(367,522,266,78,wood?"#8c2f3b":"#48614a");rect(379,534,242,54,"#d2ad68");rect(387,542,226,38,wood?"#8c2f3b":"#48614a");
+ for(let i=0;i<7;i++){rect(390+i*34,545,4,4,"#e6ca8b");rect(390+i*34,574,4,4,"#e6ca8b");}
+ rect(440,675,120,30,"#3c271d");rect(448,661,104,35,"#6e4930");rect(454,665,92,25,"#986c43");rect(493,676,14,4,"#e5c57d");
+ const glow=ctx.createRadialGradient(px(500),py(300),55,px(500),py(340),520);glow.addColorStop(0,"rgba(255,205,128,.10)");glow.addColorStop(1,"rgba(12,9,7,.36)");ctx.fillStyle=glow;ctx.fillRect(0,0,viewW,viewH);
+ ctx.fillStyle="#f4e7ca";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText("برای صحبت و خرید، نزدیک پیشخوان برو و روی فروشنده بزن",viewW/2,22);
+}
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
   if (templeMode||townMode) releaseGroundCaches();
