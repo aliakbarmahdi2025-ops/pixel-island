@@ -1852,8 +1852,8 @@ function townSchedule(dt=0){
  townPeople.forEach(p=>{
    const target=plans[p.id];if(!target)return;
    const dx=target[0]-p.x,dy=target[1]-p.y,d=Math.hypot(dx,dy);
-   if(d>2&&dt>0){const step=Math.min(d,48*dt);p.x+=dx/d*step;p.y+=dy/d*step;p.walking=true;}
-   else p.walking=false;
+   if(d>2&&dt>0){const step=Math.min(d,48*dt);p.vx=dx/d;p.vy=dy/d;p.facing=Math.abs(p.vx)>Math.abs(p.vy)?(p.vx>0?"right":"left"):(p.vy>0?"down":"up");p.x+=p.vx*step;p.y+=p.vy*step;p.walking=true;}
+   else {p.walking=false;p.vx=0;p.vy=0;}
  });
  for(let a=0;a<townPeople.length;a++)for(let b=a+1;b<townPeople.length;b++){
   const p=townPeople[a],q=townPeople[b],dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy);
@@ -2530,7 +2530,7 @@ function drawTownBuilding(x,y,label,roof,kind){
   // small clay pots and step
   ctx.fillStyle="#70412f";ctx.fillRect(sx-31,sy+95,14,10);ctx.fillRect(sx+19,sy+95,14,10);ctx.fillStyle="#c17a53";ctx.fillRect(sx-30,sy+93,12,8);ctx.fillRect(sx+20,sy+93,12,8);ctx.fillStyle="#356c40";ctx.fillRect(sx-27,sy+83,3,12);ctx.fillRect(sx-23,sy+86,4,9);ctx.fillRect(sx+23,sy+83,3,12);ctx.fillRect(sx+27,sy+86,4,9);ctx.fillStyle="#80a85b";ctx.fillRect(sx-28,sy+82,4,3);ctx.fillRect(sx+24,sy+82,4,3);
 }const townSpriteCache = {};
-function makePixelTownSprite(id, frame) {
+function makePixelTownSpriteFront(id, frame) {
  const c=document.createElement("canvas");c.width=80;c.height=112;
  const g=c.getContext("2d");
  const mina=id==="mina",hana=id==="hana",saeed=id==="saeed",naderi=id==="naderi";
@@ -2636,28 +2636,79 @@ function makePixelTownSprite(id, frame) {
  if(saeed){px(37,57,2,3,"#e8dfc9");px(42,64,3,2,"#b7c0c2");}
  return c;
 }
-function getTownSpriteFrames(id){
- if(!townSpriteCache[id]) townSpriteCache[id]=[makePixelTownSprite(id,0),makePixelTownSprite(id,1),makePixelTownSprite(id,2)];
- return townSpriteCache[id];
+function getTownSpriteFrames(id, dir="down"){
+ const key=id+"_"+dir;
+ if(!townSpriteCache[key]) townSpriteCache[key]=[0,1,2].map(frame=>makePixelTownSprite(id,frame,dir));
+ return townSpriteCache[key];
 }
+
+function makePixelTownSprite(id, frame=0, dir="down") {
+ const front=makePixelTownSpriteFront(id,frame);
+ if(dir==="down") return front;
+ const c=document.createElement("canvas");c.width=80;c.height=112;
+ const g=c.getContext("2d");g.imageSmoothingEnabled=false;
+ const hair=id==="mina"?"#65402f":id==="hana"?"#29232d":id==="naderi"?"#302b2b":id==="rezaei"?"#5c4033":"#302b2b";
+ const hi=id==="mina"?"#a36c49":id==="hana"?"#62515f":id==="naderi"?"#64504a":id==="rezaei"?"#8c6b4a":"#64504a";
+ if(dir==="up"){
+  g.drawImage(front,0,0);
+  // Cover facial features with the back of the head while retaining the original hair silhouette.
+  g.fillStyle=hair;g.fillRect(25,20,30,25);g.fillRect(22,16,36,8);
+  g.fillRect(19,24,8,25);g.fillRect(53,24,8,25);
+  g.fillStyle=hi;g.fillRect(29,18,9,3);g.fillRect(43,17,8,2);
+  g.fillStyle=hair;g.fillRect(30,27,4,7);g.fillRect(45,25,5,8);
+  if(id==="mina"||id==="hana"){g.fillRect(17,44,8,27);g.fillRect(55,44,8,27);}
+  if(id==="naderi"){g.fillStyle="#3b302d";g.fillRect(24,22,32,5);}
+  return c;
+ }
+ // Side profile: keep the established costume and silhouette, then redraw the head in profile.
+ const right=dir==="right";
+ g.drawImage(front,right?8:14,0,58,112);
+ g.fillStyle=hair;g.fillRect(right?25:39,12,22,17);
+ g.fillRect(right?24:43,20,14,17);
+ g.fillStyle=hi;g.fillRect(right?29:45,15,8,3);
+ // Rebuild the visible cheek, eye and nose on the facing edge.
+ g.fillStyle="#c98f78";g.fillRect(right?49:22,25,8,17);
+ g.fillStyle="#f7d4bb";g.fillRect(right?45:25,23,13,19);
+ g.fillStyle="#392d30";g.fillRect(right?53:24,31,3,4);
+ g.fillStyle="#fff8ed";g.fillRect(right?54:25,31,1,1);
+ g.fillStyle="#d99d8c";g.fillRect(right?56:20,35,4,4);
+ g.fillStyle=hair;g.fillRect(right?37:24,20,12,12);
+ if(id==="naderi"){
+  g.fillStyle="#6d7778";g.fillRect(right?48:24,30,9,5);
+  g.fillStyle="#b9dce0";g.fillRect(right?50:25,31,6,3);
+  g.fillStyle="#302b2b";g.fillRect(right?43:29,43,14,4);
+ }
+ if(id==="mina"||id==="hana"){g.fillStyle=hair;g.fillRect(right?23:50,31,9,40);g.fillRect(right?29:43,57,7,13);}
+ if(!right){g.save();g.translate(80,0);g.scale(-1,1);const flipped=document.createElement("canvas");flipped.width=80;flipped.height=112;flipped.getContext("2d").drawImage(c,0,0);g.restore();return flipped;}
+ return c;
+}
+
 function drawTownPeople(){
  townPeople.forEach(p=>{
   const x=p.x-camera.x,y=p.y-camera.y;
   if(x< -60||x>viewW+60||y< -70||y>viewH+70)return;
   const walking=!!p.walking,phase=animTime*8+(p.x*.013);
+  let dir=p.facing||"down";
+  if(walking){
+   const vx=p.vx||0,vy=p.vy||0;
+   if(Math.abs(vx)>Math.abs(vy))dir=vx>0?"right":"left";
+   else dir=vy>0?"down":"up";
+   p.facing=dir;
+  }
   const frame=walking?(Math.floor(phase)%2+1):0;
   const bob=walking?Math.abs(Math.sin(phase))*1.1:Math.sin(animTime*2+p.x*.01)*.35;
-  const frames=getTownSpriteFrames(p.id);
+  const frames=getTownSpriteFrames(p.id,dir);
   ctx.fillStyle="#302923";ctx.globalAlpha=.28;ctx.beginPath();ctx.ellipse(x,y+2,9,3,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
   ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(frames[frame],x-20,y-56+bob,40,56);ctx.restore();
   if(p.id==="mina"||p.id==="hana"){
-   if(Math.floor(animTime*2.1+p.x*.017)%9===0){ctx.fillStyle="#fff7ed";ctx.fillRect(x-4,y-38+bob,2,1);ctx.fillRect(x+3,y-38+bob,2,1);}
+   if(dir==="down"&&Math.floor(animTime*2.1+p.x*.017)%9===0){ctx.fillStyle="#fff7ed";ctx.fillRect(x-4,y-38+bob,2,1);ctx.fillRect(x+3,y-38+bob,2,1);}
   }
   ctx.font="bold 10px Tahoma";ctx.textAlign="center";ctx.lineWidth=2;ctx.strokeStyle="#44352f";ctx.strokeText(p.name,x,y-61+bob);ctx.fillStyle="#fff7df";ctx.fillText(p.name,x,y-61+bob);
   if(Math.hypot(player.x-p.x,player.y-p.y)<95){ctx.fillStyle="#ffe9a0";ctx.font="bold 13px Tahoma";ctx.fillText("✦",x,y-70+bob);}
   ctx.textAlign="start";
  });
 }
+
 
 function updateHomeUI() {
   const title = homeLevel === 0 ? "زمین خالی" : homeLevel === 1 ? "کلبه چوبی" : homeLevel === 2 ? "خانه بزرگ" : "خانه لوکس";
