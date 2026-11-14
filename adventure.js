@@ -2134,24 +2134,108 @@ function drawLivestockPen(){
  for(let i=0;i<livestock.cows;i++){const cx=x+12+(i%2)*43,cy=y+8+Math.sin(animTime*2+i)*1.2;ctx.fillStyle="#eee8d9";ctx.fillRect(cx-15,cy-13,30,22);ctx.fillRect(cx+8,cy-20,13,17);ctx.fillStyle="#51453e";ctx.fillRect(cx-10,cy-10,8,7);ctx.fillRect(cx+2,cy-2,8,7);ctx.fillRect(cx+13,cy-14,5,5);ctx.fillStyle="#d7b6a6";ctx.fillRect(cx+17,cy-9,7,5);ctx.fillStyle="#3b3029";ctx.fillRect(cx-11,cy+8,4,8);ctx.fillRect(cx+5,cy+8,4,8);ctx.fillStyle="#2d2925";ctx.fillRect(cx+17,cy-16,2,2);}
 }
 function drawFarmPlots(){
- for(const p of farmPlots){
-  const x=p.x-camera.x,y=p.y-camera.y;if(x<-80||x>viewW+80||y<-80||y>viewH+80)continue;
-  ctx.fillStyle="rgba(25,20,14,.24)";ctx.beginPath();ctx.ellipse(x,y+20,29,7,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="#4d3525";ctx.fillRect(x-28,y-20,56,40);
-  ctx.fillStyle=p.wateredDay===worldDay?"#493a30":"#765033";ctx.fillRect(x-25,y-17,50,34);
-  ctx.fillStyle="#a17a4e";for(let k=-1;k<=1;k++)ctx.fillRect(x-23,y+k*10,46,2);
-  ctx.fillStyle="#382a21";for(let k=-1;k<=1;k++)ctx.fillRect(x-21,y+k*10+3,42,2);
+ for(let plotIndex=0;plotIndex<farmPlots.length;plotIndex++){
+  const p=farmPlots[plotIndex];
+  const x=p.x-camera.x,y=p.y-camera.y;
+  if(x<-90||x>viewW+90||y<-90||y>viewH+90)continue;
+  const watered=p.wateredDay===worldDay;
+  // selectedFarmPlot is an array index in the existing farming system.
+  const selected=plotIndex===selectedFarmPlot;
+
+  // Soft ground shadow and raised, layered soil edges.
+  ctx.fillStyle="rgba(22,17,12,.30)";
+  ctx.beginPath();ctx.ellipse(x+1,y+18,31,9,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#3c291f";ctx.fillRect(x-29,y-18,58,39);
+  ctx.fillStyle=watered?"#49372f":"#805638";ctx.fillRect(x-28,y-21,56,37);
+  ctx.fillStyle=watered?"#594238":"#956744";ctx.fillRect(x-26,y-21,52,4);
+  ctx.fillStyle=watered?"#30231f":"#67432e";ctx.fillRect(x-28,y+12,56,5);
+  // Stable, coordinate-seeded soil flecks: no per-frame flicker.
+  for(let i=0;i<9;i++){
+   const seed=Math.abs((p.x|0)*13+(p.y|0)*7+i*29);
+   const fx=x-22+(seed%45),fy=y-14+((seed*11+i*7)%27);
+   ctx.fillStyle=watered?(i%2?"rgba(12,20,22,.25)":"rgba(166,207,210,.13)"):(i%2?"rgba(44,27,18,.28)":"rgba(255,220,170,.16)");
+   ctx.fillRect(fx,fy,2+(i%3===0?1:0),2);
+  }
+  // Furrows and their subtle raised edges.
+  for(let row=-1;row<=1;row++){
+   const fy=y-10+row*11;
+   ctx.fillStyle=watered?"rgba(24,19,18,.45)":"rgba(57,35,24,.55)";
+   ctx.fillRect(x-23,fy,46,3);
+   ctx.fillStyle=watered?"rgba(178,210,210,.12)":"rgba(226,183,130,.22)";
+   ctx.fillRect(x-23,fy,46,1);
+  }
+  // Water darkens the whole bed and leaves small reflective highlights.
+  if(watered){
+   ctx.fillStyle="rgba(61,139,160,.13)";ctx.fillRect(x-25,y-17,50,29);
+   ctx.fillStyle="rgba(206,239,239,.62)";
+   ctx.fillRect(x-16,y-12,5,2);ctx.fillRect(x+10,y+3,7,2);ctx.fillRect(x-3,y+8,3,1);
+   ctx.fillStyle="rgba(91,171,190,.22)";ctx.fillRect(x-21,y+5,12,2);
+  }
+
   if(p.state==="growing"&&p.crop){
-   const c=FARM_CROPS[p.crop],target=p.harvests>0&&c.regrow?c.regrow:c.days,ripe=p.growth>=target,stage=ripe?4:Math.max(1,Math.min(3,Math.floor(p.growth/target*3)+1));
-   const plantColor=c.color;
-   for(let stem=0;stem<Math.min(3,stage);stem++){
-    const sx=x-11+stem*11,ht=9+stage*4;
-    ctx.fillStyle="#285638";ctx.fillRect(sx-2,y-5-ht,4,ht);
-    ctx.fillStyle="#397d43";ctx.beginPath();ctx.ellipse(sx-5,y-13-ht,7,3,-.45,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(sx+5,y-18-ht,7,3,.45,0,Math.PI*2);ctx.fill();
+   const c=FARM_CROPS[p.crop];
+   if(c){
+    const target=Math.max(1,p.harvests>0&&c.regrow?c.regrow:c.days);
+    const progress=Math.max(0,Math.min(1,(Number(p.growth)||0)/target));
+    const ripe=progress>=1;
+    const stage=ripe?4:progress<.34?1:progress<.67?2:3;
+    const fruit=c.color||"#d8bf70";
+    // Grounding shadow keeps each plant visually attached to its tile.
+    ctx.fillStyle="rgba(20,28,17,.28)";
+    ctx.beginPath();ctx.ellipse(x,y+1,13,4,0,0,Math.PI*2);ctx.fill();
+
+    if(stage===1){
+     ctx.fillStyle="#397b43";ctx.fillRect(x-2,y-11,4,10);
+     ctx.fillStyle="#70ad55";ctx.beginPath();ctx.ellipse(x-5,y-10,5,2,-.45,0,Math.PI*2);ctx.fill();
+     ctx.beginPath();ctx.ellipse(x+5,y-13,5,2,.45,0,Math.PI*2);ctx.fill();
+     ctx.fillStyle="#b2d47b";ctx.fillRect(x-1,y-14,2,3);
+    }else if(stage===2){
+     ctx.fillStyle="#28643a";ctx.fillRect(x-3,y-19,6,18);
+     ctx.fillStyle="#438e4b";
+     ctx.beginPath();ctx.ellipse(x-8,y-14,8,4,-.35,0,Math.PI*2);ctx.fill();
+     ctx.beginPath();ctx.ellipse(x+8,y-18,8,4,.35,0,Math.PI*2);ctx.fill();
+     ctx.beginPath();ctx.ellipse(x-5,y-23,6,3,-.6,0,Math.PI*2);ctx.fill();
+     ctx.beginPath();ctx.ellipse(x+5,y-25,6,3,.6,0,Math.PI*2);ctx.fill();
+     ctx.fillStyle="#8fbd62";ctx.fillRect(x-1,y-25,2,4);
+    }else{
+     // Mature crop canopy; different silhouettes make the growth jump visible.
+     ctx.fillStyle="#245b35";ctx.fillRect(x-4,y-25,8,24);
+     ctx.fillStyle="#347d42";
+     for(let leaf=0;leaf<4;leaf++){
+      const ly=y-21+leaf*5;
+      ctx.beginPath();ctx.ellipse(x-9,ly,8,3,-.25,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(x+9,ly-3,8,3,.25,0,Math.PI*2);ctx.fill();
+     }
+     ctx.fillStyle="#65a34d";
+     ctx.fillRect(x-12,y-19,5,2);ctx.fillRect(x+7,y-25,5,2);ctx.fillRect(x-5,y-29,4,2);
+     if(stage===3){
+      ctx.fillStyle=fruit;ctx.globalAlpha=.62;
+      ctx.fillRect(x-7,y-17,5,5);ctx.fillRect(x+3,y-22,5,5);
+      ctx.globalAlpha=1;
+     }else{
+      // Ripe produce with small highlights; glow is drawn behind the fruit.
+      const glow=.5+.5*Math.sin(animTime*3.2+(p.x+p.y)*.013);
+      ctx.fillStyle="rgba(255,221,104,"+(glow*.17)+")";
+      ctx.beginPath();ctx.arc(x,y-17,19,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=fruit;
+      ctx.fillRect(x-10,y-16,8,8);ctx.fillRect(x+3,y-23,8,8);ctx.fillRect(x-3,y-8,7,7);
+      ctx.fillStyle="rgba(255,245,211,.72)";
+      ctx.fillRect(x-9,y-15,3,3);ctx.fillRect(x+4,y-22,3,3);ctx.fillRect(x-2,y-7,2,2);
+     }
+    }
    }
-   if(ripe){ctx.fillStyle=plantColor;ctx.fillRect(x-9,y-31,8,8);ctx.fillRect(x+2,y-35,9,9);ctx.fillStyle="#f5e5b1";ctx.fillRect(x-7,y-29,2,2);ctx.fillRect(x+4,y-33,2,2);}
-   if(p.wateredDay===worldDay){ctx.fillStyle="#9bd5e2";ctx.fillRect(x-22,y+12,6,2);ctx.fillRect(x+16,y-10,6,2);}
-   if(ripe){ctx.fillStyle="#fff1a6";ctx.fillRect(x-2,y-43,4,3);}
+  }
+
+  if(selected){
+   ctx.save();
+   ctx.strokeStyle="rgba(255,214,92,.30)";ctx.lineWidth=6;ctx.strokeRect(x-29,y-22,58,40);
+   ctx.strokeStyle="#ffd45a";ctx.lineWidth=2;ctx.setLineDash([5,3]);ctx.strokeRect(x-29,y-22,58,40);
+   ctx.setLineDash([]);
+   ctx.fillStyle="#ffe08a";
+   ctx.fillRect(x-31,y-24,5,5);ctx.fillRect(x+26,y-24,5,5);
+   ctx.fillRect(x-31,y+16,5,5);ctx.fillRect(x+26,y+16,5,5);
+   ctx.beginPath();ctx.moveTo(x,y-31);ctx.lineTo(x-5,y-25);ctx.lineTo(x+5,y-25);ctx.closePath();ctx.fill();
+   ctx.restore();
   }
  }
 }
