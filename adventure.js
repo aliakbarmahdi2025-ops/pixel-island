@@ -64,99 +64,136 @@ const FARM_CROPS = {
 };
 const FARM_SEASONS={spring:"بهار 🌸",summer:"تابستان ☀️",autumn:"پاییز 🍂",winter:"زمستان ❄️"};
 
-/* Stage 59 — dynamic outdoor weather */
+/* Stage 60 — seasonal four-season outdoor weather */
 let currentWeather = "sunny";
 let weatherTimer = 300;
 let weatherTransition = 1;
 let lightningFlash = 0;
 let weatherParticles = [];
-const WEATHER_TYPES = ["sunny", "sunny", "cloudy", "rain", "thunder"];
 
 function updateWeather(dt) {
   weatherTimer -= dt;
   if (weatherTimer <= 0) {
     weatherTimer = 180 + Math.random() * 240;
-    const nextWeather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
+    const season = getFarmSeason();
+    const seasonalChoices = {
+      spring: ["sunny", "sunny", "rain", "rain", "cloudy", "thunder"],
+      summer: ["sunny", "sunny", "sunny", "cloudy", "thunder"],
+      autumn: ["windy", "windy", "fog", "rain", "cloudy", "sunny"],
+      winter: ["snow", "snow", "snow", "cloudy", "fog", "sunny"]
+    };
+    const choices = seasonalChoices[season] || seasonalChoices.spring;
+    const nextWeather = choices[Math.floor(Math.random() * choices.length)];
     if (nextWeather !== currentWeather) {
       currentWeather = nextWeather;
       weatherTransition = 0;
-      if (currentWeather === "rain") showToast("باران شروع شد 🌧️ (مزرعه خودکار آبیاری شد)");
-      if (currentWeather === "thunder") showToast("طوفان و رعد و برق شروع شد ⛈️");
-      if (currentWeather === "sunny") showToast("آسمان صاف شد ☀️");
-      if (currentWeather === "cloudy") showToast("هوا ابری شد ☁️");
+      // Never let particles from the previous weather remain in the new effect.
+      weatherParticles.length = 0;
+      const messages = {
+        rain: "باران شروع شد 🌧️ (مزرعه خودکار آبیاری شد)",
+        thunder: "طوفان و رعد و برق شروع شد ⛈️",
+        sunny: "آسمان صاف شد ☀️",
+        cloudy: "هوا ابری شد ☁️",
+        snow: "برف شروع به باریدن کرد ❄️",
+        fog: "مه غلیظی جنگل رو فرا گرفت 🌫️",
+        windy: "باد پاییزی برگ‌ها رو با خودش می‌بره 🍂"
+      };
+      showToast(messages[currentWeather] || "هوا عوض شد");
     }
   }
 
-  if (weatherTransition < 1) weatherTransition = Math.min(1, weatherTransition + dt * 0.5);
-
-  if (lightningFlash > 0) lightningFlash = Math.max(0, lightningFlash - dt * 2.5);
+  weatherTransition = Math.min(1, weatherTransition + dt * 0.5);
+  lightningFlash = Math.max(0, lightningFlash - dt * 2.5);
   if (currentWeather === "thunder" && Math.random() < dt * 0.15) {
     lightningFlash = 1;
-    playGameSound("attack"); // صدای موقت رعد؛ صدای اختصاصی در مرحله صوتی قابل جایگزینی است
+    playGameSound("attack");
   }
 
-  // Rain waters growing crops for the current in-game day without consuming can water.
+  // Rain and thunderstorms water growing crops without consuming watering-can water.
   if (currentWeather === "rain" || currentWeather === "thunder") {
     for (const p of farmPlots) {
       if (p.state === "growing" && p.wateredDay !== worldDay) p.wateredDay = worldDay;
     }
   }
 
-  if (currentWeather === "rain" || currentWeather === "thunder") {
-    const maxParticles = currentWeather === "thunder" ? 150 : 80;
-    while (weatherParticles.length < maxParticles * weatherTransition) {
-      weatherParticles.push({
-        x: camera.x + Math.random() * viewW * 1.5 - viewW * 0.25,
-        y: camera.y - Math.random() * viewH,
-        speed: 600 + Math.random() * 400,
-        wind: currentWeather === "thunder" ? -200 : -50
-      });
-    }
+  const particleLimit = currentWeather === "thunder" ? 150
+    : currentWeather === "rain" ? 80
+    : currentWeather === "snow" ? 100
+    : currentWeather === "windy" ? 40 : 0;
+
+  while (weatherParticles.length < Math.floor(particleLimit * weatherTransition)) {
+    const snow = currentWeather === "snow";
+    const leaf = currentWeather === "windy";
+    weatherParticles.push({
+      x: camera.x + Math.random() * viewW * 1.5 - viewW * 0.25,
+      y: camera.y - Math.random() * viewH,
+      speed: snow ? 28 + Math.random() * 42 : leaf ? 22 + Math.random() * 34 : 600 + Math.random() * 400,
+      wind: leaf ? -90 - Math.random() * 210 : snow ? (Math.random() - 0.5) * 45 : currentWeather === "thunder" ? -200 : -50,
+      drift: Math.random() * Math.PI * 2,
+      size: snow ? 2 + Math.random() * 2 : leaf ? 3 + Math.random() * 2 : 2,
+      type: snow ? "snow" : leaf ? "leaf" : "rain",
+      color: Math.random() < 0.5 ? "#c9783f" : "#c5a34d"
+    });
   }
 
   for (let i = weatherParticles.length - 1; i >= 0; i--) {
     const p = weatherParticles[i];
-    p.y += p.speed * dt;
-    p.x += p.wind * dt;
-    if (p.y > camera.y + viewH + 50 || p.x < camera.x - 100 || p.x > camera.x + viewW + 100) {
-      if (weatherParticles.length > (currentWeather === "rain" || currentWeather === "thunder" ? 10 : 0)) {
-        weatherParticles.splice(i, 1);
-      } else {
-        p.y = camera.y - 50;
-        p.x = camera.x + Math.random() * viewW;
-      }
+    p.drift += dt * (p.type === "snow" ? 1.8 : 2.4);
+    p.x += (p.wind + (p.type === "snow" ? Math.sin(p.drift) * 18 : p.type === "leaf" ? Math.sin(p.drift) * 24 : 0)) * dt;
+    p.y += (p.type === "leaf" ? p.speed * 0.45 : p.speed) * dt;
+    if (p.y > camera.y + viewH + 55 || p.x < camera.x - 120 || p.x > camera.x + viewW + 120) {
+      weatherParticles.splice(i, 1);
     }
-  }
-
-  if (currentWeather !== "rain" && currentWeather !== "thunder" && weatherParticles.length > 0) {
-    if (Math.random() < dt * 2) weatherParticles.pop();
   }
 }
 
 function drawWeather() {
-  ctx.save();
-  ctx.strokeStyle = "rgba(170, 200, 255, 0.6)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  for (const p of weatherParticles) {
-    const sx = p.x - camera.x;
-    const sy = p.y - camera.y;
-    if (sx < -50 || sx > viewW + 50 || sy < -50 || sy > viewH + 50) continue;
-    ctx.moveTo(sx, sy);
-    ctx.lineTo(sx + p.wind * 0.03, sy + 15);
+  // Fog is a soft screen layer; keep it behind the visible weather particles.
+  if (currentWeather === "fog") {
+    const fogAlpha = 0.34 * weatherTransition;
+    ctx.fillStyle = `rgba(195, 207, 213, ${fogAlpha})`;
+    ctx.fillRect(0, 0, viewW, viewH);
+    const fogBand = ctx.createLinearGradient(0, viewH * 0.25, 0, viewH * 0.85);
+    fogBand.addColorStop(0, "rgba(220,230,232,0)");
+    fogBand.addColorStop(0.5, `rgba(220,230,232,${0.22 * weatherTransition})`);
+    fogBand.addColorStop(1, "rgba(220,230,232,0)");
+    ctx.fillStyle = fogBand;
+    ctx.fillRect(0, 0, viewW, viewH);
   }
-  ctx.stroke();
-  ctx.restore();
 
-  if (currentWeather === "cloudy" || currentWeather === "rain" || currentWeather === "thunder") {
-    let cloudAlpha = currentWeather === "cloudy" ? 0.15 : 0.25;
-    if (currentWeather === "thunder") cloudAlpha = 0.35;
+  if (currentWeather === "cloudy" || currentWeather === "rain" || currentWeather === "thunder" || currentWeather === "snow") {
+    const cloudAlpha = currentWeather === "thunder" ? 0.32
+      : currentWeather === "cloudy" ? 0.13
+      : currentWeather === "snow" ? 0.12 : 0.22;
     ctx.fillStyle = `rgba(20, 30, 40, ${cloudAlpha * weatherTransition})`;
     ctx.fillRect(0, 0, viewW, viewH);
   }
 
+  ctx.save();
+  for (const p of weatherParticles) {
+    const sx = p.x - camera.x;
+    const sy = p.y - camera.y;
+    if (sx < -50 || sx > viewW + 50 || sy < -50 || sy > viewH + 50) continue;
+    if (p.type === "rain") {
+      ctx.strokeStyle = "rgba(170, 200, 255, 0.62)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + p.wind * 0.03, sy + 15);
+      ctx.stroke();
+    } else if (p.type === "snow") {
+      ctx.fillStyle = "rgba(255,255,255,0.88)";
+      const size = p.size || 3;
+      ctx.fillRect(Math.round(sx), Math.round(sy), size, size);
+    } else if (p.type === "leaf") {
+      ctx.fillStyle = p.color || "#c9783f";
+      ctx.fillRect(Math.round(sx), Math.round(sy), p.size || 4, 2);
+    }
+  }
+  ctx.restore();
+
   if (lightningFlash > 0) {
-    ctx.fillStyle = `rgba(255, 255, 255, ${lightningFlash * 0.8})`;
+    ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.8, lightningFlash * 0.8)})`;
     ctx.fillRect(0, 0, viewW, viewH);
   }
 }
@@ -1616,8 +1653,11 @@ function update(dt) {
   if (playerMoving) {
     if (Math.abs(dx) > Math.abs(dy)) playerFacing = dx > 0 ? "right" : "left";
     else playerFacing = dy > 0 ? "down" : "up";
-    player.x += dx / len * player.speed * dt;
-    player.y += dy / len * player.speed * dt;
+    let currentSpeed = player.speed;
+    if (currentWeather === "snow") currentSpeed *= 0.8;
+    else if (currentWeather === "fog") currentSpeed *= 0.9;
+    player.x += dx / len * currentSpeed * dt;
+    player.y += dy / len * currentSpeed * dt;
     // A deep river divides the forest. Only the completed ancient bridge permits crossing.
     const crossedRiver=(oldX<2700&&player.x>=2700)||(oldX>2700&&player.x<=2700);
     if(!townMode&&!caveMode&&!homeInterior&&crossedRiver&&!(bridgeStage>=3&&player.y>=1620&&player.y<=1800)) player.x=oldX<2700?2648:2752;
