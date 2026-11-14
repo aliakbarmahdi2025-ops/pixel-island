@@ -44,6 +44,9 @@ let dailyMissions = { day: 1, progress: { wood: 0, iron: 0, harvest: 0 }, claime
 let npcMet = false, npcTalkIndex = 0;
 let npcQuest = { accepted: false, progress: 0, claimed: false };
 let homeLevel = 0, homeInterior = false, homeReturn = { x: 760, y: 590 };
+let houseHeaterOn = false, isTvOn = false;
+let tvForecast = { day: 0, weather: "sunny", mineLuck: "normal" };
+let activeMineLuck = "normal", activeMineLuckDay = 0;
 
 let townMode = false, townReturn = {x:2240,y:900}, townNpcIndex = 0;
 let backpackTier = 0, furnitureOwned = {bed:false,table:false,chair:false};
@@ -436,8 +439,14 @@ function load() {
     if(Array.isArray(data.inventoryOrder))inventoryOrder=data.inventoryOrder.filter(v=>typeof v==="string");
     if(data.furnitureOwned) furnitureOwned={...furnitureOwned,...data.furnitureOwned};
     homeInterior = !!data.homeInterior; if (data.homeReturn) homeReturn = data.homeReturn;
+    houseHeaterOn = !!data.houseHeaterOn;
+    if(data.tvForecast&&typeof data.tvForecast==="object") tvForecast={day:Math.max(0,Math.floor(Number(data.tvForecast.day)||0)),weather:["sunny","rain","cloudy","thunder","snow","fog","windy"].includes(data.tvForecast.weather)?data.tvForecast.weather:"sunny",mineLuck:["normal","lucky","dangerous","cursed"].includes(data.tvForecast.mineLuck)?data.tvForecast.mineLuck:"normal"};
+    activeMineLuck=["normal","lucky","dangerous","cursed"].includes(data.activeMineLuck)?data.activeMineLuck:"normal";
+    activeMineLuckDay=Math.max(0,Math.floor(Number(data.activeMineLuckDay)||0));
     townMode=!!data.townMode;if(data.townReturn)townReturn=data.townReturn;if(data.townFriendship)Object.assign(townFriendship,data.townFriendship);if(data.townStock)Object.assign(townStock,data.townStock);
     if(Number.isFinite(data.worldClock))worldClock=data.worldClock;if(Number.isFinite(data.worldDay))worldDay=data.worldDay;
+    if(activeMineLuckDay!==worldDay) { activeMineLuck="normal"; activeMineLuckDay=worldDay; }
+    if(["sunny","rain","cloudy","thunder","snow","fog","windy"].includes(data.currentWeather))currentWeather=data.currentWeather;
     wateringCanWater=Number.isFinite(data.wateringCanWater)?Math.max(0,Math.min(WATERING_CAN_MAX,Math.floor(data.wateringCanWater))):WATERING_CAN_MAX;
     if(data.farmSeedStock&&typeof data.farmSeedStock==="object")Object.keys(farmSeedStock).forEach(k=>farmSeedStock[k]=Math.max(0,Number(data.farmSeedStock[k])||0));
     if((bag.seeds||0)>0){farmSeedStock.carrot+=(bag.seeds||0);bag.seeds=0;}
@@ -455,7 +464,7 @@ function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, energy: player.energy, maxEnergy: player.maxEnergy, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
+      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, houseHeaterOn, tvForecast, activeMineLuck, activeMineLuckDay, currentWeather, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -626,12 +635,23 @@ function buildMineFloor(f,opts){
   if(keyFloor){placed.push({x:800,y:330,r:110});pedestal={x:800,y:330,taken:!!(st.k||templeKeyOwned)};}
   const ladderSpot=f<MINE_FLOORS?spot(70):null;
   const plan=[["stone"].concat(special||keyFloor?[6,8]:band.stone)];
-  if(special)plan.push(MINE_SPECIAL_ORE[f]);else if(keyFloor)plan.push(["adamore",2,2]);else for(const o of band.ores)plan.push(o);
+  if(special)plan.push(MINE_SPECIAL_ORE[f]);else if(keyFloor)plan.push(["adamore",2,2]);else {
+    for(const o of band.ores){
+      let qtyMult=1;
+      if(activeMineLuckDay===worldDay&&activeMineLuck==="lucky")qtyMult=1.5;
+      else if(activeMineLuckDay===worldDay&&activeMineLuck==="cursed")qtyMult=.55;
+      const minQty=Math.max(0,Math.floor(o[1]*qtyMult));
+      const maxQty=Math.max(0,Math.floor(o[2]*qtyMult));
+      if(maxQty>0)plan.push([o[0],minQty,maxQty]);
+    }
+  }
   const nodes=[];let idx=0;
   for(const pl of plan){const n=ri(pl[1],pl[2]);for(let k=0;k<n;k++){const p=spot(44),hp=pl[0]==="stone"?4:MINE_ORES[pl[0]].hp;nodes.push({id:"mine:"+f+":"+idx,x:p.x,y:p.y,type:pl[0],hp:hp,max:hp});idx++;}}
-  const enemies=[],nSl=f<=2?0:(special||keyFloor)?2:Math.min(5,1+Math.floor(f/15)),slHp=3+Math.floor(f/25);
+  const dangerous=activeMineLuckDay===worldDay&&activeMineLuck==="dangerous";
+  const mobHpMult=dangerous?1.5:1;
+  const enemies=[],baseSlimes=f<=2?0:(special||keyFloor)?2:Math.min(5,1+Math.floor(f/15)),nSl=baseSlimes+(dangerous&&!special&&!keyFloor&&f>2?2:0),slHp=Math.ceil((3+Math.floor(f/25))*mobHpMult);
   for(let i=0;i<nSl;i++){let x=0,y=0;for(let t=0;t<30;t++){x=140+rng()*1320;y=150+rng()*880;if(Math.hypot(x-MINE_SPAWN.x,y-MINE_SPAWN.y)>280)break;}x=Math.round(x);y=Math.round(y);enemies.push({id:"mine-slime-"+i,kind:"slime",x:x,y:y,spawnX:x,spawnY:y,hp:slHp,max:slHp,alive:true,respawnTimer:0});}
-  const addMineMob=(kind,i,hp)=>{let x=0,y=0;for(let t=0;t<35;t++){x=140+rng()*1320;y=150+rng()*880;if(Math.hypot(x-MINE_SPAWN.x,y-MINE_SPAWN.y)>300)break;}x=Math.round(x);y=Math.round(y);enemies.push({id:"mine-"+kind+"-"+i,kind,x,y,spawnX:x,spawnY:y,hp,max:hp,alive:true,respawnTimer:0});};
+  const addMineMob=(kind,i,hp)=>{let x=0,y=0;for(let t=0;t<35;t++){x=140+rng()*1320;y=150+rng()*880;if(Math.hypot(x-MINE_SPAWN.x,y-MINE_SPAWN.y)>300)break;}x=Math.round(x);y=Math.round(y);const scaledHp=Math.ceil(hp*mobHpMult);enemies.push({id:"mine-"+kind+"-"+i,kind,x,y,spawnX:x,spawnY:y,hp:scaledHp,max:scaledHp,alive:true,respawnTimer:0});};
   if(f>50){addMineMob("worm",0,7+Math.floor(f/25));if(f>80)addMineMob("fairy",0,6+Math.floor(f/25));}
   if(f>25&&!st.mimicAwake){const disguise=nodes.find(n=>n.type==="stone");if(disguise){disguise.isMimic=true;disguise.hp=99;disguise.max=99;}}
   if(st.mimicAwake)addMineMob("mimic",0,20+Math.floor(f/15));
@@ -1082,7 +1102,7 @@ function attack(targetId=null) {
 function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
-      player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
+      player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, energy: player.energy, maxEnergy: player.maxEnergy, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
       bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
     }));
   } catch (e) {}
@@ -1153,8 +1173,12 @@ function canvasWorldTap(e){
   const wx=e.clientX+camera.x,wy=e.clientY+camera.y;
   if(!caveMode&&!townMode&&!templeMode&&!homeInterior){const f=furnaces.find(v=>Math.hypot(wx-v.x,wy-v.y)<42);if(f){setWorldTarget("furnace",f.x,f.y,{id:f.id});return;}if(inventorySelected==="bag:furnaceItem"){placeFurnace(wx,wy);return;}}
   if(homeInterior){
-    const doorY=Math.max(35,(viewH-520)/2)+Math.min(viewH-80,520)-81;
-    if(Math.abs(e.clientX-viewW/2)<66&&Math.abs(e.clientY-doorY)<52)handleHomeButton();
+    const L=getHomeInteriorLayout(),px=e.clientX,py=e.clientY;
+    const inside=(r,pad=0)=>px>=r.x-pad&&px<=r.x+r.w+pad&&py>=r.y-pad&&py<=r.y+r.h+pad;
+    if(px>=L.door.x-8*L.scale&&px<=L.door.x+L.door.w+8*L.scale&&py>=L.door.y-42*L.scale-8&&py<=L.door.y+22*L.scale+8){handleHomeButton();return;}
+    if(inside(L.bed,8)){sleepInBed();return;}
+    if(inside(L.tv,8)){toggleTV();return;}
+    if(inside(L.fire,8)){toggleHouseHeater();return;}
     return;
   }
   if(townMode&&Math.hypot(wx-800,wy-1110)<90){transitionTown(false);return;}
@@ -1674,7 +1698,7 @@ function update(dt) {
   fishingCooldown=Math.max(0,fishingCooldown-dt);
   updateFurnaces(dt);
   worldClock += dt * 8;
-  if(worldClock >= 1440){worldClock -= 1440;worldDay++;onNewFarmDay();saveQuietly();}
+  if(worldClock >= 1440){worldClock -= 1440;worldDay++;activateDailyForecast();onNewFarmDay();saveQuietly();}
   if (!templeMode && !caveMode && !homeInterior && !townMode) updateWeather(dt);
   if(townMode)townSchedule(dt);
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt); templeTrapCooldown=Math.max(0,templeTrapCooldown-dt);
@@ -1909,6 +1933,19 @@ function nextTownDialogue(){
  $("townNpcDialogue").textContent=lines[p.id][(townFriendship[p.id]||0)%lines[p.id].length];townFriendship[p.id]=Math.min(20,(townFriendship[p.id]||0)+1);$("townNpcHeart").textContent="💚 میزان آشنایی: "+townFriendship[p.id];saveQuietly();
 }
 function openTownShop(){const p=townPeople[townNpcIndex];if(!p)return;if(p.id==="rezaei"){$("townNpcPanel").hidden=true;$("carpenterPanel").hidden=false;updateCarpenterUI();syncXpPanel();return;}const hour=worldClock/60;const open=hour>=8&&hour<20;if(!open){const h=Math.floor(hour),m=Math.floor((hour-h)*60);showToast("مغازه نادری از ۸ صبح تا ۸ شب بازه؛ ساعت بازی "+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+" است. 🌙");return;} $("townNpcPanel").hidden=true;$("townShopPanel").hidden=false;updateTownShop();syncXpPanel();}
+function activateDailyForecast(){
+  if(tvForecast.day===worldDay){
+    currentWeather=tvForecast.weather;
+    weatherTimer=240+Math.random()*120;
+    weatherTransition=1;
+    weatherParticles.length=0;
+    activeMineLuck=tvForecast.mineLuck;
+  }else{
+    activeMineLuck="normal";
+  }
+  activeMineLuckDay=worldDay;
+  saveQuietly();
+}
 function getFarmSeason(){return ["spring","summer","autumn","winter"][Math.floor((worldDay-1)/28)%4];}
 function getFarmSeasonDay(){return ((worldDay-1)%28)+1;}
 function getFarmTileAt(x,y){return farmPlots.findIndex(p=>Math.hypot(p.x-x,p.y-y)<42);}
@@ -2754,29 +2791,167 @@ function drawHouse(x,y,level,isSaman){
 }
 
 
-function drawInterior() {
-  ctx.fillStyle="#69472f"; ctx.fillRect(0,0,viewW,viewH);
-  const ox=(viewW- Math.min(viewW-24,760))/2, oy= Math.max(35,(viewH-520)/2), w=Math.min(viewW-24,760), h=Math.min(viewH-80,520);
-  ctx.fillStyle="#b98250"; ctx.fillRect(ox,oy,w,h);
-  ctx.fillStyle="#d5a66d"; ctx.fillRect(ox+12,oy+12,w-24,h-24);  ctx.fillStyle="#7b5134"; ctx.fillRect(ox+18,oy+18,w-36,h-36);
-  for(let x=ox+28;x<ox+w-28;x+=42){ctx.fillStyle="#96663e";ctx.fillRect(x,oy+24,3,h-48);}
-  ctx.fillStyle="#e2bd82";ctx.fillRect(ox+28,oy+28,w-56,38);
-  ctx.fillStyle="#6c432b";ctx.fillRect(ox+45,oy+88,Math.min(170,w*.28),78);
-  ctx.fillStyle="#c28a56";ctx.fillRect(ox+54,oy+96,Math.min(152,w*.28-18),62);
-  ctx.fillStyle="#e9d8aa";ctx.fillRect(ox+65,oy+101,Math.min(130,w*.28-35),25);
-  ctx.fillStyle="#6e4830";ctx.fillRect(ox+w-180,oy+100,120,62);
-  ctx.fillStyle="#b7864e";ctx.fillRect(ox+w-174,oy+106,108,10);
-  ctx.fillStyle="#d9bd80";ctx.fillRect(ox+w-158,oy+162,78,9);
-  ctx.fillStyle="#d1a45e";ctx.fillRect(ox+w/2-32,oy+h-94,64,46);
-  ctx.fillStyle="#f2d78e";ctx.fillRect(ox+w/2-21,oy+h-84,42,27);
-  if(homeLevel>=2){ctx.fillStyle="#a7c7d0";ctx.fillRect(ox+w-90,oy+215,42,58);ctx.fillStyle="#e4c276";ctx.fillRect(ox+65,oy+215,58,35);}
-  if(homeLevel>=3){ctx.fillStyle="#d6bd8d";ctx.fillRect(ox+w/2-65,oy+190,130,28);ctx.fillStyle="#8e6844";ctx.fillRect(ox+w/2-58,oy+196,116,16);}
-   if(furnitureOwned.bed){ctx.fillStyle="#65452f";ctx.fillRect(ox+65,oy+h-150,110,48);ctx.fillStyle="#e8d6b4";ctx.fillRect(ox+70,oy+h-145,100,25);ctx.fillStyle="#9a6a49";ctx.fillRect(ox+70,oy+h-120,100,15);}
-   if(furnitureOwned.table){ctx.fillStyle="#6f492c";ctx.fillRect(ox+w-180,oy+h-160,85,12);ctx.fillRect(ox+w-174,oy+h-148,7,28);ctx.fillRect(ox+w-110,oy+h-148,7,28);}
-   if(furnitureOwned.chair){ctx.fillStyle="#875b36";ctx.fillRect(ox+w-235,oy+h-145,35,8);ctx.fillRect(ox+w-235,oy+h-175,7,34);ctx.fillRect(ox+w-232,oy+h-137,5,18);ctx.fillRect(ox+w-207,oy+h-137,5,18);}
-  ctx.fillStyle="#fff0c2";ctx.font="bold 16px Tahoma";ctx.textAlign="center";ctx.fillText("خانه من",viewW/2,oy-8);ctx.textAlign="start";
-  ctx.fillStyle="#f0d18c";ctx.fillRect(viewW/2-32,oy+h-90,64,18);
+function getHomeInteriorLayout() {
+  const w=Math.max(250,Math.min(viewW-30,600));
+  const h=Math.max(250,Math.min(viewH-100,450));
+  const ox=(viewW-w)/2, oy=(viewH-h)/2+20;
+  const scale=Math.min(1,w/420,h/350);
+  return {
+    w,h,ox,oy,scale,
+    bed:{x:ox+22*scale,y:oy+52*scale,w:82*scale,h:120*scale},
+    fire:{x:ox+w/2-38*scale,y:oy+28*scale,w:76*scale,h:82*scale},
+    window:{x:ox+w-91*scale,y:oy+42*scale,w:62*scale,h:62*scale},
+    tv:{x:ox+w-118*scale,y:oy+h-142*scale,w:94*scale,h:82*scale},
+    door:{x:ox+w/2-31*scale,y:oy+h-22*scale,w:62*scale,h:22*scale}
+  };
 }
+function drawInterior() {
+  const L=getHomeInteriorLayout(),{w,h,ox,oy,scale:s}=L;
+  // Dark forest visible beyond the cozy cabin walls.
+  ctx.fillStyle="#15231c";ctx.fillRect(0,0,viewW,viewH);
+  ctx.fillStyle="#263a2d";ctx.fillRect(ox-7*s,oy-7*s,w+14*s,h+14*s);
+  // Timber walls and warm plank floor.
+  ctx.fillStyle="#39271f";ctx.fillRect(ox,oy,w,h);
+  ctx.fillStyle="#765039";ctx.fillRect(ox+8*s,oy+8*s,w-16*s,h-16*s);
+  ctx.fillStyle="#b17a4e";ctx.fillRect(ox+12*s,oy+12*s,w-24*s,Math.max(28,48*s));
+  ctx.fillStyle="#5d3d2c";ctx.fillRect(ox+12*s,oy+58*s,w-24*s,h-70*s);
+  ctx.fillStyle="#8b6040";
+  for(let y=oy+62*s;y<oy+h-18*s;y+=25*s){
+    ctx.fillRect(ox+13*s,y,w-26*s,2*s);
+    for(let x=ox+18*s+(Math.floor(y/(25*s))%2)*18*s;x<ox+w-18*s;x+=66*s)ctx.fillRect(x,y,2*s,25*s);
+  }
+  // Wall beams and a little framed decoration.
+  ctx.fillStyle="#4a3024";ctx.fillRect(ox+12*s,oy+55*s,w-24*s,5*s);
+  ctx.fillStyle="#c99a63";ctx.fillRect(ox+w/2-18*s,oy+19*s,36*s,25*s);
+  ctx.fillStyle="#5c3b2b";ctx.fillRect(ox+w/2-14*s,oy+23*s,28*s,17*s);
+  ctx.fillStyle="#e6c17c";ctx.fillRect(ox+w/2-2*s,oy+25*s,4*s,13*s);
+  // Persian rug with woven border, central medallion and corner motifs.
+  const rug={x:ox+w*.23,y:oy+h*.54,w:w*.48,h:h*.30};
+  ctx.fillStyle="#341f20";ctx.fillRect(rug.x-3*s,rug.y-3*s,rug.w+6*s,rug.h+6*s);
+  ctx.fillStyle="#8c2634";ctx.fillRect(rug.x,rug.y,rug.w,rug.h);
+  ctx.fillStyle="#d6ad61";ctx.fillRect(rug.x+5*s,rug.y+5*s,rug.w-10*s,rug.h-10*s);
+  ctx.fillStyle="#762432";ctx.fillRect(rug.x+9*s,rug.y+9*s,rug.w-18*s,rug.h-18*s);
+  ctx.strokeStyle="#e8c77c";ctx.lineWidth=Math.max(1,1.5*s);ctx.strokeRect(rug.x+13*s,rug.y+13*s,rug.w-26*s,rug.h-26*s);
+  ctx.fillStyle="#d6ad61";
+  for(let i=0;i<4;i++){const px=rug.x+20*s+i*(rug.w-40*s)/3;ctx.fillRect(px,rug.y+17*s,4*s,4*s);ctx.fillRect(px,rug.y+rug.h-21*s,4*s,4*s);}
+  ctx.fillStyle="#d8b66d";ctx.beginPath();ctx.moveTo(rug.x+rug.w/2,rug.y+22*s);ctx.lineTo(rug.x+rug.w/2+13*s,rug.y+rug.h/2);ctx.lineTo(rug.x+rug.w/2,rug.y+rug.h-22*s);ctx.lineTo(rug.x+rug.w/2-13*s,rug.y+rug.h/2);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#8c2634";ctx.fillRect(rug.x+rug.w/2-3*s,rug.y+rug.h/2-3*s,6*s,6*s);
+  // Window, blue glass, wooden crossbars and curtains.
+  const win=L.window;
+  ctx.fillStyle="#4a2d20";ctx.fillRect(win.x-5*s,win.y-5*s,win.w+10*s,win.h+10*s);
+  const night=worldClock>=20*60||worldClock<6*60;
+  ctx.fillStyle=night?"#17294c":currentWeather==="sunny"?"#83c8df":currentWeather==="snow"?"#b9d5e0":"#718b98";
+  ctx.fillRect(win.x,win.y,win.w,win.h);
+  ctx.fillStyle=night?"#e7e0b4":"#d5e8e2";ctx.fillRect(win.x+win.w*.68,win.y+win.h*.18,3*s,3*s);
+  ctx.fillStyle="#4a3024";ctx.fillRect(win.x+win.w/2-2*s,win.y,4*s,win.h);ctx.fillRect(win.x,win.y+win.h/2-2*s,win.w,4*s);
+  ctx.fillStyle="#9b3e3b";ctx.fillRect(win.x-10*s,win.y-7*s,12*s,win.h+15*s);ctx.fillRect(win.x+win.w-2*s,win.y-7*s,12*s,win.h+15*s);
+  ctx.fillStyle="#c56b55";ctx.fillRect(win.x-8*s,win.y-7*s,8*s,10*s);ctx.fillRect(win.x+win.w-2*s,win.y-7*s,8*s,10*s);
+  // Bed with carved frame, linen, pillow and folded blue quilt.
+  const bed=L.bed;
+  ctx.fillStyle="rgba(0,0,0,.28)";ctx.fillRect(bed.x+5*s,bed.y+bed.h-2*s,bed.w,8*s);
+  ctx.fillStyle="#4a2d20";ctx.fillRect(bed.x,bed.y,bed.w,bed.h);
+  ctx.fillStyle="#a77a4d";ctx.fillRect(bed.x+4*s,bed.y+4*s,bed.w-8*s,bed.h-8*s);
+  ctx.fillStyle="#e9dfc9";ctx.fillRect(bed.x+8*s,bed.y+8*s,bed.w-16*s,bed.h-16*s);
+  ctx.fillStyle="#fff4dc";ctx.fillRect(bed.x+12*s,bed.y+12*s,bed.w-24*s,23*s);
+  ctx.fillStyle="#d1c4a7";ctx.fillRect(bed.x+15*s,bed.y+31*s,bed.w-30*s,3*s);
+  ctx.fillStyle="#315b83";ctx.fillRect(bed.x+8*s,bed.y+42*s,bed.w-16*s,bed.h-50*s);
+  ctx.fillStyle="#4c7da5";ctx.fillRect(bed.x+12*s,bed.y+47*s,bed.w-24*s,5*s);
+  ctx.fillStyle="#d6b46d";ctx.fillRect(bed.x+bed.w/2-3*s,bed.y+bed.h-18*s,6*s,5*s);
+  // Stone fireplace with animated flame and a soft warm glow.
+  const fire=L.fire;
+  ctx.fillStyle="#514d48";ctx.fillRect(fire.x,fire.y,fire.w,fire.h);
+  ctx.fillStyle="#81776b";ctx.fillRect(fire.x+5*s,fire.y+5*s,fire.w-10*s,7*s);
+  ctx.fillStyle="#2a2422";ctx.fillRect(fire.x+9*s,fire.y+18*s,fire.w-18*s,fire.h-25*s);
+  ctx.fillStyle="#72513b";ctx.fillRect(fire.x+13*s,fire.y+fire.h-17*s,fire.w-26*s,5*s);
+  if(houseHeaterOn){
+    const glow=ctx.createRadialGradient(fire.x+fire.w/2,fire.y+fire.h-15*s,2*s,fire.x+fire.w/2,fire.y+fire.h-15*s,95*s);
+    glow.addColorStop(0,"rgba(255,151,48,.24)");glow.addColorStop(1,"rgba(255,151,48,0)");
+    ctx.fillStyle=glow;ctx.fillRect(fire.x-95*s,fire.y-30*s,fire.w+190*s,fire.h+65*s);
+    ctx.fillStyle="#e45c24";ctx.beginPath();ctx.moveTo(fire.x+fire.w*.22,fire.y+fire.h-15*s);ctx.quadraticCurveTo(fire.x+fire.w*.08,fire.y+fire.h*.52,fire.x+fire.w*.48,fire.y+fire.h*.38);ctx.quadraticCurveTo(fire.x+fire.w*.86,fire.y+fire.h*.55,fire.x+fire.w*.78,fire.y+fire.h-15*s);ctx.fill();
+    ctx.fillStyle="#ffd34f";ctx.beginPath();ctx.moveTo(fire.x+fire.w*.39,fire.y+fire.h-15*s);ctx.quadraticCurveTo(fire.x+fire.w*.35,fire.y+fire.h*.62,fire.x+fire.w*.55,fire.y+fire.h*.58);ctx.quadraticCurveTo(fire.x+fire.w*.7,fire.y+fire.h*.8,fire.x+fire.w*.61,fire.y+fire.h-15*s);ctx.fill();
+    ctx.fillStyle="#fff0a6";ctx.fillRect(fire.x+fire.w*.49,fire.y+fire.h*.65,3*s,6*s);
+  }else{ctx.fillStyle="#5a5550";ctx.fillRect(fire.x+fire.w*.25,fire.y+fire.h-16*s,fire.w*.5,4*s);}
+  // TV stand, drawers and television.
+  const tv=L.tv;
+  ctx.fillStyle="#4c3021";ctx.fillRect(tv.x-5*s,tv.y+39*s,tv.w+10*s,31*s);
+  ctx.fillStyle="#8a5c37";ctx.fillRect(tv.x,tv.y+42*s,tv.w,5*s);
+  ctx.fillStyle="#38271f";ctx.fillRect(tv.x+8*s,tv.y+49*s,tv.w*.34,14*s);ctx.fillRect(tv.x+tv.w*.59,tv.y+49*s,tv.w*.34,14*s);
+  ctx.fillStyle="#d4ad68";ctx.fillRect(tv.x+tv.w*.23,tv.y+55*s,7*s,2*s);ctx.fillRect(tv.x+tv.w*.72,tv.y+55*s,7*s,2*s);
+  ctx.fillStyle="#15191b";ctx.fillRect(tv.x+5*s,tv.y,tv.w-10*s,42*s);
+  if(isTvOn){
+    ctx.fillStyle="#8fc8df";ctx.fillRect(tv.x+9*s,tv.y+5*s,tv.w-18*s,30*s);
+    ctx.fillStyle="#e8f5ed";ctx.fillRect(tv.x+12*s,tv.y+8*s,tv.w-24*s,2*s);
+    ctx.fillStyle="#527f91";for(let i=0;i<5;i++)ctx.fillRect(tv.x+10*s,tv.y+(12+i*4)*s,tv.w-20*s,1*s);
+    ctx.fillStyle="#e9f2e8";ctx.font="bold "+Math.max(7,8*s)+"px Tahoma";ctx.textAlign="center";ctx.fillText("TV • FORECAST",tv.x+tv.w/2,tv.y+27*s);ctx.textAlign="start";
+  }else{ctx.fillStyle="#101416";ctx.fillRect(tv.x+9*s,tv.y+5*s,tv.w-18*s,30*s);ctx.fillStyle="#39444a";ctx.fillRect(tv.x+14*s,tv.y+10*s,tv.w-28*s,2*s);}
+  ctx.fillStyle="#b5b9b2";ctx.fillRect(tv.x+tv.w*.43,tv.y+42*s,tv.w*.14,5*s);
+  // Door and brass handle.
+  const door=L.door;
+  ctx.fillStyle="#39251b";ctx.fillRect(door.x,door.y-42*s,door.w,64*s);
+  ctx.fillStyle="#795033";ctx.fillRect(door.x+4*s,door.y-38*s,door.w-8*s,60*s);
+  ctx.strokeStyle="#a97b4d";ctx.lineWidth=2*s;ctx.strokeRect(door.x+10*s,door.y-32*s,door.w-20*s,46*s);
+  ctx.fillStyle="#e6c16e";ctx.beginPath();ctx.arc(door.x+door.w-12*s,door.y-9*s,3*s,0,Math.PI*2);ctx.fill();
+  // Labels and warm ambience.
+  ctx.fillStyle="#fff0c8";ctx.font="bold 14px Tahoma";ctx.textAlign="center";ctx.fillText("کلبه چوبی من",viewW/2,oy-9);ctx.textAlign="start";
+  ctx.fillStyle="#f4dfb1";ctx.font="bold 10px Tahoma";ctx.textAlign="center";
+  ctx.fillText("تخت",bed.x+bed.w/2,bed.y+bed.h+12*s);
+  ctx.fillText("شومینه",fire.x+fire.w/2,fire.y+fire.h+13*s);
+  ctx.fillText("تلویزیون",tv.x+tv.w/2,tv.y+76*s);
+  ctx.textAlign="start";
+  // A subtle ceiling lamp keeps the room readable on small phone screens.
+  ctx.fillStyle="#e4c77d";ctx.fillRect(viewW/2-3*s,oy+4*s,6*s,4*s);
+  ctx.fillStyle="rgba(255,224,157,.12)";ctx.beginPath();ctx.arc(viewW/2,oy+8*s,42*s,0,Math.PI*2);ctx.fill();
+}
+function sleepInBed() {
+  if(!homeInterior||mineMode||townMode||templeMode)return;
+  if(worldClock>360&&worldClock<1200&&!confirm("هنوز زوده بخوابی؛ می‌خوای روز رو تموم کنی و بری روز بعد؟"))return;
+  if(sleepInBed.busy)return;
+  sleepInBed.busy=true;moveTarget=null;playerMoving=false;
+  $("townFade").classList.add("active");
+  setTimeout(()=>{
+    player.health=player.maxHealth;
+    player.energy=player.maxEnergy;
+    playerDebuffs.slow=0;playerDebuffs.blind=0;updateDebuffUI();
+    worldClock=6*60;worldDay++;
+    activateDailyForecast();
+    onNewFarmDay();
+    saveQuietly();updateUI();
+    $("townFade").classList.remove("active");
+    sleepInBed.busy=false;
+    showToast("خواب خوبی داشتی! جان و انرژی کامل شد ☀️ روز "+worldDay);
+  },420);
+}
+function toggleHouseHeater() {
+  houseHeaterOn=!houseHeaterOn;
+  playGameSound("water");
+  saveQuietly();
+  showToast(houseHeaterOn?"شومینه روشن شد؛ کلبه گرم و روشن شد 🔥":"شومینه خاموش شد ❄️");
+}
+function getFarmSeasonForDay(day){return ["spring","summer","autumn","winter"][Math.floor((Math.max(1,day)-1)/28)%4];}
+function toggleTV() {
+  isTvOn=!isTvOn;
+  playGameSound("pickup");
+  if(!isTvOn){showToast("تلویزیون خاموش شد.");return;}
+  if(tvForecast.day!==worldDay+1){
+    const season=getFarmSeasonForDay(worldDay+1);
+    const possible={
+      spring:["sunny","rain","cloudy","thunder"],
+      summer:["sunny","thunder","cloudy"],
+      autumn:["windy","fog","rain","sunny"],
+      winter:["snow","cloudy","fog","sunny"]
+    };
+    const choices=possible[season]||possible.spring;
+    const weather=choices[Math.floor(Math.random()*choices.length)];
+    const roll=Math.random();
+    const mineLuck=roll<.1?"cursed":roll<.3?"dangerous":roll<.6?"lucky":"normal";
+    tvForecast={day:worldDay+1,weather,mineLuck};
+    saveQuietly();
+  }
+  const weatherLabels={sunny:"آفتابی ☀️",rain:"بارانی 🌧️",cloudy:"ابری ☁️",thunder:"رعد و برق ⛈️",snow:"برفی ❄️",fog:"مه‌آلود 🌫️",windy:"بادخیز 🍃"};
+  const luckLabels={normal:"عادی 😐",lucky:"شانس بیشتر برای سنگ‌های معدن 💎",dangerous:"هیولاهای قوی‌تر و بیشتر 💀",cursed:"مقدار سنگ معدن کمتر 🕳️"};
+  showToast("📺 پیش‌بینی فردا: "+(weatherLabels[tvForecast.weather]||"نامشخص")+" | معدن: "+(luckLabels[tvForecast.mineLuck]||"عادی"));
+}
+
 function terrainHash(x,y){let n=(x*374761393+y*668265263)>>>0;n=(n^(n>>>13))*1274126177;return ((n^(n>>>16))>>>0)/4294967295;}
 // Stage 1: forest ground + details are painted by paintForestChunk (see "cached ground layer" above)
 function drawTree(r) {
