@@ -49,6 +49,7 @@ let tvForecast = { day: 0, weather: "sunny", mineLuck: "normal" };
 let activeMineLuck = "normal", activeMineLuckDay = 0;
 
 let townMode = false, townReturn = {x:2240,y:900}, townNpcIndex = 0;
+let shopInterior = null, shopReturn = {x:800,y:875};
 let backpackTier = 0, furnitureOwned = {bed:false,table:false,chair:false};
 const backpackCaps = [15,20,30];
 const townFriendship = {mina:0,hana:0,nahid:0,saeed:0,rezaei:0,naderi:0};
@@ -463,8 +464,8 @@ function load() {
 function save() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
-      player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, energy: player.energy, maxEnergy: player.maxEnergy, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, houseHeaterOn, tvForecast, activeMineLuck, activeMineLuckDay, currentWeather, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
+      player: { x: shopInterior ? shopReturn.x : player.x, y: shopInterior ? shopReturn.y : player.y, health: player.health, maxHealth: player.maxHealth, energy: player.energy, maxEnergy: player.maxEnergy, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
+      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, houseHeaterOn, tvForecast, activeMineLuck, activeMineLuckDay, currentWeather, townMode: shopInterior ? true : townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
     }));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
@@ -1102,8 +1103,8 @@ function attack(targetId=null) {
 function saveQuietly() {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({
-      player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, energy: player.energy, maxEnergy: player.maxEnergy, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
+      player: { x: shopInterior ? shopReturn.x : player.x, y: shopInterior ? shopReturn.y : player.y, health: player.health, maxHealth: player.maxHealth, energy: player.energy, maxEnergy: player.maxEnergy, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
+      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode: shopInterior ? true : townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
     }));
   } catch (e) {}
 }
@@ -1171,7 +1172,12 @@ function canvasWorldTap(e){
   if(document.querySelector(".panel:not([hidden])"))return;
   e.preventDefault();
   const wx=e.clientX+camera.x,wy=e.clientY+camera.y;
-  if(!caveMode&&!townMode&&!templeMode&&!homeInterior){const f=furnaces.find(v=>Math.hypot(wx-v.x,wy-v.y)<42);if(f){setWorldTarget("furnace",f.x,f.y,{id:f.id});return;}if(inventorySelected==="bag:furnaceItem"){placeFurnace(wx,wy);return;}}
+  if(!caveMode&&!townMode&&!templeMode&&!homeInterior&&!shopInterior){const f=furnaces.find(v=>Math.hypot(wx-v.x,wy-v.y)<42);if(f){setWorldTarget("furnace",f.x,f.y,{id:f.id});return;}if(inventorySelected==="bag:furnaceItem"){placeFurnace(wx,wy);return;}}
+  if(shopInterior){
+    if(Math.abs(wx-500)<78&&wy>650){exitShopInterior();return;}
+    if(Math.hypot(wx-500,wy-300)<112){setWorldTarget("shopNpc",500,410,{id:shopInterior});return;}
+    setWorldTarget("ground",wx,wy);return;
+  }
   if(homeInterior){
     const L=getHomeInteriorLayout(),px=e.clientX,py=e.clientY;
     const inside=(r,pad=0)=>px>=r.x-pad&&px<=r.x+r.w+pad&&py>=r.y-pad&&py<=r.y+r.h+pad;
@@ -1252,7 +1258,7 @@ function tickWorldInteraction(dt){
     if(person){t.x=person.x;t.y=person.y;}
   }else if(t.type==="forestNpc"){t.x=forestNpc.x;t.y=forestNpc.y;}
   const d=Math.hypot(player.x-t.x,player.y-t.y);
-  const stops={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,fish:22,waterRefill:22,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,furnace:48,mine:50};
+  const stops={resource:58,enemy:76,townNpc:38,shopNpc:40,forestNpc:42,loot:34,chest:42,fish:22,waterRefill:22,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,furnace:48,mine:50};
   if(d>(stops[t.type]??10))return;
   playerMoving=false;
   if(t.type==="ground"){moveTarget=null;return;}
@@ -1275,6 +1281,8 @@ function tickWorldInteraction(dt){
     harvest(t.id);moveTarget=null;
   }else if(t.type==="forestNpc"){
     openNpcDialogue();moveTarget=null;
+  }else if(t.type==="shopNpc"){
+    openShopService(t.id);moveTarget=null;
   }else if(t.type==="townNpc"){
     const idx=townPeople.findIndex(p=>p.id===t.id);
     if(idx>=0){townNpcIndex=idx;openTownNpc();}
@@ -1439,7 +1447,7 @@ function drawWorldMap(){
 }
 
 function syncXpPanel() {
-  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "farmPanel", "livestockPanel", "bridgePanel", "templePanel", "mapPanel", "elevatorPanel"];
+  const panelIds = ["inventory", "upgradePanel", "craftPanel", "questPanel", "npcPanel", "homePanel", "townNpcPanel", "townShopPanel", "carpenterPanel", "farmPanel", "livestockPanel", "bridgePanel", "templePanel", "mapPanel", "elevatorPanel"];
   const hud = $("hud");
   const xp = $("xpPanel");
   xp.hidden = panelIds.some(id => !$(id).hidden);
@@ -1699,14 +1707,14 @@ function update(dt) {
   updateFurnaces(dt);
   worldClock += dt * 8;
   if(worldClock >= 1440){worldClock -= 1440;worldDay++;activateDailyForecast();onNewFarmDay();saveQuietly();}
-  if (!templeMode && !caveMode && !homeInterior && !townMode) updateWeather(dt);
+  if (!templeMode && !caveMode && !homeInterior && !townMode && !shopInterior) updateWeather(dt);
   if(townMode)townSchedule(dt);
   attackCooldown=Math.max(0,attackCooldown-dt); attackFlash=Math.max(0,attackFlash-dt); damageCooldown=Math.max(0,damageCooldown-dt); templeTrapCooldown=Math.max(0,templeTrapCooldown-dt);
   updateCombatEffects(dt);
   let debuffChanged=false;
   for(const key of ["slow","blind"]){if(playerDebuffs[key]>0){playerDebuffs[key]=Math.max(0,playerDebuffs[key]-dt);if(playerDebuffs[key]===0)debuffChanged=true;}}
   if(debuffChanged)updateDebuffUI();
-  const activeEnemies = templeMode ? templeEnemies : (caveMode || homeInterior || townMode) ? (caveMode ? caveEnemies : []) : enemies;
+  const activeEnemies = templeMode ? templeEnemies : (caveMode || homeInterior || townMode || shopInterior) ? (caveMode ? caveEnemies : []) : enemies;
   for(const enemy of activeEnemies){
     if(!enemy.alive){
       enemy.respawnTimer = Math.max(0, enemy.respawnTimer - dt);
@@ -1737,7 +1745,7 @@ function update(dt) {
     const trap=TEMPLE_TRAPS.find(t=>templeTrapActive(t)&&Math.hypot(player.x-t.x,player.y-t.y)<t.r*.62);
     if(trap){const armorLevel=Math.max(0,Math.min(2,player.armorLevel||0)),damage=(.85+templeFloor*.12)*(armorLevel===0?1:armorLevel===1?.7:.4);player.health=Math.max(0,Math.round((player.health-damage)*10)/10);templeTrapCooldown=1.35;updateUI();saveQuietly();if(player.health<=0)templeDefeatPlayer();else showToast("تله‌ی باستانی فعال شد! از نشان‌های سرخ دور شو ⚠️");}
   }
-  if (!templeMode && !caveMode && !homeInterior && !townMode) {
+  if (!templeMode && !caveMode && !homeInterior && !townMode && !shopInterior) {
     const night = worldClock >= 20 * 60 || worldClock < 6 * 60;
     const targetX = night ? samanHome.x : 1690;
     const targetY = night ? samanHome.y + 72 : 650;
@@ -1752,7 +1760,7 @@ function update(dt) {
   if (keys.has("s") || keys.has("arrowdown")) dy += 1;
   if(moveTarget){
     const tx=moveTarget.x-player.x,ty=moveTarget.y-player.y,dist=Math.hypot(tx,ty);
-    const stop={resource:58,enemy:76,townNpc:38,forestNpc:42,loot:34,chest:42,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,workshop:48}[moveTarget.type]??10;
+    const stop={resource:58,enemy:76,townNpc:38,shopNpc:40,forestNpc:42,loot:34,chest:42,farmWater:32,farmPlant:32,farmHarvest:32,farmTill:8,ground:9,temple:12,workshop:48}[moveTarget.type]??10;
     if(dist>stop){dx=tx/dist;dy=ty/dist;}else{dx=0;dy=0;}
   }
   const oldX=player.x,oldY=player.y;
@@ -1769,31 +1777,32 @@ function update(dt) {
     player.y += dy / len * currentSpeed * dt;
     // A deep river divides the forest. Only the completed ancient bridge permits crossing.
     const crossedRiver=(oldX<2700&&player.x>=2700)||(oldX>2700&&player.x<=2700);
-    if(!townMode&&!caveMode&&!homeInterior&&crossedRiver&&!(bridgeStage>=3&&player.y>=1620&&player.y<=1800)) player.x=oldX<2700?2648:2752;
+    if(!townMode&&!caveMode&&!homeInterior&&!shopInterior&&crossedRiver&&!(bridgeStage>=3&&player.y>=1620&&player.y<=1800)) player.x=oldX<2700?2648:2752;
   }
+  if(shopInterior&&player.x>270&&player.x<730&&player.y>345&&player.y<430){player.x=oldX;player.y=oldY;}
   if(interactionTimer>0)interactionTimer=Math.max(0,interactionTimer-dt);
   if(playerActionTimer>0)playerActionTimer=Math.max(0,playerActionTimer-dt);
   tickWorldInteraction(dt);
   audioEnvironment(dt);
   animTime += dt;
-  const mw = templeMode ? TEMPLE.w : caveMode ? CAVE.w : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
-  const mh = templeMode ? TEMPLE.h : caveMode ? CAVE.h : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h;
-  player.x=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mw-((caveMode || homeInterior || townMode)?55:24),player.x));
-  player.y=Math.max((caveMode || homeInterior || townMode)?55:24,Math.min(mh-((caveMode || homeInterior || townMode)?55:24),player.y));
+  const mw = templeMode ? TEMPLE.w : caveMode ? CAVE.w : shopInterior ? 1000 : homeInterior ? 900 : townMode ? TOWN.w : WORLD.w;
+  const mh = templeMode ? TEMPLE.h : caveMode ? CAVE.h : shopInterior ? 760 : homeInterior ? 650 : townMode ? TOWN.h : WORLD.h;
+  player.x=Math.max((caveMode || homeInterior || townMode || shopInterior)?75:24,Math.min(mw-((caveMode || homeInterior || townMode || shopInterior)?75:24),player.x));
+  player.y=Math.max((caveMode || homeInterior || townMode || shopInterior)?85:24,Math.min(mh-((caveMode || homeInterior || townMode || shopInterior)?85:24),player.y));
   camera.x=Math.max(0,Math.min(mw-viewW,player.x-viewW/2));
   camera.y=Math.max(0,Math.min(mh-viewH,player.y-viewH/2));
   $("homeBtn").hidden=true;$("townBtn").hidden=true;$("townExitBtn").hidden=true;
   const bridgeDistance=Math.hypot(player.x-2525,player.y-1710),gateDistance=Math.hypot(player.x-3000,player.y-1710);
-  $("bridgeBtn").hidden=templeMode||townMode||caveMode||homeInterior||(bridgeStage>=3?gateDistance>125:bridgeDistance>145);
+  $("bridgeBtn").hidden=templeMode||townMode||caveMode||homeInterior||shopInterior||(bridgeStage>=3?gateDistance>125:bridgeDistance>145);
   $("bridgeBtn").textContent=bridgeStage>=3?"🏛️ دروازه معبد":"🌉 پل باستانی";
-  $("townClock").hidden=templeMode||homeInterior||caveMode;
+  $("townClock").hidden=templeMode||homeInterior||caveMode||shopInterior;
   {const hh=Math.floor(worldClock/60),mm=Math.floor(worldClock%60),night=hh>=20||hh<6;$("townClock").textContent=(night?"🌙 ":"☀️ ")+String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0")+" • روز "+worldDay;}
   $("farmBtn").hidden=true;
   const nearTownPerson=townMode?townPeople.find(p=>Math.hypot(player.x-p.x,player.y-p.y)<115):null;
   $("townNpcBtn").hidden=true;
   $("townNpcBtn").textContent=nearTownPerson?"💬 صحبت با "+nearTownPerson.name:"💬 صحبت با اهالی";
   $("npcBtn").hidden = true;
-  $("homeBtn").hidden = templeMode || townMode || caveMode || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
+  $("homeBtn").hidden = templeMode || townMode || caveMode || shopInterior || (!homeInterior && Math.hypot(player.x-playerHome.x,player.y-(playerHome.y+45)) > 145);
   $("homeBtn").textContent = homeInterior ? "🚪 خروج از خانه" : "🏡 خانه";
   updateMineButton();
 }
@@ -1932,7 +1941,27 @@ function nextTownDialogue(){
  const lines={mina:["از دیدنت خوشحال شدم. 💗","یه روز بیا با هم توی میدان قدم بزنیم!"],hana:["شهر رو بگرد، کلی جای قشنگ داره!","بعداً باز هم با هم حرف می‌زنیم."],nahid:["هر وقت خسته شدی، کمی استراحت کن.","خوشحالم که شهرمون رو دوست داری."],saeed:["مسیر جنگل از همون دروازه‌ایه که وارد شدی.","روز خوبی داشته باشی!"],rezaei:["برای ساخت و تغییر دکور خانه روی من حساب کن!","چوب و پارچه و شیشه‌ات رو بیار تا خانه‌ات رو قشنگ‌تر کنیم."],naderi:["ظرفیت کوله‌ات رو بالا ببر تا بیشتر جمع کنی.","بذر خوب، مزرعه خوب می‌سازه!"]};
  $("townNpcDialogue").textContent=lines[p.id][(townFriendship[p.id]||0)%lines[p.id].length];townFriendship[p.id]=Math.min(20,(townFriendship[p.id]||0)+1);$("townNpcHeart").textContent="💚 میزان آشنایی: "+townFriendship[p.id];saveQuietly();
 }
-function openTownShop(){const p=townPeople[townNpcIndex];if(!p)return;if(p.id==="rezaei"){$("townNpcPanel").hidden=true;$("carpenterPanel").hidden=false;updateCarpenterUI();syncXpPanel();return;}const hour=worldClock/60;const open=hour>=8&&hour<20;if(!open){const h=Math.floor(hour),m=Math.floor((hour-h)*60);showToast("مغازه نادری از ۸ صبح تا ۸ شب بازه؛ ساعت بازی "+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+" است. 🌙");return;} $("townNpcPanel").hidden=true;$("townShopPanel").hidden=false;drawShopPortrait("naderi");updateTownShop();syncXpPanel();}
+function openTownShop(){
+ const p=townPeople[townNpcIndex];if(!p||!["naderi","rezaei"].includes(p.id))return;
+ if(p.id==="naderi"){
+  const hour=worldClock/60;
+  if(hour<8||hour>=20){const h=Math.floor(hour),m=Math.floor((hour-h)*60);showToast("مغازه نادری از ۸ صبح تا ۸ شب بازه؛ ساعت بازی "+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+" است. 🌙");return;}
+ }
+ shopReturn={x:player.x,y:player.y};shopInterior=p.id;townMode=false;player.x=500;player.y=480;moveTarget=null;playerMoving=false;
+ $("townNpcPanel").hidden=true;$("townShopPanel").hidden=true;$("carpenterPanel").hidden=true;
+ showToast(p.id==="naderi"?"وارد فروشگاه آقای نادری شدی 🛍️":"وارد کارگاه خانم رضایی شدی 🪚");
+ saveQuietly();syncXpPanel();
+}
+function openShopService(id){
+ if(id==="naderi"){$("townShopPanel").hidden=false;drawShopPortrait("naderi");updateTownShop();syncXpPanel();}
+ else if(id==="rezaei"){$("carpenterPanel").hidden=false;updateCarpenterUI();syncXpPanel();}
+}
+function exitShopInterior(){
+ if(!shopInterior)return;
+ const name=shopInterior==="naderi"?"فروشگاه نادری":"کارگاه رضایی";
+ shopInterior=null;townMode=true;player.x=shopReturn.x;player.y=shopReturn.y;moveTarget=null;playerMoving=false;
+ $("townShopPanel").hidden=true;$("carpenterPanel").hidden=true;showToast("از "+name+" خارج شدی 🏘️");saveQuietly();syncXpPanel();
+}
 function activateDailyForecast(){
   if(tvForecast.day===worldDay){
     currentWeather=tvForecast.weather;
@@ -3774,10 +3803,80 @@ function drawCaveEntrance(){
  ctx.fillStyle="#d5c18c";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("غار جنگلی",x,y-100);ctx.textAlign="start";
 }
 function drawChest(){const x=CHEST_POS.x-camera.x,y=CHEST_POS.y-camera.y;if(x<-50||x>viewW+50||y<-50||y>viewH+50)return;ctx.fillStyle="rgba(12,12,10,.22)";ctx.fillRect(x-20,y+12,40,7);ctx.fillStyle="#684329";ctx.fillRect(x-19,y-12,38,25);ctx.fillStyle="#a97843";ctx.fillRect(x-17,y-10,34,8);ctx.fillStyle="#80532f";ctx.fillRect(x-17,y-1,34,12);ctx.fillStyle="#d6b66c";ctx.fillRect(x-3,y-5,6,9);ctx.fillStyle="#f1d994";ctx.fillRect(x-2,y-4,4,3);ctx.fillStyle="#f4e4bc";ctx.font="bold 11px Tahoma";ctx.textAlign="center";ctx.fillText("صندوق",x,y-20);ctx.textAlign="start";}
+function drawShopInterior(){
+ const px=x=>x-camera.x,py=y=>y-camera.y;
+ const rect=(x,y,w,h,color)=>{ctx.fillStyle=color;ctx.fillRect(px(x),py(y),w,h);};
+ const wood=shopInterior==="naderi";
+ // Room shell: deep stone foundation, warm walls and a carefully layered plank floor.
+ rect(0,0,1000,760,"#17130f");rect(35,35,930,690,"#493326");rect(48,48,904,664,wood?"#d5bd8d":"#76513a");
+ rect(55,55,890,170,wood?"#ead9b2":"#60402e");
+ for(let y=70;y<220;y+=34){rect(58,y,884,3,wood?"#c3a477":"#4b3024");for(let x=90+(y%2)*20;x<930;x+=150)rect(x,y+3,3,28,wood?"#c3a477":"#4b3024");}
+ rect(55,215,890,12,wood?"#79513a":"#39271f");rect(55,218,890,4,wood?"#d0a16c":"#a77b50");
+ rect(55,225,890,470,wood?"#9a6846":"#50372b");
+ for(let y=230;y<700;y+=38){
+  rect(58,y,884,2,wood?"#754b34":"#39271f");
+  const offset=(Math.floor(y/38)%2)*58;
+  for(let x=65+offset;x<940;x+=116)rect(x,y+2,2,34,wood?"#b27e55":"#765039");
+  for(let x=78+offset;x<930;x+=232)rect(x,y+7,25,2,wood?"rgba(230,190,132,.24)":"rgba(198,151,105,.15)");
+ }
+ for(const x of [75,925]){rect(x,62,10,150,wood?"#9b704c":"#39271f");rect(x-5,62,20,7,wood?"#e3c18d":"#8b6546");}
+ // Two side windows and curtains make the room feel like a lived-in place.
+ for(const x of [120,850]){
+  rect(x-4,95,88,84,"#5b3929");rect(x,99,80,76,wood?"#83b9c5":"#637d80");
+  rect(x+37,99,5,76,"#5b3929");rect(x,135,80,4,"#5b3929");
+  rect(x-12,88,12,100,wood?"#9d493d":"#80513a");rect(x+80,88,12,100,wood?"#9d493d":"#80513a");
+ }
+ if(wood){
+  // Merchant shelves, colorful jars, seed packets and hanging herb bundles.
+  rect(205,88,590,120,"#56372a");rect(213,96,574,105,"#76503a");
+  for(let row=0;row<2;row++){
+   const sy=103+row*48;rect(218,sy+37,564,8,"#4b3023");rect(220,sy+37,560,3,"#b78655");
+   for(let i=0;i<13;i++){
+    const x=230+i*43,y=sy+(i%3===0?2:6),colors=["#b84f4d","#729c62","#548da5","#d39a4c","#9472a6"];
+    rect(x,y+8,22,24,colors[(i+row*2)%colors.length]);rect(x+3,y+3,16,7,"#e6d4b4");rect(x+6,y+15,12,7,"#f0dcae");rect(x+2,y+10,3,12,"rgba(255,255,255,.35)");rect(x+5,y,12,4,"#d8c7a5");
+   }
+  }
+  for(let i=0;i<4;i++){const x=115+i*55;rect(x,196,3,28,"#58402c");rect(x-7,210,17,12,i%2?"#6f984e":"#c5a34f");rect(x-4,214,3,12,"#426b3b");}
+  rect(800,178,80,35,"#6a4932");rect(808,184,64,23,"#d8c18c");ctx.fillStyle="#5b402c";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText("بذر تازه",px(840),py(199));
+ }else{
+  // Rezaei workshop: tool wall, plans, saw, hammer and stacked timber.
+  rect(200,85,600,122,"#3b2921");rect(208,93,584,106,"#6a4933");
+  for(let x=215;x<790;x+=42)rect(x,96,3,98,"#4c3327");
+  rect(350,105,210,78,"#263d36");rect(357,112,196,64,"#3f6654");
+  ctx.strokeStyle="#e9dfc6";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(px(370),py(160));ctx.lineTo(px(425),py(125));ctx.lineTo(px(490),py(151));ctx.lineTo(px(535),py(122));ctx.stroke();
+  rect(250,111,8,57,"#9b704b");ctx.fillStyle="#b7c2c1";ctx.beginPath();ctx.moveTo(px(260),py(120));ctx.lineTo(px(322),py(137));ctx.lineTo(px(308),py(154));ctx.closePath();ctx.fill();
+  for(let i=0;i<6;i++){ctx.strokeStyle="#e5e0d0";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(px(270+i*7),py(134+i*2));ctx.lineTo(px(275+i*7),py(140+i*2));ctx.stroke();}
+  rect(690,115,8,65,"#a8794e");rect(674,112,42,13,"#9ca8aa");rect(680,116,30,4,"#d6d8d0");rect(735,120,9,50,"#b9c2c1");rect(731,117,17,8,"#d6d8d0");
+  rect(112,270,94,64,"#5b3c2b");for(let i=0;i<4;i++){rect(120+i*19,279,13,45,i%2?"#b47a45":"#8d5e38");rect(124+i*19,282,4,35,"#d0a06a");}
+  for(let i=0;i<5;i++){rect(800+i%2*22,280+i*9,90,8,"#9a6a40");rect(805+i%2*22,280+i*9,80,2,"#c28d58");}
+ }
+ // Hanging lamp and warm pool of light above the shopkeeper.
+ rect(490,70,20,8,"#49352a");rect(496,78,8,18,"#6c5035");rect(476,95,48,7,"#e4bd72");
+ ctx.fillStyle="rgba(255,205,116,.13)";ctx.beginPath();ctx.arc(px(500),py(285),112,0,Math.PI*2);ctx.fill();
+ const npc=makePixelTownSprite(wood?"naderi":"rezaei",0);ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(npc,px(460),py(222),80,112);ctx.restore();
+ ctx.fillStyle=wood?"#4b3023":"#f4e8d2";ctx.font="bold 16px Tahoma";ctx.textAlign="center";ctx.fillText(wood?"آقای نادری":"خانم رضایی",px(500),py(215));
+ // Solid service counter with inset carved panels.
+ rect(255,360,490,76,wood?"#4b3024":"#503326");rect(245,350,510,18,wood?"#b47b4c":"#a9784c");rect(250,350,500,4,"#e1b77b");
+ for(let i=0;i<5;i++){rect(270+i*96,374,82,49,wood?"#79513a":"#795338");rect(278+i*96,382,66,33,wood?"#936344":"#956b45");rect(283+i*96,387,56,2,"rgba(255,220,160,.35)");}
+ if(wood){
+  rect(580,325,65,24,"#344a50");rect(585,319,55,9,"#82979a");rect(592,329,40,11,"#25363b");rect(600,321,22,4,"#d9e5df");
+  ctx.fillStyle="#d7a94d";ctx.beginPath();ctx.arc(px(685),py(342),11,Math.PI,0);ctx.fill();rect(679,342,12,7,"#b77d2c");rect(350,337,48,10,"#d8c18c");rect(358,329,32,8,"#a94f46");
+ }else{
+  rect(350,334,62,7,"#d2b17a");rect(360,325,8,12,"#8e5e39");rect(355,322,18,7,"#b9c0bf");rect(470,330,52,5,"#d4d0c2");
+  for(let i=0;i<5;i++)rect(474+i*9,327,2,3,"#e7e0cc");rect(605,326,7,20,"#9a6b45");rect(595,325,27,7,"#aeb8b8");
+ }
+ // Persian runner, entry mat and a clear exit door.
+ rect(350,505,300,112,"#482b2b");rect(359,514,282,94,"#b27c46");rect(367,522,266,78,wood?"#8c2f3b":"#48614a");rect(379,534,242,54,"#d2ad68");rect(387,542,226,38,wood?"#8c2f3b":"#48614a");
+ for(let i=0;i<7;i++){rect(390+i*34,545,4,4,"#e6ca8b");rect(390+i*34,574,4,4,"#e6ca8b");}
+ rect(440,675,120,30,"#3c271d");rect(448,661,104,35,"#6e4930");rect(454,665,92,25,"#986c43");rect(493,676,14,4,"#e5c57d");
+ const glow=ctx.createRadialGradient(px(500),py(300),55,px(500),py(340),520);glow.addColorStop(0,"rgba(255,205,128,.10)");glow.addColorStop(1,"rgba(12,9,7,.36)");ctx.fillStyle=glow;ctx.fillRect(0,0,viewW,viewH);
+ ctx.fillStyle="#f4e7ca";ctx.font="bold 12px Tahoma";ctx.textAlign="center";ctx.fillText("برای صحبت و خرید، نزدیک پیشخوان برو و روی فروشنده بزن",viewW/2,22);
+}
 function draw() {
   ctx.clearRect(0, 0, viewW, viewH);
-  if (templeMode||townMode) releaseGroundCaches();
+  if (templeMode||townMode||shopInterior) releaseGroundCaches();
   if (templeMode) { drawTempleGround(); for(const e of templeEnemies){if(e.alive)drawTempleEnemy(e);} drawPlayer(); return; }
+  if (shopInterior) { drawShopInterior(); drawPlayer(); drawParticles(); return; }
   if (homeInterior) { drawInterior(); drawPlayer(); return; }
   if(townMode){drawTown();drawTownPeople();drawPlayer();drawParticles();drawNightOverlay();return;}
   if(caveMode){drawCaveGround();drawCaveDetails();drawCaveObjects();}else {drawGround();drawForestWaterFx();drawAncientBridge();}
