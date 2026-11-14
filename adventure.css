@@ -259,3 +259,6 @@ button:disabled{opacity:.38;filter:grayscale(.65)}
 .naderi-shop-heading h2{margin:0 0 6px;font-size:18px}
 .naderi-shop-heading p{margin:0;font-size:12px;line-height:1.8}
 .seed-shop-list button:disabled{opacity:.55;filter:saturate(.75)}
+
+/* Stage 66 — walk-in interiors */
+#shopInteriorEnterBtn,#shopInteriorExitBtn{border-color:#d4b47a;background:linear-gradient(180deg,#765039,#4b3024);color:#fff0cf}
