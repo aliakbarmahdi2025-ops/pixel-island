@@ -382,11 +382,14 @@ function rand() {
   return seed / 4294967296;
 }
 function makeWorld() {
+  // Resource IDs must describe the same world after loading any saved position.
+  // Keep the original new-game layout so existing harvested IDs remain useful.
+  seed = 20261109;
   resources = [];
   for (let i = 0; i < 190; i++) {
     const x = 100 + rand() * (WORLD.w - 200);
     const y = 100 + rand() * (WORLD.h - 200);
-    if (Math.abs(x-2700)<105 || Math.hypot(x - player.x, y - player.y) < 130 || Math.hypot(x-playerHome.x,y-playerHome.y)<155 || Math.hypot(x-samanHome.x,y-samanHome.y)<155) continue;
+    if (Math.abs(x-2700)<105 || Math.hypot(x - 1200, y - 900) < 130 || Math.hypot(x-playerHome.x,y-playerHome.y)<155 || Math.hypot(x-samanHome.x,y-samanHome.y)<155) continue;
     const type = rand() < 0.72 ? "tree" : "stone";
     resources.push({ id: "node-" + i, x, y, type, hp: type === "tree" ? 3 : 4, max: type === "tree" ? 3 : 4 });
   }
@@ -466,12 +469,16 @@ function load() {
     selectedFarmPlot=farmPlots.length?0:-1;
   } catch (e) { console.warn("Save could not be loaded", e); }
 }
+// Manual save, autosave and backup export must serialize identical game state.
+function createSaveData() {
+  return {
+      player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, energy: player.energy, maxEnergy: player.maxEnergy, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
+      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, houseHeaterOn, tvForecast, activeMineLuck, activeMineLuckDay, currentWeather, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
+  };
+}
 function save() {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({
-      player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, energy: player.energy, maxEnergy: player.maxEnergy, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, houseHeaterOn, tvForecast, activeMineLuck, activeMineLuckDay, currentWeather, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
-    }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify(createSaveData()));
     showToast("پیشرفتت ذخیره شد 💾");
   } catch (e) { showToast("ذخیره انجام نشد؛ فضای مرورگر را بررسی کن"); }
 }
@@ -1107,10 +1114,7 @@ function attack(targetId=null) {
 
 function saveQuietly() {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({
-      player: { x: player.x, y: player.y, health: player.health, maxHealth: player.maxHealth, energy: player.energy, maxEnergy: player.maxEnergy, speed: player.speed, level: player.level, xp: player.xp, skillPoints: player.skillPoints, attackPower: player.attackPower, armorLevel: player.armorLevel || 0, coins: player.coins },
-      bag, chestStorage, fishingRodOwned, furnaces, toolLevels, inventoryOrder, bridgeStage, templeMode, templeFloor, templeUnlocked, templePuzzleSolved, templeBosses, templeRuneProgress, templeRuneSolved, templeSecrets, templeReturn, harvested: [...harvested], caveHarvested: forestCaveSaved(), lootDrops: mineMode?(forestLootStash||[]):lootDrops, mine: mineSaveData(), caveMode, caveReturn, openedChests, quests, dailyMissions, npcMet, npcTalkIndex, npcQuest, homeLevel, backpackTier, furnitureOwned, homeInterior, homeReturn, townMode, townReturn, townFriendship, townStock, worldClock, worldDay, wateringCanWater, farmPlots, farmSeedStock, livestock
-    }));
+    localStorage.setItem(SAVE_KEY, JSON.stringify(createSaveData()));
   } catch (e) {}
 }
 
