@@ -1,0 +1,115 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const root = process.env.PIXEL_SOURCE_DIR || path.join(__dirname, '..');
+const source = fs.readFileSync(path.join(root, 'adventure.js'), 'utf8');
+const SAVE_KEY = 'pixelIsland_adventure_save_v1';
+
+// Execute the actual game startup/save/load code, with drawing and timers disabled.
+// The inspection hook exists only in this isolated test context, never in the game.
+function startGame(saved) {
+  const storage = new Map(saved ? [[SAVE_KEY, saved]] : []);
+  const nodes = new Map();
+  const noop = () => {};
+  const drawing = new Proxy({}, { get: () => noop });
+  function element(id) {
+    if (!nodes.has(id)) nodes.set(id, {
+      hidden: true, style: {}, dataset: {}, innerHTML: '', textContent: '', scrollLeft: 0,
+      classList: { add: noop, remove: noop, toggle: noop },
+      addEventListener: noop, setAttribute: noop, appendChild: noop, remove: noop,
+      querySelectorAll: () => [], getBoundingClientRect: () => ({ bottom: 70 }),
+      getContext: () => drawing
+    });
+    return nodes.get(id);
+  }
+  const context = vm.createContext({
+    console, innerWidth: 1280, innerHeight: 800, devicePixelRatio: 1,
+    document: { getElementById: element, querySelectorAll: () => [], querySelector: () => null,
+      createElement: () => element(Symbol()), body: { appendChild: noop } },
+    localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)) },
+    addEventListener: noop, requestAnimationFrame: noop, setTimeout: noop,
+    clearTimeout: noop, setInterval: noop, clearInterval: noop
+  });
+  context.window = context;
+  const end = source.lastIndexOf('})();');
+  assert.ok(end >= 0, 'game wrapper found');
+  vm.runInContext(source.slice(0, end) + '\nglobalThis.inspectGame = code => eval(code);\n' + source.slice(end), context);
+  return {
+    run: code => context.inspectGame(code),
+    json: code => JSON.parse(context.inspectGame(`JSON.stringify(${code})`)),
+    saved: () => storage.get(SAVE_KEY)
+  };
+}
+
+test('world regeneration is independent of player position and previous RNG use', () => {
+  const game = startGame();
+  const original = game.json('resources');
+  assert.equal(original.length, 269, 'preserves original new-game resource layout');
+  for (const [x, y] of [[2200, 1500], [160, 750], [800, 1015], [3100, 2200]]) {
+    game.run(`player.x=${x};player.y=${y};rand();rand();makeWorld()`);
+    assert.deepEqual(game.json('resources'), original);
+  }
+});
+
+test('save/reload keeps resource IDs, layout and harvested state', () => {
+  const game = startGame();
+  const original = game.json('resources');
+  game.run('harvested.add(resources[7].id);player.x=2200;player.y=1500;bag.wood=6;saveQuietly()');
+  const restored = startGame(game.saved());
+  assert.deepEqual(restored.json('resources'), original);
+  assert.deepEqual(restored.json('[...harvested]'), [original[7].id]);
+  assert.equal(restored.json('bag.wood'), 6);
+  assert.equal(restored.json('activeNodes().some(r=>harvested.has(r.id))'), false);
+});
+
+test('manual and quiet saves serialize identical data including temple and forecast', () => {
+  const game = startGame();
+  game.run(`templeMode=true;templeFloor=3;templeUnlocked=3;worldDay=7;
+    houseHeaterOn=true;currentWeather='snow';
+    tvForecast={day:7,weather:'snow',mineLuck:'lucky'};
+    activeMineLuck='lucky';activeMineLuckDay=7;save()`);
+  const manual = JSON.parse(game.saved());
+  game.run('saveQuietly()');
+  assert.deepEqual(JSON.parse(game.saved()), manual);
+  assert.equal(manual.templeMode, true);
+  assert.equal(manual.houseHeaterOn, true);
+  assert.equal(manual.currentWeather, 'snow');
+  assert.equal(manual.activeMineLuck, 'lucky');
+  assert.deepEqual(manual.tvForecast, { day: 7, weather: 'snow', mineLuck: 'lucky' });
+});
+
+test('both save paths round-trip temple, weather, luck, heater and inventory', () => {
+  for (const saveFunction of ['save', 'saveQuietly']) {
+    const game = startGame();
+    game.run(`templeMode=true;templeFloor=3;templeUnlocked=4;bridgeStage=3;
+      player.x=160;player.y=750;player.coins=42;bag.wood=6;
+      houseHeaterOn=true;worldDay=7;currentWeather='snow';
+      tvForecast={day:7,weather:'snow',mineLuck:'lucky'};
+      activeMineLuck='lucky';activeMineLuckDay=7;${saveFunction}()`);
+    const restored = startGame(game.saved());
+    assert.deepEqual(restored.json('({templeMode,templeFloor,templeUnlocked,houseHeaterOn,currentWeather,activeMineLuck,activeMineLuckDay,tvForecast,wood:bag.wood,coins:player.coins})'), {
+      templeMode: true, templeFloor: 3, templeUnlocked: 4, houseHeaterOn: true,
+      currentWeather: 'snow', activeMineLuck: 'lucky', activeMineLuckDay: 7,
+      tvForecast: { day: 7, weather: 'snow', mineLuck: 'lucky' }, wood: 6, coins: 42
+    }, saveFunction);
+  }
+});
+
+test('older saves without the corrected fields still load', () => {
+  const restored = startGame(JSON.stringify({ player: { x: 2200, y: 1500, coins: 19 }, bag: { wood: 3 }, harvested: ['node-7'] }));
+  assert.deepEqual(restored.json('({templeMode,houseHeaterOn,currentWeather,coins:player.coins,wood:bag.wood})'), {
+    templeMode: false, houseHeaterOn: false, currentWeather: 'sunny', coins: 19, wood: 3
+  });
+  assert.deepEqual(restored.json('[...harvested]'), ['node-7']);
+});
+
+test('entry page links to both games without removing classic save access', () => {
+  const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  assert.match(index, /href="adventure\.html"/);
+  assert.match(index, /href="classic\.html"/);
+  const classic = fs.readFileSync(path.join(root, 'classic.html'), 'utf8');
+  assert.match(classic, /src="game\.js"/);
+  assert.match(fs.readFileSync(path.join(root, 'game.js'), 'utf8'), /pixelIsland_crafting_save/);
+});

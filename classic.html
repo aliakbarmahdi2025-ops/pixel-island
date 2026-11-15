@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pixel Island - Modular Edition</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="ui">
+        <div class="ui-box">💰 <span id="coins">0</span> | Lvl <span id="level">1</span> | <span id="toolName">تبر چوبی 🪵</span></div>
+        <div style="display: flex; gap: 5px;">
+            <button id="saveBtn" class="btn-ui" onclick="manualSave()">💾 ذخیره</button>
+            <button id="travelBtn" class="btn-ui" onclick="switchIsland()">🌋 آتشفشان</button>
+            <button id="shopBtn" class="btn-ui" onclick="toggleShop()">🛒 ابزار و ارتقا</button>
+        </div>
+    </div>
+
+    <div id="shopMenu">
+        <h2>🛠️ ساخت ابزار و ارتقا</h2>
+        <div class="shop-item">
+            <div>
+                <div>🪓 ارتقای ابزار (Tier)</div>
+                <small id="toolInfo" style="color:#aaa;">تبر چوبی (قدرت: 1)</small>
+            </div>
+            <button class="buy-btn" id="buyTool" onclick="upgradeTool()">200 💰</button>
+        </div>
+        <div class="shop-item">
+            <div>
+                <div>⚡ سرعت حرکت</div>
+                <small id="speedLvl" style="color:#aaa;">Lvl 1</small>
+            </div>
+            <button class="buy-btn" id="buySpeed" onclick="buyUpgrade('speed')">50 💰</button>
+        </div>
+        <div class="shop-item">
+            <div>
+                <div>🤖 تعداد کارگر</div>
+                <small id="workerLvl" style="color:#aaa;">0 کارگر</small>
+            </div>
+            <button class="buy-btn" id="buyWorker" onclick="buyUpgrade('worker')">150 💰</button>
+        </div>
+        <button id="closeShop" onclick="toggleShop()">بستن ✖</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script src="game.js"></script>
+</body>
+</html>

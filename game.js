@@ -114,24 +114,39 @@ let activeResources = forestResources;
 const floatingTexts = [];
 let touchX = null;
 let touchY = null;
+const pressedKeys = new Set();
+const movementKeys = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'];
 
-window.addEventListener('touchstart', (e) => {
-    if (e.target.tagName !== 'BUTTON') {
-        touchX = e.touches[0].clientX;
-        touchY = e.touches[0].clientY;
+canvas.addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary || e.button !== 0) return;
+    canvas.setPointerCapture(e.pointerId);
+    touchX = e.clientX;
+    touchY = e.clientY;
+});
+canvas.addEventListener('pointermove', (e) => {
+    if (e.isPrimary && touchX !== null) {
+        touchX = e.clientX;
+        touchY = e.clientY;
     }
-}, { passive: false });
-
-window.addEventListener('touchmove', (e) => {
-    if (touchX !== null && e.target.tagName !== 'BUTTON') {
-        touchX = e.touches[0].clientX;
-        touchY = e.touches[0].clientY;
-    }
-}, { passive: false });
-
-window.addEventListener('touchend', () => {
+});
+function stopPointerMovement() {
     touchX = null;
     touchY = null;
+}
+window.addEventListener('pointerup', stopPointerMovement);
+window.addEventListener('pointercancel', stopPointerMovement);
+canvas.addEventListener('lostpointercapture', stopPointerMovement);
+window.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    if (!movementKeys.includes(key)) return;
+    e.preventDefault();
+    pressedKeys.add(key);
+    stopPointerMovement();
+});
+window.addEventListener('keyup', (e) => pressedKeys.delete(e.key.toLowerCase()));
+window.addEventListener('blur', () => {
+    pressedKeys.clear();
+    stopPointerMovement();
 });
 
 function switchIsland() {
@@ -234,6 +249,13 @@ function updateUI() {
 let saveTimer = 0;
 
 function update() {
+    const keyX = Number(pressedKeys.has('d') || pressedKeys.has('arrowright')) - Number(pressedKeys.has('a') || pressedKeys.has('arrowleft'));
+    const keyY = Number(pressedKeys.has('s') || pressedKeys.has('arrowdown')) - Number(pressedKeys.has('w') || pressedKeys.has('arrowup'));
+    if (keyX || keyY) {
+        const length = Math.hypot(keyX, keyY);
+        player.x += keyX / length * player.speed;
+        player.y += keyY / length * player.speed;
+    }
     if (touchX !== null && touchY !== null) {
         const dx = touchX - player.x;
         const dy = touchY - player.y;

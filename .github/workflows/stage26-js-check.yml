@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - stage-26-crafting-construction
+      - main
   pull_request:
     branches:
       - main
@@ -15,3 +16,5 @@ jobs:
         with:
           node-version: 20
       - run: node --check adventure.js
+      - run: node --check game.js
+      - run: node --test tests/*.test.cjs
