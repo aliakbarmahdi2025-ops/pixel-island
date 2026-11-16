@@ -2228,43 +2228,75 @@ function drawLivestockPen(){
  for(let i=0;i<livestock.chickens;i++){const cx=x-55+(i%4)*35,cy=y-12+Math.floor(i/4)*26+Math.sin(animTime*3+i)*1.5;ctx.fillStyle="#e9dfc7";ctx.fillRect(cx-8,cy-8,16,13);ctx.fillRect(cx-5,cy-14,11,8);ctx.fillStyle="#d5a94f";ctx.fillRect(cx+4,cy-10,6,4);ctx.fillRect(cx-3,cy+5,2,6);ctx.fillRect(cx+4,cy+5,2,6);ctx.fillStyle="#302a24";ctx.fillRect(cx+2,cy-11,2,2);}
  for(let i=0;i<livestock.cows;i++){const cx=x+12+(i%2)*43,cy=y+8+Math.sin(animTime*2+i)*1.2;ctx.fillStyle="#eee8d9";ctx.fillRect(cx-15,cy-13,30,22);ctx.fillRect(cx+8,cy-20,13,17);ctx.fillStyle="#51453e";ctx.fillRect(cx-10,cy-10,8,7);ctx.fillRect(cx+2,cy-2,8,7);ctx.fillRect(cx+13,cy-14,5,5);ctx.fillStyle="#d7b6a6";ctx.fillRect(cx+17,cy-9,7,5);ctx.fillStyle="#3b3029";ctx.fillRect(cx-11,cy+8,4,8);ctx.fillRect(cx+5,cy+8,4,8);ctx.fillStyle="#2d2925";ctx.fillRect(cx+17,cy-16,2,2);}
 }
+const CROP_VISUALS = {
+ wheat:"grain", corn:"grain",
+ carrot:"root", potato:"root", snowturnip:"root",
+ tomato:"bush", eggplant:"bush", pepper:"bush",
+ melon:"vine", pumpkin:"vine", strawberry:"strawberry",
+ cauliflower:"head", grape:"climber"
+};
+function plotHash(x,y){
+ let h=(Math.imul(x|0,374761393)+Math.imul(y|0,668265263))|0;
+ h=Math.imul(h^(h>>>13),1274126177);
+ return ((h^(h>>>16))>>>0)/4294967296;
+}
 function drawFarmPlots(){
  for(let plotIndex=0;plotIndex<farmPlots.length;plotIndex++){
   const p=farmPlots[plotIndex];
   const x=p.x-camera.x,y=p.y-camera.y;
   if(x<-90||x>viewW+90||y<-90||y>viewH+90)continue;
   const watered=p.wateredDay===worldDay;
-  // selectedFarmPlot is an array index in the existing farming system.
   const selected=plotIndex===selectedFarmPlot;
 
-  // Soft ground shadow and raised, layered soil edges.
-  ctx.fillStyle="rgba(22,17,12,.30)";
-  ctx.beginPath();ctx.ellipse(x+1,y+18,31,9,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="#3c291f";ctx.fillRect(x-29,y-18,58,39);
-  ctx.fillStyle=watered?"#49372f":"#805638";ctx.fillRect(x-28,y-21,56,37);
-  ctx.fillStyle=watered?"#594238":"#956744";ctx.fillRect(x-26,y-21,52,4);
-  ctx.fillStyle=watered?"#30231f":"#67432e";ctx.fillRect(x-28,y+12,56,5);
-  // Stable, coordinate-seeded soil flecks: no per-frame flicker.
-  for(let i=0;i<9;i++){
-   const seed=Math.abs((p.x|0)*13+(p.y|0)*7+i*29);
-   const fx=x-22+(seed%45),fy=y-14+((seed*11+i*7)%27);
-   ctx.fillStyle=watered?(i%2?"rgba(12,20,22,.25)":"rgba(166,207,210,.13)"):(i%2?"rgba(44,27,18,.28)":"rgba(255,220,170,.16)");
-   ctx.fillRect(fx,fy,2+(i%3===0?1:0),2);
+  // Seamless 64px soil tile: identical edge color prevents grid gaps.
+  ctx.fillStyle=watered?"#49352d":"#79543b";
+  ctx.fillRect(x-32,y-32,64,64);
+  ctx.fillStyle=watered?"rgba(20,13,12,.18)":"rgba(39,22,15,.13)";
+  ctx.fillRect(x-32,y-32,64,3);
+  ctx.fillStyle=watered?"rgba(8,10,10,.16)":"rgba(255,210,155,.10)";
+  ctx.fillRect(x-32,y+29,64,3);
+
+  // Soft ground shadow, contained inside the tile.
+  ctx.fillStyle="rgba(22,17,12,.27)";
+  ctx.beginPath();ctx.ellipse(x,y+25,29,6,0,0,Math.PI*2);ctx.fill();
+
+  // Stable coordinate-seeded clods, roots and pebbles.
+  for(let i=0;i<22;i++){
+   const a=plotHash(p.x+i*13,p.y+i*7);
+   const b=plotHash(p.x+i*7,p.y+i*19);
+   const t=plotHash(p.x-i*3,p.y+i*11);
+   const px=x-27+a*54,py=y-26+b*50;
+   if(t>.86){
+    ctx.fillStyle=watered?"#65716d":"#a18a6b";
+    ctx.fillRect(px,py,3,2);
+    ctx.fillStyle="rgba(255,244,218,.38)";ctx.fillRect(px,py,1,1);
+   }else if(t>.65){
+    ctx.fillStyle=watered?"rgba(15,10,9,.42)":"rgba(55,31,19,.42)";
+    ctx.fillRect(px,py,2,3);
+   }else{
+    ctx.fillStyle=watered?"rgba(190,220,220,.12)":"rgba(255,225,180,.13)";
+    ctx.fillRect(px,py,2,2);
+   }
   }
-  // Furrows and their subtle raised edges.
+
+  // Three short furrows stay within the 64px tile.
   for(let row=-1;row<=1;row++){
-   const fy=y-10+row*11;
-   ctx.fillStyle=watered?"rgba(24,19,18,.45)":"rgba(57,35,24,.55)";
-   ctx.fillRect(x-23,fy,46,3);
-   ctx.fillStyle=watered?"rgba(178,210,210,.12)":"rgba(226,183,130,.22)";
-   ctx.fillRect(x-23,fy,46,1);
+   const fy=y-12+row*12;
+   ctx.fillStyle=watered?"rgba(13,9,8,.43)":"rgba(48,28,18,.42)";
+   ctx.fillRect(x-24,fy,48,2);
+   ctx.fillStyle=watered?"rgba(160,205,210,.10)":"rgba(255,218,174,.15)";
+   ctx.fillRect(x-24,fy,48,1);
   }
-  // Water darkens the whole bed and leaves small reflective highlights.
+
   if(watered){
-   ctx.fillStyle="rgba(61,139,160,.13)";ctx.fillRect(x-25,y-17,50,29);
-   ctx.fillStyle="rgba(206,239,239,.62)";
-   ctx.fillRect(x-16,y-12,5,2);ctx.fillRect(x+10,y+3,7,2);ctx.fillRect(x-3,y+8,3,1);
-   ctx.fillStyle="rgba(91,171,190,.22)";ctx.fillRect(x-21,y+5,12,2);
+   ctx.fillStyle="rgba(68,145,164,.12)";
+   ctx.fillRect(x-28,y-28,56,56);
+   const wx=plotHash(p.x,p.y),wy=plotHash(p.y,p.x);
+   ctx.fillStyle="rgba(177,225,235,.42)";
+   ctx.fillRect(x-20+wx*34,y-9,5,2);
+   ctx.fillRect(x-17+wy*32,y+10,7,2);
+   ctx.fillStyle="rgba(255,255,255,.46)";
+   ctx.fillRect(x-19+wx*34,y-9,2,1);
   }
 
   if(p.state==="growing"&&p.crop){
@@ -2275,65 +2307,199 @@ function drawFarmPlots(){
     const ripe=progress>=1;
     const stage=ripe?4:progress<.34?1:progress<.67?2:3;
     const fruit=c.color||"#d8bf70";
-    // Grounding shadow keeps each plant visually attached to its tile.
-    ctx.fillStyle="rgba(20,28,17,.28)";
-    ctx.beginPath();ctx.ellipse(x,y+1,13,4,0,0,Math.PI*2);ctx.fill();
+    const kind=CROP_VISUALS[p.crop]||"bush";
+    const dark="#24512e",mid="#387a3d",light="#65a951";
 
+    // Pixel shadow and ripe glow are drawn behind the plant.
+    ctx.fillStyle="rgba(18,25,15,.32)";
+    ctx.fillRect(x-12,y+1,24,3);
+    if(ripe){
+     const glow=.13+.07*Math.sin(animTime*3+(p.x+p.y)*.01);
+     ctx.fillStyle="rgba(255,226,135,"+glow+")";
+     ctx.beginPath();ctx.arc(x,y-13,20,0,Math.PI*2);ctx.fill();
+    }
+
+    // Young plants: crop-specific silhouettes from the first day.
     if(stage===1){
-     ctx.fillStyle="#397b43";ctx.fillRect(x-2,y-11,4,10);
-     ctx.fillStyle="#70ad55";ctx.beginPath();ctx.ellipse(x-5,y-10,5,2,-.45,0,Math.PI*2);ctx.fill();
-     ctx.beginPath();ctx.ellipse(x+5,y-13,5,2,.45,0,Math.PI*2);ctx.fill();
-     ctx.fillStyle="#b2d47b";ctx.fillRect(x-1,y-14,2,3);
+     if(p.crop==="wheat"){
+      ctx.fillStyle=mid;
+      ctx.fillRect(x-5,y-7,1,7);ctx.fillRect(x-1,y-10,2,10);ctx.fillRect(x+4,y-6,1,6);
+     }else if(p.crop==="corn"){
+      ctx.fillStyle=dark;ctx.fillRect(x-1,y-9,3,9);
+      ctx.fillStyle=light;ctx.fillRect(x-5,y-6,4,2);ctx.fillRect(x+2,y-8,5,2);
+     }else if(p.crop==="carrot"){
+      ctx.fillStyle=light;ctx.fillRect(x-4,y-7,3,3);ctx.fillRect(x+1,y-9,3,4);
+      ctx.fillStyle=dark;ctx.fillRect(x-1,y-5,2,5);
+     }else if(p.crop==="potato"){
+      ctx.fillStyle=mid;ctx.fillRect(x-5,y-6,4,3);ctx.fillRect(x+2,y-7,4,3);
+      ctx.fillStyle=dark;ctx.fillRect(x-1,y-5,2,5);
+     }else if(p.crop==="snowturnip"){
+      ctx.fillStyle="#8eb5b8";ctx.fillRect(x-5,y-7,4,3);ctx.fillRect(x+2,y-8,4,3);
+      ctx.fillStyle="#6b8a8e";ctx.fillRect(x-1,y-5,2,5);
+     }else if(p.crop==="tomato"){
+      ctx.fillStyle=dark;ctx.fillRect(x-1,y-9,2,9);
+      ctx.fillStyle=light;ctx.fillRect(x-5,y-7,4,3);ctx.fillRect(x+2,y-8,4,3);
+     }else if(p.crop==="eggplant"){
+      ctx.fillStyle=dark;ctx.fillRect(x-1,y-9,2,9);
+      ctx.fillStyle="#527b43";ctx.fillRect(x-6,y-6,5,2);ctx.fillRect(x+1,y-8,5,2);
+     }else if(p.crop==="pepper"){
+      ctx.fillStyle=mid;ctx.fillRect(x-1,y-8,2,8);
+      ctx.fillRect(x-5,y-7,4,2);ctx.fillRect(x+1,y-6,4,2);
+     }else if(p.crop==="strawberry"){
+      ctx.fillStyle=light;ctx.fillRect(x-6,y-4,4,2);ctx.fillRect(x+2,y-5,4,2);ctx.fillRect(x-2,y-7,4,2);
+     }else if(p.crop==="melon"||p.crop==="pumpkin"){
+      ctx.fillStyle=mid;ctx.fillRect(x-6,y-4,5,2);ctx.fillRect(x+1,y-5,5,2);
+      ctx.fillStyle=light;ctx.fillRect(x-2,y-7,4,2);
+     }else if(p.crop==="cauliflower"){
+      ctx.fillStyle=dark;ctx.fillRect(x-1,y-6,2,6);
+      ctx.fillStyle=mid;ctx.fillRect(x-6,y-5,5,3);ctx.fillRect(x+1,y-6,5,3);
+     }else if(p.crop==="grape"){
+      ctx.fillStyle="#704a32";ctx.fillRect(x-1,y-10,2,10);
+      ctx.fillStyle=mid;ctx.fillRect(x-5,y-8,4,2);ctx.fillRect(x+1,y-7,4,2);
+     }
     }else if(stage===2){
-     ctx.fillStyle="#28643a";ctx.fillRect(x-3,y-19,6,18);
-     ctx.fillStyle="#438e4b";
-     ctx.beginPath();ctx.ellipse(x-8,y-14,8,4,-.35,0,Math.PI*2);ctx.fill();
-     ctx.beginPath();ctx.ellipse(x+8,y-18,8,4,.35,0,Math.PI*2);ctx.fill();
-     ctx.beginPath();ctx.ellipse(x-5,y-23,6,3,-.6,0,Math.PI*2);ctx.fill();
-     ctx.beginPath();ctx.ellipse(x+5,y-25,6,3,.6,0,Math.PI*2);ctx.fill();
-     ctx.fillStyle="#8fbd62";ctx.fillRect(x-1,y-25,2,4);
-    }else{
-     // Mature crop canopy; different silhouettes make the growth jump visible.
-     ctx.fillStyle="#245b35";ctx.fillRect(x-4,y-25,8,24);
-     ctx.fillStyle="#347d42";
-     for(let leaf=0;leaf<4;leaf++){
-      const ly=y-21+leaf*5;
-      ctx.beginPath();ctx.ellipse(x-9,ly,8,3,-.25,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.ellipse(x+9,ly-3,8,3,.25,0,Math.PI*2);ctx.fill();
-     }
-     ctx.fillStyle="#65a34d";
-     ctx.fillRect(x-12,y-19,5,2);ctx.fillRect(x+7,y-25,5,2);ctx.fillRect(x-5,y-29,4,2);
-     if(stage===3){
-      ctx.fillStyle=fruit;ctx.globalAlpha=.62;
-      ctx.fillRect(x-7,y-17,5,5);ctx.fillRect(x+3,y-22,5,5);
-      ctx.globalAlpha=1;
+     if(kind==="grain"){
+      ctx.fillStyle=dark;ctx.fillRect(x-1,y-17,3,17);
+      ctx.fillStyle=mid;ctx.fillRect(x-7,y-13,6,3);ctx.fillRect(x+2,y-16,6,3);
+      if(p.crop==="corn")ctx.fillRect(x-4,y-20,3,5);
+      else{ctx.fillStyle="#9d9b5d";ctx.fillRect(x-2,y-21,2,4);}
+     }else if(kind==="root"){
+      ctx.fillStyle=p.crop==="snowturnip"?"#6b8a8e":dark;
+      ctx.fillRect(x-1,y-12,2,12);
+      if(p.crop==="carrot"){
+       ctx.fillStyle=light;ctx.fillRect(x-7,y-15,4,5);ctx.fillRect(x-2,y-18,3,7);ctx.fillRect(x+3,y-14,4,5);
+      }else if(p.crop==="potato"){
+       ctx.fillStyle=mid;ctx.fillRect(x-9,y-12,7,5);ctx.fillRect(x+2,y-15,8,5);ctx.fillRect(x-5,y-19,6,4);
+      }else{
+       ctx.fillStyle="#8eb5b8";ctx.fillRect(x-8,y-13,6,5);ctx.fillRect(x+2,y-16,7,5);ctx.fillRect(x-3,y-20,6,4);
+      }
+     }else if(kind==="bush"){
+      ctx.fillStyle=dark;ctx.fillRect(x-2,y-16,4,16);
+      ctx.fillStyle=mid;ctx.fillRect(x-9,y-12,7,4);ctx.fillRect(x+2,y-15,7,4);
+      ctx.fillStyle=light;ctx.fillRect(x-6,y-18,5,3);ctx.fillRect(x+3,y-19,5,3);
+     }else if(kind==="vine"||kind==="strawberry"){
+      ctx.fillStyle=dark;ctx.fillRect(x-10,y-5,7,3);ctx.fillRect(x+3,y-6,7,3);
+      ctx.fillStyle=mid;ctx.fillRect(x-5,y-9,10,4);
+      ctx.fillStyle=light;ctx.fillRect(x-2,y-11,5,3);
+     }else if(kind==="head"){
+      ctx.fillStyle=dark;ctx.fillRect(x-9,y-9,7,7);ctx.fillRect(x+2,y-10,7,7);
+      ctx.fillStyle=mid;ctx.fillRect(x-5,y-15,10,7);
      }else{
-      // Ripe produce with small highlights; glow is drawn behind the fruit.
-      const glow=.5+.5*Math.sin(animTime*3.2+(p.x+p.y)*.013);
-      ctx.fillStyle="rgba(255,221,104,"+(glow*.17)+")";
-      ctx.beginPath();ctx.arc(x,y-17,19,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle=fruit;
-      ctx.fillRect(x-10,y-16,8,8);ctx.fillRect(x+3,y-23,8,8);ctx.fillRect(x-3,y-8,7,7);
-      ctx.fillStyle="rgba(255,245,211,.72)";
-      ctx.fillRect(x-9,y-15,3,3);ctx.fillRect(x+4,y-22,3,3);ctx.fillRect(x-2,y-7,2,2);
+      ctx.fillStyle="#704a32";ctx.fillRect(x-2,y-20,4,20);ctx.fillRect(x-12,y-20,24,2);
+      ctx.fillStyle=mid;ctx.fillRect(x-8,y-17,6,3);ctx.fillRect(x+3,y-15,6,3);
      }
+    }else{
+     ctx.save();
+     if(stage===3)ctx.globalAlpha=.82;
+
+     if(p.crop==="wheat"){
+      for(let i=-2;i<=2;i++){
+       if(!i)continue;
+       const sx=x+i*5;
+       ctx.fillStyle=dark;ctx.fillRect(sx,y-23,2,23);
+       ctx.fillStyle=ripe?"#d8bf70":"#9d9b5d";
+       ctx.fillRect(sx-1,y-(ripe?29:27),4,ripe?7:4);
+       if(ripe){ctx.fillStyle="#f2d98c";ctx.fillRect(sx,y-28,1,3);}
+      }
+      ctx.fillStyle=mid;ctx.fillRect(x-1,y-19,2,19);
+     }else if(p.crop==="corn"){
+      ctx.fillStyle=dark;ctx.fillRect(x-3,y-27,6,27);
+      ctx.fillStyle=mid;ctx.fillRect(x-13,y-21,11,4);ctx.fillRect(x+2,y-18,11,4);
+      ctx.fillRect(x-10,y-12,8,3);ctx.fillRect(x+2,y-10,9,3);
+      ctx.fillStyle=ripe?"#f0d044":"#8b9b54";ctx.fillRect(x+3,y-20,7,13);
+      if(ripe){ctx.fillStyle="#fff0a1";for(let k=0;k<4;k++)ctx.fillRect(x+4,y-19+k*3,4,1);}
+     }else if(kind==="root"){
+      if(p.crop==="carrot"){
+       ctx.fillStyle=dark;ctx.fillRect(x-1,y-22,2,18);
+       ctx.fillStyle=mid;ctx.fillRect(x-8,y-20,5,8);ctx.fillRect(x-2,y-25,4,10);ctx.fillRect(x+3,y-19,5,8);
+       ctx.fillStyle=ripe?fruit:"#a17a4e";ctx.fillRect(x-4,y-6,8,6);ctx.fillRect(x-2,y-8,4,2);
+       if(ripe){ctx.fillStyle="#f5b66a";ctx.fillRect(x-2,y-5,2,2);}
+      }else if(p.crop==="potato"){
+       ctx.fillStyle=dark;ctx.fillRect(x-2,y-20,4,20);
+       ctx.fillStyle=mid;ctx.fillRect(x-11,y-15,9,6);ctx.fillRect(x+2,y-18,10,6);ctx.fillRect(x-6,y-23,8,5);
+       ctx.fillStyle=ripe?fruit:"#806047";ctx.fillRect(x-7,y-5,6,4);ctx.fillRect(x+2,y-4,6,4);
+       if(ripe){ctx.fillStyle="#d2b184";ctx.fillRect(x-6,y-5,2,1);}
+      }else{
+       ctx.fillStyle="#6b8a8e";ctx.fillRect(x-2,y-20,4,20);
+       ctx.fillStyle="#8eb5b8";ctx.fillRect(x-10,y-17,8,6);ctx.fillRect(x+2,y-19,9,6);ctx.fillRect(x-5,y-23,8,5);
+       ctx.fillStyle=ripe?"#f0f4f4":"#b9d0d1";ctx.fillRect(x-5,y-6,10,6);
+       ctx.fillStyle="#c2d6d6";ctx.fillRect(x-3,y-7,6,2);
+      }
+     }else if(kind==="bush"){
+      ctx.fillStyle=dark;ctx.fillRect(x-2,y-22,4,22);
+      for(let i=0;i<3;i++){
+       ctx.fillStyle=i===1?light:mid;
+       ctx.fillRect(x-10,y-18+i*6,8,4);ctx.fillRect(x+2,y-16+i*6,8,4);
+      }
+      if(p.crop==="tomato"){
+       ctx.fillStyle=ripe?fruit:"#789d58";
+       ctx.fillRect(x-9,y-14,7,7);ctx.fillRect(x+3,y-10,7,7);
+       if(ripe){ctx.fillStyle="#fff0d5";ctx.fillRect(x-8,y-13,2,2);ctx.fillRect(x+4,y-9,2,2);}
+      }else if(p.crop==="eggplant"){
+       ctx.fillStyle=ripe?fruit:"#8c7a9c";ctx.fillRect(x+3,y-17,5,12);
+       ctx.fillStyle="#4b7b44";ctx.fillRect(x+2,y-19,7,3);
+       if(ripe){ctx.fillStyle="rgba(255,255,255,.55)";ctx.fillRect(x+4,y-15,1,5);}
+      }else{
+       ctx.fillStyle=ripe?fruit:"#799c70";ctx.fillRect(x-8,y-13,5,8);ctx.fillRect(x-9,y-7,7,3);
+       ctx.fillStyle="#3d703a";ctx.fillRect(x-7,y-15,3,3);
+       if(ripe){ctx.fillStyle="#fff0d5";ctx.fillRect(x-7,y-11,1,3);}
+      }
+     }else if(kind==="vine"){
+      ctx.fillStyle=dark;ctx.fillRect(x-13,y-7,9,4);ctx.fillRect(x+4,y-8,9,4);
+      ctx.fillStyle=mid;ctx.fillRect(x-5,y-10,10,7);ctx.fillRect(x-10,y-4,6,3);ctx.fillRect(x+5,y-4,6,3);
+      if(p.crop==="pumpkin"){
+       ctx.fillStyle=ripe?fruit:"#729a4d";ctx.fillRect(x-8,y-7,16,11);
+       ctx.fillStyle="rgba(0,0,0,.20)";ctx.fillRect(x-4,y-7,2,11);ctx.fillRect(x+2,y-7,2,11);
+       if(ripe){ctx.fillStyle="#ffe0a0";ctx.fillRect(x-3,y-6,2,2);}
+      }else{
+       ctx.fillStyle=ripe?fruit:"#759b62";ctx.fillRect(x-9,y-6,18,9);
+       ctx.fillStyle="rgba(0,0,0,.16)";ctx.fillRect(x-4,y-6,1,9);ctx.fillRect(x+3,y-6,1,9);
+       if(ripe){ctx.fillStyle="#e1f0ba";ctx.fillRect(x-5,y-5,3,2);}
+      }
+     }else if(kind==="strawberry"){
+      ctx.fillStyle=dark;ctx.fillRect(x-5,y-7,10,4);
+      ctx.fillStyle=mid;ctx.fillRect(x-9,y-6,6,4);ctx.fillRect(x+3,y-7,6,4);ctx.fillRect(x-3,y-10,6,4);
+      ctx.fillStyle=ripe?fruit:"#e6a8b0";
+      ctx.fillRect(x-6,y-3,5,5);ctx.fillRect(x+2,y-2,5,4);
+      if(ripe){ctx.fillStyle="#fff4d9";ctx.fillRect(x-5,y-2,1,1);ctx.fillRect(x+3,y-1,1,1);}
+     }else if(kind==="head"){
+      ctx.fillStyle=dark;ctx.fillRect(x-13,y-15,10,12);ctx.fillRect(x+3,y-15,10,12);
+      ctx.fillStyle=mid;ctx.fillRect(x-10,y-20,20,12);ctx.fillRect(x-7,y-23,14,5);
+      ctx.fillStyle=ripe?"#f4f0d9":"#c6d5a7";
+      ctx.fillRect(x-6,y-15,12,10);
+      if(ripe){ctx.fillStyle="#fffbea";ctx.fillRect(x-4,y-14,3,3);ctx.fillRect(x+2,y-11,3,2);}
+     }else if(kind==="climber"){
+      // 64px rail segments meet exactly at tile boundaries; posts sit on the left grid edge.
+      ctx.fillStyle="#704a32";
+      ctx.fillRect(x-32,y-29,64,3);ctx.fillRect(x-32,y-29,3,32);
+      ctx.fillStyle=dark;ctx.fillRect(x-11,y-26,3,15);ctx.fillRect(x+7,y-25,3,14);
+      ctx.fillStyle=mid;ctx.fillRect(x-16,y-22,8,5);ctx.fillRect(x+3,y-20,9,5);
+      ctx.fillRect(x-8,y-16,7,4);ctx.fillRect(x+8,y-14,5,4);
+      ctx.fillStyle=ripe?fruit:"#8b7a9c";
+      ctx.fillRect(x-6,y-13,4,4);ctx.fillRect(x+1,y-16,4,4);ctx.fillRect(x+2,y-9,4,4);
+      if(ripe){ctx.fillStyle="rgba(255,255,255,.55)";ctx.fillRect(x-5,y-12,1,1);ctx.fillRect(x+2,y-15,1,1);}
+     }
+     ctx.restore();
     }
    }
   }
 
   if(selected){
    ctx.save();
-   ctx.strokeStyle="rgba(255,214,92,.30)";ctx.lineWidth=6;ctx.strokeRect(x-29,y-22,58,40);
-   ctx.strokeStyle="#ffd45a";ctx.lineWidth=2;ctx.setLineDash([5,3]);ctx.strokeRect(x-29,y-22,58,40);
-   ctx.setLineDash([]);
+   ctx.strokeStyle="rgba(255,214,92,.28)";ctx.lineWidth=5;
+   ctx.strokeRect(x-30,y-30,60,60);
+   ctx.strokeStyle="#ffd45a";ctx.lineWidth=2;ctx.setLineDash([5,3]);
+   ctx.strokeRect(x-30,y-30,60,60);ctx.setLineDash([]);
    ctx.fillStyle="#ffe08a";
-   ctx.fillRect(x-31,y-24,5,5);ctx.fillRect(x+26,y-24,5,5);
-   ctx.fillRect(x-31,y+16,5,5);ctx.fillRect(x+26,y+16,5,5);
-   ctx.beginPath();ctx.moveTo(x,y-31);ctx.lineTo(x-5,y-25);ctx.lineTo(x+5,y-25);ctx.closePath();ctx.fill();
+   ctx.fillRect(x-32,y-32,4,4);ctx.fillRect(x+28,y-32,4,4);
+   ctx.fillRect(x-32,y+28,4,4);ctx.fillRect(x+28,y+28,4,4);
+   const bob=Math.sin(animTime*4)*2;
+   ctx.beginPath();ctx.moveTo(x,y-39+bob);ctx.lineTo(x-5,y-33+bob);ctx.lineTo(x+5,y-33+bob);ctx.closePath();ctx.fill();
    ctx.restore();
   }
  }
 }
+
 function enterShopInterior(type){
  if(!townMode||!["naderi","rezaei"].includes(type))return;
  shopInteriorReturn={x:player.x,y:player.y};shopInteriorType=type;shopInteriorMode=true;
