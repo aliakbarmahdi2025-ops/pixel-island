@@ -2379,7 +2379,75 @@ function drawShopInterior(){
  ctx.fillStyle=wood?"#553526":"#493126";ctx.fillRect(78,210,484,58);ctx.fillStyle=wood?"#bd8a5b":"#a87950";ctx.fillRect(72,204,496,14);ctx.fillStyle="#2d211b";ctx.fillRect(250,224,140,30);ctx.fillStyle="#d7b98c";ctx.fillRect(258,229,124,19);
  ctx.fillStyle="#38241b";ctx.fillRect(276,426,88,54);ctx.fillStyle="#d4b47a";ctx.fillRect(284,434,72,46);ctx.fillStyle="#fff0cf";ctx.font="bold 12px Tahoma";ctx.fillText("🚪 خروج",320,466);ctx.fillStyle="#fff4dc";ctx.font="bold 12px Tahoma";ctx.fillText("برای تعامل روی فروشنده بزن",320,36);ctx.textAlign="start";ctx.restore();
 }
-function drawTown(){
+const TOWN72_SCALE=2,TOWN72_ORIGIN={x:720,y:600};
+const TOWN72_META={
+ building:{w:136,h:214,base:[68,208],windows:[[18,156,20,28],[96,156,20,28],[16,107,16,22],[102,107,16,22]]},
+ tree_plane_a:{w:120,h:140,base:[60,134]},tree_plane_b:{w:120,h:140,base:[60,134]},
+ tree_plane_a_autumn:{w:120,h:140,base:[60,134]},tree_plane_b_autumn:{w:120,h:140,base:[60,134]},
+ cypress:{w:26,h:88,base:[13,86]},pomegranate:{w:44,h:52,base:[22,49]},
+ fountain:{w:120,h:104,cx:60,cy:46,water_frames:6},
+ pedestal:{w:54,h:96,cx:27,base:92,top:17,bowl1:[27,62,21],bowl2:[27,38,14]},
+ bench:{w:44,h:30,base:[22,28]},lantern:{w:22,h:72,base:[11,70],glow:[11,22]},
+ pot_clay_geranium:{w:20,h:26,base:[10,24]},pot_clay_marigold:{w:20,h:26,base:[10,24]},
+ pot_blue_herb:{w:20,h:26,base:[10,24]},pot_white_rose:{w:20,h:26,base:[10,24]},dove:{w:14,h:12,frames:3}
+};
+const town72Images={};let town72Loaded=0,town72Failed=0,town72Ready=false;
+const town72Source=window.TOWN72_ASSETS||{},town72Names=Object.keys(town72Source);
+town72Names.forEach(name=>{const im=new Image();town72Images[name]=im;im.onload=()=>{town72Loaded++;if(town72Loaded+town72Failed===town72Names.length)town72Ready=town72Failed===0;};im.onerror=()=>{town72Failed++;if(town72Loaded+town72Failed===town72Names.length)town72Ready=false;};im.src=town72Source[name];});
+const TOWN72_OBJECTS=[
+ {k:"building_a",m:"building",bx:118,by:205},
+ {k:"tree_plane_a",m:"tree_plane_a",bx:392,by:212,tree:true},
+ {k:"tree_plane_b",m:"tree_plane_b",bx:60,by:372,tree:true},
+ {k:"cypress",m:"cypress",bx:22,by:212},{k:"cypress",m:"cypress",bx:452,by:230},
+ {k:"pomegranate",m:"pomegranate",bx:436,by:336},
+ {k:"bench",m:"bench",bx:176,by:332},{k:"bench",m:"bench",bx:304,by:332},
+ {k:"lantern",m:"lantern",bx:146,by:306,lamp:true},{k:"lantern",m:"lantern",bx:334,by:306,lamp:true},
+ {k:"pot_clay_geranium",m:"pot_clay_geranium",bx:92,by:244},{k:"pot_clay_marigold",m:"pot_clay_marigold",bx:146,by:244},
+ {k:"pot_blue_herb",m:"pot_blue_herb",bx:276,by:282},{k:"pot_white_rose",m:"pot_white_rose",bx:204,by:282}
+].map(o=>{const b=TOWN72_META[o.m].base;return {...o,ox:o.bx-b[0],oy:o.by-b[1]};});
+const TOWN72_FX=240,TOWN72_FY=230;
+function town72Draw(name,x,y,w,h){const im=town72Images[name];if(im&&im.complete&&im.naturalWidth)ctx.drawImage(im,x-camera.x,y-camera.y,w,h);}
+function drawTown72CentralSquare(){
+ if(!town72Ready)return;
+ const ox=TOWN72_ORIGIN.x,oy=TOWN72_ORIGIN.y,S=TOWN72_SCALE;
+ ctx.save();ctx.imageSmoothingEnabled=false;
+ // The supplied Stage 72 ground is the plaza base; the existing town map remains around it.
+ town72Draw("ground",ox,oy,480*S,400*S);
+ const fx=ox+(TOWN72_FX-60)*S,fy=oy+(TOWN72_FY-46)*S;
+ town72Draw("fountain_basin_shadow",fx,fy,120*S,104*S);
+ town72Draw("fountain_pedestal_shadow",ox+(TOWN72_FX-27)*S,oy+(TOWN72_FY+6-92)*S,54*S,96*S);
+ const water=town72Images.fountain_water;
+ if(water&&water.complete&&water.naturalWidth){const fr=Math.floor(animTime*6)%6;ctx.drawImage(water,fr*120,0,120,104,fx-camera.x,fy-camera.y,120*S,104*S);}
+ const drawables=TOWN72_OBJECTS.map(o=>({y:oy+o.by*S,draw:()=>{
+   const key=o.tree?o.k:(o.lamp?((worldClock>=1080||worldClock<360)?"lantern_on":"lantern_off"):o.k);
+   const shadow=o.tree?o.k+"_shadow":(o.lamp?"lantern_shadow":o.k+"_shadow");
+   const meta=TOWN72_META[o.m],x=ox+o.ox*S,y=oy+o.oy*S;
+   town72Draw(shadow,x,y,meta.w*S,meta.h*S);
+   town72Draw(key,x,y,meta.w*S,meta.h*S);
+ }}));
+ drawables.push({y:oy+(TOWN72_FY+34)*S,draw:()=>{
+   town72Draw("fountain_basin",fx,fy,120*S,104*S);
+   town72Draw("fountain_pedestal",ox+(TOWN72_FX-27)*S,oy+(TOWN72_FY+6-92)*S,54*S,96*S);
+   // A restrained fountain spray, animated without a second game loop.
+   for(let i=0;i<7;i++){const phase=animTime*7+i*1.7,px=ox+TOWN72_FX*S+Math.sin(phase)*10,py=oy+(TOWN72_FY-78+Math.abs(Math.sin(phase*.7))*7)*S;ctx.fillStyle=i%2?"#d9fbff":"#ffffff";ctx.fillRect(Math.round(px-camera.x),Math.round(py-camera.y),2,4);}
+ }});
+ // Three tiny doves use the original three-frame sheet.
+ for(let i=0;i<3;i++){const dx=ox+(170+i*55)*S+Math.sin(animTime*.55+i)*10,dy=oy+(284+i%2*8)*S;drawables.push({y:dy,draw:()=>{const im=town72Images.dove;if(!im||!im.complete||!im.naturalWidth)return;const fr=Math.floor(animTime*5+i)%3;ctx.drawImage(im,fr*14,0,14,12,dx-camera.x,dy-camera.y,28,24);}});}
+ drawables.sort((a,b)=>a.y-b.y);for(const d of drawables)d.draw();
+ // Small night glows are attached to the actual Stage 72 lantern positions.
+ if(worldClock>=1080||worldClock<360){
+   ctx.save();ctx.globalCompositeOperation="lighter";
+   for(const o of TOWN72_OBJECTS.filter(v=>v.lamp)){const gx=ox+(o.bx+0)*S,gy=oy+(o.by-48)*S;const grad=ctx.createRadialGradient(gx-camera.x,gy-camera.y,2,gx-camera.x,gy-camera.y,62);grad.addColorStop(0,"rgba(255,218,140,.28)");grad.addColorStop(1,"rgba(255,218,140,0)");ctx.fillStyle=grad;ctx.fillRect(gx-camera.x-62,gy-camera.y-62,124,124);}
+   ctx.restore();
+ }
+ // Seasonal leaf motes are capped and deterministic.
+ for(let i=0;i<12;i++){const t=animTime*.24+i*19.7,px=ox+(60+((i*47+Math.sin(t)*9)%350))*S,py=oy+(100+((i*31+t*8)%270))*S;ctx.fillStyle="#b5d982";ctx.globalAlpha=.55;ctx.fillRect(Math.round(px-camera.x),Math.round(py-camera.y),3,2);}
+ ctx.globalAlpha=1;ctx.restore();
+}
+
+function drawTown(){drawTownLegacy();drawTown72CentralSquare();}
+
+function drawTownLegacy(){
   const tile=40;
   // Soft green meadow base with deterministic pixel-art grass texture.
   ctx.fillStyle="#6e9e5a";ctx.fillRect(0,0,viewW,viewH);
@@ -2468,10 +2536,6 @@ function drawTown(){
   ctx.fillStyle="#fff0cb";ctx.font="bold 13px Tahoma";ctx.textAlign="center";ctx.fillText("جنگل",gx,gy-45);
   ctx.fillStyle="#f5e7c6";ctx.font="bold 17px Tahoma";ctx.fillText("شهر سبز",gx,gy-110);
 
-  const hour=worldClock/60;
-  if(hour>=20||hour<6){ctx.fillStyle="rgba(22,35,70,.38)";ctx.fillRect(0,0,viewW,viewH);}
-  else if(hour>=18){ctx.fillStyle="rgba(227,126,65,.18)";ctx.fillRect(0,0,viewW,viewH);}
-  else if(hour<8){ctx.fillStyle="rgba(255,203,133,.12)";ctx.fillRect(0,0,viewW,viewH);}
   ctx.textAlign="start";
 }
 function drawTownTree(x,y,i){
