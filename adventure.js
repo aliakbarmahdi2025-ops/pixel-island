@@ -71,21 +71,23 @@ const townPeople = [
 
 let worldClock = 9 * 60, worldDay = 1, selectedFarmPlot = -1, selectedCrop = "carrot";
 let inventoryOrder = [], inventorySelected = null;
-const FARM_CROPS = {
- wheat:{name:"گندم",icon:"🌾",season:"spring",days:3,price:8,seed:4,color:"#d8bf70"},
- carrot:{name:"هویج",icon:"🥕",season:"spring",days:2,price:10,seed:5,color:"#e58a42"},
- potato:{name:"سیب‌زمینی",icon:"🥔",season:"spring",days:4,price:18,seed:8,color:"#b68a54"},
- cauliflower:{name:"گل‌کلم",icon:"🥦",season:"spring",days:6,price:35,seed:13,color:"#d8dfb5"},
- strawberry:{name:"توت‌فرنگی",icon:"🍓",season:"spring",days:5,regrow:3,price:22,seed:12,color:"#dc5265"},
- tomato:{name:"گوجه‌فرنگی",icon:"🍅",season:"summer",days:5,regrow:3,price:20,seed:10,color:"#d94d3f"},
- corn:{name:"ذرت",icon:"🌽",season:"summer",days:7,regrow:4,price:28,seed:14,color:"#e5c64b"},
- melon:{name:"خربزه",icon:"🍈",season:"summer",days:8,price:45,seed:18,color:"#83b86b"},
- pepper:{name:"فلفل",icon:"🫑",season:"summer",days:4,regrow:3,price:18,seed:9,color:"#4f9b53"},
- pumpkin:{name:"کدوحلوایی",icon:"🎃",season:"autumn",days:9,price:60,seed:22,color:"#e58b35"},
- grape:{name:"انگور",icon:"🍇",season:"autumn",days:6,regrow:3,price:30,seed:15,color:"#7656a5"},
- eggplant:{name:"بادمجان",icon:"🍆",season:"autumn",days:5,regrow:3,price:25,seed:12,color:"#7652a0"},
- snowturnip:{name:"شلغم برفی",icon:"❄️",season:"winter",days:6,price:40,seed:16,color:"#d9e4e8"}
+// ── فاز ۱: ساختار داده جامع و توسعه‌پذیر ──
+const CROP_DEFINITIONS = {
+ wheat:{name:"گندم",icon:"🌾",season:"spring",days:3,price:8,seed:4,color:"#d8bf70",visual:"grain"},
+ carrot:{name:"هویج",icon:"🥕",season:"spring",days:2,price:10,seed:5,color:"#e58a42",visual:"root"},
+ potato:{name:"سیب‌زمینی",icon:"🥔",season:"spring",days:4,price:18,seed:8,color:"#b68a54",visual:"root"},
+ cauliflower:{name:"گل‌کلم",icon:"🥦",season:"spring",days:6,price:35,seed:13,color:"#d8dfb5",visual:"head"},
+ strawberry:{name:"توت‌فرنگی",icon:"🍓",season:"spring",days:5,regrow:3,price:22,seed:12,color:"#dc5265",visual:"strawberry"},
+ tomato:{name:"گوجه‌فرنگی",icon:"🍅",season:"summer",days:5,regrow:3,price:20,seed:10,color:"#d94d3f",visual:"bush"},
+ corn:{name:"ذرت",icon:"🌽",season:"summer",days:7,regrow:4,price:28,seed:14,color:"#e5c64b",visual:"grain"},
+ melon:{name:"خربزه",icon:"🍈",season:"summer",days:8,price:45,seed:18,color:"#83b86b",visual:"vine"},
+ pepper:{name:"فلفل",icon:"🫑",season:"summer",days:4,regrow:3,price:18,seed:9,color:"#4f9b53",visual:"bush"},
+ pumpkin:{name:"کدوحلوایی",icon:"🎃",season:"autumn",days:9,price:60,seed:22,color:"#e58b35",visual:"vine"},
+ grape:{name:"انگور",icon:"🍇",season:"autumn",days:6,regrow:3,price:30,seed:15,color:"#7656a5",visual:"climber"},
+ eggplant:{name:"بادمجان",icon:"🍆",season:"autumn",days:5,regrow:3,price:25,seed:12,color:"#7652a0",visual:"bush"},
+ snowturnip:{name:"شلغم برفی",icon:"❄️",season:"winter",days:6,price:40,seed:16,color:"#d9e4e8",visual:"root"}
 };
+const FARM_CROPS = CROP_DEFINITIONS;
 const FARM_SEASONS={spring:"بهار 🌸",summer:"تابستان ☀️",autumn:"پاییز 🍂",winter:"زمستان ❄️"};
 
 /* Stage 60 — seasonal four-season outdoor weather */
@@ -2228,110 +2230,115 @@ function drawLivestockPen(){
  for(let i=0;i<livestock.chickens;i++){const cx=x-55+(i%4)*35,cy=y-12+Math.floor(i/4)*26+Math.sin(animTime*3+i)*1.5;ctx.fillStyle="#e9dfc7";ctx.fillRect(cx-8,cy-8,16,13);ctx.fillRect(cx-5,cy-14,11,8);ctx.fillStyle="#d5a94f";ctx.fillRect(cx+4,cy-10,6,4);ctx.fillRect(cx-3,cy+5,2,6);ctx.fillRect(cx+4,cy+5,2,6);ctx.fillStyle="#302a24";ctx.fillRect(cx+2,cy-11,2,2);}
  for(let i=0;i<livestock.cows;i++){const cx=x+12+(i%2)*43,cy=y+8+Math.sin(animTime*2+i)*1.2;ctx.fillStyle="#eee8d9";ctx.fillRect(cx-15,cy-13,30,22);ctx.fillRect(cx+8,cy-20,13,17);ctx.fillStyle="#51453e";ctx.fillRect(cx-10,cy-10,8,7);ctx.fillRect(cx+2,cy-2,8,7);ctx.fillRect(cx+13,cy-14,5,5);ctx.fillStyle="#d7b6a6";ctx.fillRect(cx+17,cy-9,7,5);ctx.fillStyle="#3b3029";ctx.fillRect(cx-11,cy+8,4,8);ctx.fillRect(cx+5,cy+8,4,8);ctx.fillStyle="#2d2925";ctx.fillRect(cx+17,cy-16,2,2);}
 }
+// ── هش ثابت مختصات برای بافت بدون پرش ──
+function plotHash(x,y){
+ let n=(x*374761393+y*668265263)|0;
+ n=(n^(n>>13))*1274126177;
+ return ((n^(n>>16))>>>0)/4294967296;
+}
+
+// ── فاز ۲: رجیستری رندررهای محصولات ──
+const CROP_RENDERERS={
+ grain(ctx,x,y,stage,p,c,color){
+  const dark="#24512e",mid="#387a3d",light="#58a854";
+  if(stage===1){ctx.fillStyle=mid;ctx.fillRect(x-2,y-6,1,6);ctx.fillRect(x+1,y-8,1,8);ctx.fillRect(x+4,y-5,1,5);return;}
+  if(stage===2){ctx.fillStyle=dark;ctx.fillRect(x,y-16,2,16);ctx.fillRect(x-4,y-14,1,8);ctx.fillRect(x+5,y-12,1,6);ctx.fillStyle=light;ctx.fillRect(x,y-18,2,2);return;}
+  ctx.save();if(stage===3)ctx.globalAlpha=.85;
+  if(p.crop==="wheat"){
+   for(let i=-2;i<=2;i++){if(!i)continue;const sx=x+i*4;ctx.fillStyle=dark;ctx.fillRect(sx,y-20,1,20);if(stage===4){ctx.fillStyle=color;ctx.fillRect(sx-1,y-26,3,6);ctx.fillRect(sx-2,y-28,2,3);}else{ctx.fillStyle="#9e9c5b";ctx.fillRect(sx-1,y-24,3,4);}}
+   ctx.fillStyle=dark;ctx.fillRect(x-1,y-22,2,22);
+  }else{
+   ctx.fillStyle=dark;ctx.fillRect(x-2,y-24,4,24);ctx.fillStyle=mid;ctx.fillRect(x-10,y-20,8,3);ctx.fillRect(x+2,y-16,8,3);
+   if(stage===4){ctx.fillStyle="#f5d742";ctx.fillRect(x+3,y-18,6,12);ctx.fillStyle="rgba(255,255,255,.5)";for(let k=0;k<4;k++)ctx.fillRect(x+4,y-17+k*3,2,1);}
+   else{ctx.fillStyle="#7f9c5c";ctx.fillRect(x+3,y-16,4,8);}
+  }ctx.restore();
+ },
+ root(ctx,x,y,stage,p,c,color){
+  const dark="#24512e",mid="#387a3d",light="#58a854";
+  if(stage===1){ctx.fillStyle=dark;ctx.fillRect(x-1,y-6,2,6);ctx.fillStyle=light;ctx.fillRect(x-4,y-8,3,3);ctx.fillRect(x+1,y-7,3,3);return;}
+  if(stage===2){ctx.fillStyle=dark;ctx.fillRect(x-1,y-10,2,10);ctx.fillStyle=mid;ctx.beginPath();ctx.moveTo(x-6,y-2);ctx.lineTo(x-1,y-10);ctx.lineTo(x+4,y-2);ctx.fill();return;}
+  ctx.save();if(stage===3)ctx.globalAlpha=.85;
+  if(p.crop==="carrot"){
+   ctx.fillStyle=dark;for(let i=-1;i<=1;i++)ctx.fillRect(x+i*3,y-16,2,12);
+   if(stage===4){ctx.fillStyle=color;ctx.fillRect(x-4,y-6,8,6);ctx.fillRect(x-2,y-8,4,2);ctx.fillStyle="#fff";ctx.fillRect(x-2,y-4,1,1);}else{ctx.fillStyle="#a17a4e";ctx.fillRect(x-3,y-4,6,4);}
+  }else if(p.crop==="potato"){
+   ctx.fillStyle=dark;ctx.fillRect(x-1,y-16,2,16);ctx.fillStyle=mid;ctx.fillRect(x-8,y-12,7,4);ctx.fillRect(x+2,y-10,7,4);
+   if(stage===4){ctx.fillStyle=color;ctx.fillRect(x-6,y-4,5,4);ctx.fillRect(x+2,y-3,4,3);}else{ctx.fillStyle="#7a5c42";ctx.fillRect(x-4,y-3,3,2);}
+  }else{
+   ctx.fillStyle="#6b8a8e";ctx.fillRect(x-1,y-16,2,16);ctx.fillStyle="#8eb5b8";ctx.fillRect(x-6,y-14,5,4);ctx.fillRect(x+2,y-12,5,4);
+   if(stage===4){ctx.fillStyle="#f0f4f4";ctx.fillRect(x-5,y-5,10,5);ctx.fillStyle="#c2d6d6";ctx.fillRect(x-3,y-6,6,2);}else{ctx.fillStyle="#d9e4e8";ctx.fillRect(x-3,y-4,6,4);}
+  }ctx.restore();
+ },
+ bush(ctx,x,y,stage,p,c,color){
+  const dark="#24512e",mid="#387a3d",light="#58a854";
+  if(stage===1){ctx.fillStyle=p.crop==="eggplant"?dark:mid;ctx.fillRect(x-1,y-(p.crop==="eggplant"?5:7),2,p.crop==="eggplant"?5:7);ctx.fillStyle=light;ctx.fillRect(x-5,y-8,4,4);ctx.fillRect(x+1,y-7,4,3);return;}
+  if(stage===2){ctx.fillStyle=dark;ctx.fillRect(x-1,y-(p.crop==="eggplant"?16:14),2,p.crop==="eggplant"?16:14);ctx.fillStyle=mid;ctx.fillRect(x-7,y-12,6,4);ctx.fillRect(x+2,y-14,6,4);return;}
+  ctx.save();if(stage===3)ctx.globalAlpha=.85;ctx.fillStyle=dark;ctx.fillRect(x-2,y-20,4,20);
+  for(let i=0;i<3;i++){ctx.fillStyle=mid;ctx.fillRect(x-9,y-16+i*6,7,3);ctx.fillRect(x+2,y-14+i*6,7,3);}
+  if(p.crop==="tomato"){if(stage===4){ctx.fillStyle=color;ctx.fillRect(x-8,y-14,6,6);ctx.fillRect(x+4,y-10,6,6);ctx.fillStyle="#fff";ctx.fillRect(x-7,y-13,2,2);}else{ctx.fillStyle="#6b9c5c";ctx.fillRect(x-6,y-12,4,4);}}
+  else if(p.crop==="eggplant"){if(stage===4){ctx.fillStyle=color;ctx.fillRect(x+3,y-16,5,10);ctx.fillStyle="#4b7b44";ctx.fillRect(x+2,y-18,7,3);ctx.fillStyle="rgba(255,255,255,.6)";ctx.fillRect(x+4,y-14,1,4);}else{ctx.fillStyle="#8c7a9c";ctx.fillRect(x+4,y-14,3,6);}}
+  else{if(stage===4){ctx.fillStyle=color;ctx.fillRect(x-7,y-12,4,8);ctx.fillRect(x-8,y-6,6,4);ctx.fillStyle="#3d703a";ctx.fillRect(x-6,y-14,2,2);ctx.fillStyle="#fff";ctx.fillRect(x-6,y-10,1,2);}else{ctx.fillStyle="#799c70";ctx.fillRect(x-6,y-10,3,5);}}
+  ctx.restore();
+ },
+ vine(ctx,x,y,stage,p,c,color){
+  const mid="#387a3d",light="#58a854";
+  if(stage===1){ctx.fillStyle=light;ctx.fillRect(x-4,y-4,3,2);ctx.fillRect(x+1,y-5,3,2);ctx.fillRect(x-1,y-6,2,2);return;}
+  if(stage===2){ctx.fillStyle=mid;ctx.fillRect(x-8,y-6,6,3);ctx.fillRect(x+2,y-7,6,3);ctx.fillStyle=light;ctx.fillRect(x-6,y-8,4,2);ctx.fillRect(x+4,y-9,4,2);return;}
+  ctx.save();if(stage===3)ctx.globalAlpha=.85;ctx.fillStyle="#24512e";ctx.fillRect(x-12,y-6,8,4);ctx.fillRect(x+4,y-6,8,4);ctx.fillStyle=mid;ctx.fillRect(x-4,y-8,8,8);
+  if(p.crop==="pumpkin"){if(stage===4){ctx.fillStyle=color;ctx.fillRect(x-7,y-6,14,10);ctx.fillStyle="rgba(0,0,0,.2)";ctx.fillRect(x-3,y-6,1,10);ctx.fillRect(x+2,y-6,1,10);ctx.fillStyle="#fff";ctx.fillRect(x-2,y-5,2,2);}else{ctx.fillStyle="#6d9c4e";ctx.fillRect(x-4,y-4,8,6);}}
+  else{if(stage===4){ctx.fillStyle=color;ctx.fillRect(x-8,y-5,16,8);ctx.fillStyle="rgba(0,0,0,.15)";ctx.fillRect(x-4,y-5,1,8);ctx.fillRect(x+2,y-5,1,8);ctx.fillStyle="#fff";ctx.fillRect(x-3,y-4,2,1);}else{ctx.fillStyle="#6b8a58";ctx.fillRect(x-5,y-4,10,6);}}
+  ctx.restore();
+ },
+ strawberry(ctx,x,y,stage,p,c,color){
+  const mid="#387a3d",light="#58a854";
+  if(stage===1){ctx.fillStyle=mid;ctx.fillRect(x-1,y-8,2,8);ctx.fillStyle=light;ctx.fillRect(x-4,y-8,3,2);ctx.fillRect(x+1,y-10,3,2);return;}
+  if(stage===2){ctx.fillStyle="#24512e";ctx.fillRect(x-1,y-14,2,14);ctx.fillStyle=mid;ctx.fillRect(x-7,y-12,6,3);ctx.fillRect(x+2,y-15,6,3);return;}
+  ctx.save();if(stage===3)ctx.globalAlpha=.85;ctx.fillStyle=mid;ctx.fillRect(x-6,y-6,4,3);ctx.fillRect(x+2,y-7,4,3);ctx.fillRect(x-3,y-8,6,3);
+  if(stage===4){ctx.fillStyle=color;ctx.fillRect(x-5,y-2,4,4);ctx.fillRect(x+4,y-1,3,3);ctx.fillStyle="#fff";ctx.fillRect(x-4,y-1,1,1);ctx.fillRect(x+5,y,1,1);}else{ctx.fillStyle="#e6a8b0";ctx.fillRect(x-4,y-1,2,2);ctx.fillRect(x+4,y,2,2);ctx.fillStyle="#fff";ctx.fillRect(x-3,y,1,1);}ctx.restore();
+ },
+ head(ctx,x,y,stage,p,c,color){
+  const dark="#24512e",mid="#387a3d",light="#58a854";
+  if(stage===1){ctx.fillStyle=dark;ctx.fillRect(x-1,y-6,2,6);ctx.fillStyle=light;ctx.fillRect(x-4,y-8,3,3);ctx.fillRect(x+1,y-7,3,3);return;}
+  if(stage===2){ctx.fillStyle=dark;ctx.fillRect(x-1,y-10,2,10);ctx.fillStyle=mid;ctx.beginPath();ctx.moveTo(x-6,y-2);ctx.lineTo(x-1,y-10);ctx.lineTo(x+4,y-2);ctx.fill();return;}
+  ctx.save();if(stage===3)ctx.globalAlpha=.85;ctx.fillStyle=dark;ctx.fillRect(x-12,y-14,24,10);ctx.fillStyle=mid;ctx.fillRect(x-9,y-16,18,8);
+  if(stage===4){ctx.fillStyle="#f4f4dc";ctx.fillRect(x-6,y-15,12,10);ctx.fillStyle="#d2d2b2";ctx.fillRect(x-4,y-14,2,2);ctx.fillRect(x+2,y-12,2,2);}else{ctx.fillStyle="#d7dfb5";ctx.fillRect(x-4,y-12,8,6);}ctx.restore();
+ },
+ climber(ctx,x,y,stage,p,c,color){
+  const mid="#387a3d",light="#58a854";
+  if(stage===1){ctx.fillStyle="#5c4033";ctx.fillRect(x-1,y-10,2,10);ctx.fillStyle=light;ctx.fillRect(x-4,y-8,3,2);ctx.fillRect(x+1,y-6,3,2);return;}
+  if(stage===2){ctx.fillStyle="#5c4033";ctx.fillRect(x-1,y-18,2,18);ctx.fillStyle=mid;ctx.fillRect(x-5,y-14,4,2);ctx.fillRect(x+2,y-10,4,2);return;}
+  ctx.save();if(stage===3)ctx.globalAlpha=.85;ctx.fillStyle="#5c4033";ctx.fillRect(x-32,y-28,64,3);ctx.fillRect(x-32,y-28,3,28);ctx.fillStyle=mid;ctx.fillRect(x-10,y-24,2,12);ctx.fillRect(x+8,y-24,2,14);
+  if(stage===4){ctx.fillStyle=color;ctx.fillRect(x-6,y-16,4,4);ctx.fillRect(x+2,y-14,4,4);ctx.fillRect(x-2,y-10,6,4);ctx.fillStyle="rgba(255,255,255,.5)";ctx.fillRect(x-5,y-15,1,1);ctx.fillRect(x+3,y-13,1,1);}else{ctx.fillStyle="#8b7a9c";ctx.fillRect(x-3,y-14,3,4);ctx.fillRect(x+1,y-12,3,3);}ctx.restore();
+ },
+ default(ctx,x,y,stage,p,c,color){
+  ctx.save();if(stage===3)ctx.globalAlpha=.85;ctx.fillStyle="#24512e";ctx.fillRect(x-2,y-stage*5,4,stage*5);ctx.fillStyle="#387a3d";ctx.fillRect(x-6,y-stage*4,5,3);ctx.fillRect(x+1,y-stage*4,5,3);if(stage===4){ctx.fillStyle=color||"#ff0000";ctx.fillRect(x-3,y-10,6,6);}ctx.restore();
+ }
+};
+
 function drawFarmPlots(){
  for(let plotIndex=0;plotIndex<farmPlots.length;plotIndex++){
-  const p=farmPlots[plotIndex];
-  const x=p.x-camera.x,y=p.y-camera.y;
+  const p=farmPlots[plotIndex],x=p.x-camera.x,y=p.y-camera.y;
   if(x<-90||x>viewW+90||y<-90||y>viewH+90)continue;
-  const watered=p.wateredDay===worldDay;
-  // selectedFarmPlot is an array index in the existing farming system.
-  const selected=plotIndex===selectedFarmPlot;
-
-  // Soft ground shadow and raised, layered soil edges.
-  ctx.fillStyle="rgba(22,17,12,.30)";
-  ctx.beginPath();ctx.ellipse(x+1,y+18,31,9,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="#3c291f";ctx.fillRect(x-29,y-18,58,39);
-  ctx.fillStyle=watered?"#49372f":"#805638";ctx.fillRect(x-28,y-21,56,37);
-  ctx.fillStyle=watered?"#594238":"#956744";ctx.fillRect(x-26,y-21,52,4);
-  ctx.fillStyle=watered?"#30231f":"#67432e";ctx.fillRect(x-28,y+12,56,5);
-  // Stable, coordinate-seeded soil flecks: no per-frame flicker.
-  for(let i=0;i<9;i++){
-   const seed=Math.abs((p.x|0)*13+(p.y|0)*7+i*29);
-   const fx=x-22+(seed%45),fy=y-14+((seed*11+i*7)%27);
-   ctx.fillStyle=watered?(i%2?"rgba(12,20,22,.25)":"rgba(166,207,210,.13)"):(i%2?"rgba(44,27,18,.28)":"rgba(255,220,170,.16)");
-   ctx.fillRect(fx,fy,2+(i%3===0?1:0),2);
+  const watered=p.wateredDay===worldDay,selected=plotIndex===selectedFarmPlot;
+  ctx.fillStyle="rgba(22,17,12,.35)";ctx.beginPath();ctx.ellipse(x,y+28,36,10,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#1f110d";ctx.fillRect(x-32,y-32,64,64);
+  ctx.fillStyle=watered?"#2d1c18":"#6d4c3e";ctx.fillRect(x-30,y-30,60,60);
+  for(let i=0;i<20;i++){const hx=plotHash(p.x+i*3,p.y+i*7),hy=plotHash(p.x-i*5,p.y+i*2);if(hx>.3){ctx.fillStyle=watered?"#2d1c18":"#6d4c3e";ctx.fillRect(x-30+hx*50,y-30+hy*2,4+hx*6,4);ctx.fillRect(x-26+hy*46,y+24+hx*2,4+hy*6,4);}}
+  for(let i=0;i<24;i++){const hX=plotHash(p.x+i*13,p.y+i*7),hY=plotHash(p.x+i*7,p.y+i*19),type=plotHash(p.x-i*3,p.y+i*11),px=x-26+hX*52,py=y-26+hY*52;
+   if(type>.85){ctx.fillStyle=watered?"#4a5350":"#8c7a65";ctx.fillRect(px,py,3,2);ctx.fillStyle=watered?"rgba(200,240,255,.3)":"rgba(255,255,255,.5)";ctx.fillRect(px,py,1,1);}
+   else if(type>.65){ctx.fillStyle=watered?"#1a0f0c":"#4a2e1e";ctx.fillRect(px,py,1,4);ctx.fillRect(px+1,py+3,2,1);}
+   else{ctx.fillStyle=watered?"rgba(0,0,0,.25)":"rgba(255,255,255,.1)";ctx.fillRect(px,py,2,2);}
   }
-  // Furrows and their subtle raised edges.
-  for(let row=-1;row<=1;row++){
-   const fy=y-10+row*11;
-   ctx.fillStyle=watered?"rgba(24,19,18,.45)":"rgba(57,35,24,.55)";
-   ctx.fillRect(x-23,fy,46,3);
-   ctx.fillStyle=watered?"rgba(178,210,210,.12)":"rgba(226,183,130,.22)";
-   ctx.fillRect(x-23,fy,46,1);
-  }
-  // Water darkens the whole bed and leaves small reflective highlights.
-  if(watered){
-   ctx.fillStyle="rgba(61,139,160,.13)";ctx.fillRect(x-25,y-17,50,29);
-   ctx.fillStyle="rgba(206,239,239,.62)";
-   ctx.fillRect(x-16,y-12,5,2);ctx.fillRect(x+10,y+3,7,2);ctx.fillRect(x-3,y+8,3,1);
-   ctx.fillStyle="rgba(91,171,190,.22)";ctx.fillRect(x-21,y+5,12,2);
-  }
-
+  for(let row=-2;row<=2;row++){const fy=y-16+row*10;ctx.fillStyle=watered?"rgba(10,5,3,.7)":"rgba(45,25,15,.6)";ctx.fillRect(x-30,fy,60,3);ctx.fillStyle=watered?"rgba(100,181,246,.15)":"rgba(255,220,180,.2)";ctx.fillRect(x-30,fy,60,1);}
+  if(watered){ctx.fillStyle="rgba(61,139,160,.1)";ctx.fillRect(x-30,y-30,60,60);const w1=plotHash(p.x,p.y)*40-20,w2=plotHash(p.y,p.x)*40-20;ctx.fillStyle="rgba(150,220,240,.4)";ctx.fillRect(x+w1,y-5,8,2);ctx.fillRect(x+w2,y+8,6,2);ctx.fillStyle="rgba(255,255,255,.7)";ctx.fillRect(x+w1+1,y-5,2,1);ctx.fillRect(x+w2+1,y+8,2,1);}
   if(p.state==="growing"&&p.crop){
-   const c=FARM_CROPS[p.crop];
-   if(c){
-    const target=Math.max(1,p.harvests>0&&c.regrow?c.regrow:c.days);
-    const progress=Math.max(0,Math.min(1,(Number(p.growth)||0)/target));
-    const ripe=progress>=1;
-    const stage=ripe?4:progress<.34?1:progress<.67?2:3;
-    const fruit=c.color||"#d8bf70";
-    // Grounding shadow keeps each plant visually attached to its tile.
-    ctx.fillStyle="rgba(20,28,17,.28)";
-    ctx.beginPath();ctx.ellipse(x,y+1,13,4,0,0,Math.PI*2);ctx.fill();
-
-    if(stage===1){
-     ctx.fillStyle="#397b43";ctx.fillRect(x-2,y-11,4,10);
-     ctx.fillStyle="#70ad55";ctx.beginPath();ctx.ellipse(x-5,y-10,5,2,-.45,0,Math.PI*2);ctx.fill();
-     ctx.beginPath();ctx.ellipse(x+5,y-13,5,2,.45,0,Math.PI*2);ctx.fill();
-     ctx.fillStyle="#b2d47b";ctx.fillRect(x-1,y-14,2,3);
-    }else if(stage===2){
-     ctx.fillStyle="#28643a";ctx.fillRect(x-3,y-19,6,18);
-     ctx.fillStyle="#438e4b";
-     ctx.beginPath();ctx.ellipse(x-8,y-14,8,4,-.35,0,Math.PI*2);ctx.fill();
-     ctx.beginPath();ctx.ellipse(x+8,y-18,8,4,.35,0,Math.PI*2);ctx.fill();
-     ctx.beginPath();ctx.ellipse(x-5,y-23,6,3,-.6,0,Math.PI*2);ctx.fill();
-     ctx.beginPath();ctx.ellipse(x+5,y-25,6,3,.6,0,Math.PI*2);ctx.fill();
-     ctx.fillStyle="#8fbd62";ctx.fillRect(x-1,y-25,2,4);
-    }else{
-     // Mature crop canopy; different silhouettes make the growth jump visible.
-     ctx.fillStyle="#245b35";ctx.fillRect(x-4,y-25,8,24);
-     ctx.fillStyle="#347d42";
-     for(let leaf=0;leaf<4;leaf++){
-      const ly=y-21+leaf*5;
-      ctx.beginPath();ctx.ellipse(x-9,ly,8,3,-.25,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.ellipse(x+9,ly-3,8,3,.25,0,Math.PI*2);ctx.fill();
-     }
-     ctx.fillStyle="#65a34d";
-     ctx.fillRect(x-12,y-19,5,2);ctx.fillRect(x+7,y-25,5,2);ctx.fillRect(x-5,y-29,4,2);
-     if(stage===3){
-      ctx.fillStyle=fruit;ctx.globalAlpha=.62;
-      ctx.fillRect(x-7,y-17,5,5);ctx.fillRect(x+3,y-22,5,5);
-      ctx.globalAlpha=1;
-     }else{
-      // Ripe produce with small highlights; glow is drawn behind the fruit.
-      const glow=.5+.5*Math.sin(animTime*3.2+(p.x+p.y)*.013);
-      ctx.fillStyle="rgba(255,221,104,"+(glow*.17)+")";
-      ctx.beginPath();ctx.arc(x,y-17,19,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle=fruit;
-      ctx.fillRect(x-10,y-16,8,8);ctx.fillRect(x+3,y-23,8,8);ctx.fillRect(x-3,y-8,7,7);
-      ctx.fillStyle="rgba(255,245,211,.72)";
-      ctx.fillRect(x-9,y-15,3,3);ctx.fillRect(x+4,y-22,3,3);ctx.fillRect(x-2,y-7,2,2);
-     }
-    }
-   }
+   const def=CROP_DEFINITIONS[p.crop]||{},target=Math.max(1,p.harvests>0&&def.regrow?def.regrow:(def.days||1)),progress=Math.max(0,Math.min(1,(Number(p.growth)||0)/target)),ripe=progress>=1,stage=ripe?4:progress<.34?1:progress<.67?2:3,fruitColor=def.color||"#8dbb62";
+   ctx.fillStyle="rgba(20,28,17,.35)";ctx.fillRect(x-12,y,24,4);ctx.fillRect(x-8,y-2,16,2);
+   if(ripe){const glowAlpha=.15+Math.sin(animTime*3+p.x)*.1;ctx.fillStyle="rgba(255,235,150,"+glowAlpha+")";ctx.beginPath();ctx.arc(x,y-10,24,0,Math.PI*2);ctx.fill();}
+   const candidate=CROP_RENDERERS[def.visual],renderer=typeof candidate==="function"?candidate:CROP_RENDERERS.default;
+   renderer(ctx,x,y,stage,p,def,fruitColor);
   }
-
-  if(selected){
-   ctx.save();
-   ctx.strokeStyle="rgba(255,214,92,.30)";ctx.lineWidth=6;ctx.strokeRect(x-29,y-22,58,40);
-   ctx.strokeStyle="#ffd45a";ctx.lineWidth=2;ctx.setLineDash([5,3]);ctx.strokeRect(x-29,y-22,58,40);
-   ctx.setLineDash([]);
-   ctx.fillStyle="#ffe08a";
-   ctx.fillRect(x-31,y-24,5,5);ctx.fillRect(x+26,y-24,5,5);
-   ctx.fillRect(x-31,y+16,5,5);ctx.fillRect(x+26,y+16,5,5);
-   ctx.beginPath();ctx.moveTo(x,y-31);ctx.lineTo(x-5,y-25);ctx.lineTo(x+5,y-25);ctx.closePath();ctx.fill();
-   ctx.restore();
-  }
+  if(selected){ctx.save();ctx.strokeStyle="rgba(255,214,92,.3)";ctx.lineWidth=6;ctx.strokeRect(x-31,y-31,62,62);ctx.strokeStyle="#ffd45a";ctx.lineWidth=2;ctx.setLineDash([5,3]);ctx.strokeRect(x-31,y-31,62,62);ctx.setLineDash([]);ctx.fillStyle="#ffe08a";ctx.fillRect(x-33,y-33,5,5);ctx.fillRect(x+28,y-33,5,5);ctx.fillRect(x-33,y+28,5,5);ctx.fillRect(x+28,y+28,5,5);const bob=Math.sin(animTime*4)*2;ctx.beginPath();ctx.moveTo(x,y-40+bob);ctx.lineTo(x-5,y-34+bob);ctx.lineTo(x+5,y-34+bob);ctx.closePath();ctx.fill();ctx.restore();}
  }
 }
 function enterShopInterior(type){
