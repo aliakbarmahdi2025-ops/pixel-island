@@ -172,3 +172,29 @@ test('tapping a forest boar selects it and attacks through the canvas interactio
   assert.ok(result.id.startsWith('forest-boar-'));
   assert.equal(result.hp, 2, 'the tap interaction reaches attack() and applies one hit');
 });
+
+
+test('forest boars chase at the configured speed and respect the player damage cooldown', () => {
+  const game = startGame();
+  game.run(`
+    updateUI=()=>{}; saveQuietly=()=>{}; showToast=()=>{};
+    updateFurnaces=()=>{}; updateWeather=()=>{}; updateCombatEffects=()=>{};
+    tickWorldInteraction=()=>{}; audioEnvironment=()=>{}; updateMineButton=()=>{};
+    const boar=enemies.find(e=>e.kind==="forestBoar");
+    enemies=[boar];
+    moveTarget=null; move.x=0; move.y=0; keys.clear();
+    player.x=boar.x-200; player.y=boar.y;
+    const beforeX=boar.x;
+    update(1);
+    globalThis.boarChaseDistance=beforeX-boar.x;
+    player.x=boar.x+20; player.y=boar.y; player.health=5; damageCooldown=0;
+    update(0.01);
+    globalThis.boarHealthAfterHit=player.health;
+    update(0.1);
+    globalThis.boarHealthAfterCooldown=player.health;
+  `);
+  const result = game.json('({chaseDistance:boarChaseDistance,afterHit:boarHealthAfterHit,afterCooldown:boarHealthAfterCooldown})');
+  assert.equal(result.chaseDistance, 58, 'boar moves at 58 world units per second');
+  assert.equal(result.afterHit, 4, 'boar contact removes one health point');
+  assert.equal(result.afterCooldown, 4, 'damage cooldown prevents an immediate second hit');
+});
