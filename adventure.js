@@ -86,6 +86,57 @@ const FARM_CROPS = {
  eggplant:{name:"بادمجان",icon:"🍆",season:"autumn",days:5,regrow:3,price:25,seed:12,color:"#7652a0"},
  snowturnip:{name:"شلغم برفی",icon:"❄️",season:"winter",days:6,price:40,seed:16,color:"#d9e4e8"}
 };
+// ── Experimental farm artwork assets (test branch only) ──
+let soilImg = new Image();
+let strawberryImg = new Image();
+let strawberryBoxes = [];
+const SOIL_PATTERN_MODE = "mirror2x2";
+
+soilImg.onload = () => console.log("Soil texture loaded");
+soilImg.onerror = () => console.warn("Soil texture missing; original soil renderer remains active");
+soilImg.src = "assets/soil.png";
+
+strawberryImg.onload = () => {
+  strawberryBoxes = [];
+  try {
+    const scanCanvas = document.createElement("canvas");
+    scanCanvas.width = strawberryImg.naturalWidth;
+    scanCanvas.height = strawberryImg.naturalHeight;
+    const scanCtx = scanCanvas.getContext("2d");
+    if (!scanCtx || !scanCanvas.width || !scanCanvas.height) throw new Error("Invalid sprite sheet canvas");
+    scanCtx.drawImage(strawberryImg, 0, 0);
+    const frameW = Math.floor(scanCanvas.width / 4);
+    if (frameW < 1) throw new Error("Sprite sheet is too small");
+    for (let i = 0; i < 4; i++) {
+      const sx = i * frameW;
+      const pixels = scanCtx.getImageData(sx, 0, frameW, scanCanvas.height).data;
+      let minX = frameW, minY = scanCanvas.height, maxX = -1, maxY = -1;
+      for (let y = 0; y < scanCanvas.height; y++) {
+        for (let x = 0; x < frameW; x++) {
+          if (pixels[(y * frameW + x) * 4 + 3] > 10) {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+      strawberryBoxes.push(maxX >= minX && maxY >= minY
+        ? { sx: sx + minX, sy: minY, sw: maxX - minX + 1, sh: maxY - minY + 1 }
+        : null);
+    }
+    console.log("Strawberry sprite frames scanned");
+  } catch (e) {
+    strawberryBoxes = [];
+    console.warn("Strawberry sprite scan failed; procedural fallback remains active", e);
+  }
+};
+strawberryImg.onerror = () => {
+  strawberryBoxes = [];
+  console.warn("Strawberry sprite sheet missing; procedural fallback remains active");
+};
+strawberryImg.src = "assets/strawberry.png";
+
 const FARM_SEASONS={spring:"بهار 🌸",summer:"تابستان ☀️",autumn:"پاییز 🍂",winter:"زمستان ❄️"};
 
 /* Stage 60 — seasonal four-season outdoor weather */
@@ -2237,29 +2288,54 @@ function drawFarmPlots(){
   // selectedFarmPlot is an array index in the existing farming system.
   const selected=plotIndex===selectedFarmPlot;
 
-  // Soft ground shadow and raised, layered soil edges.
+  // Ground shadow beneath the soil bed.
   ctx.fillStyle="rgba(22,17,12,.30)";
   ctx.beginPath();ctx.ellipse(x+1,y+18,31,9,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="#3c291f";ctx.fillRect(x-29,y-18,58,39);
-  ctx.fillStyle=watered?"#49372f":"#805638";ctx.fillRect(x-28,y-21,56,37);
-  ctx.fillStyle=watered?"#594238":"#956744";ctx.fillRect(x-26,y-21,52,4);
-  ctx.fillStyle=watered?"#30231f":"#67432e";ctx.fillRect(x-28,y+12,56,5);
-  // Stable, coordinate-seeded soil flecks: no per-frame flicker.
-  for(let i=0;i<9;i++){
-   const seed=Math.abs((p.x|0)*13+(p.y|0)*7+i*29);
-   const fx=x-22+(seed%45),fy=y-14+((seed*11+i*7)%27);
-   ctx.fillStyle=watered?(i%2?"rgba(12,20,22,.25)":"rgba(166,207,210,.13)"):(i%2?"rgba(44,27,18,.28)":"rgba(255,220,170,.16)");
-   ctx.fillRect(fx,fy,2+(i%3===0?1:0),2);
+
+  // Experimental soil texture; preserve a solid base beneath transparent pixels.
+  const targetW=56,targetH=37;
+  const soilX=x-28,soilY=y-21;
+  if(soilImg.complete&&soilImg.naturalWidth>0&&soilImg.naturalHeight>0){
+   ctx.fillStyle=watered?"#49372f":"#805638";
+   ctx.fillRect(soilX,soilY,targetW,targetH);
+   const tileX=Math.floor(p.x/64),tileY=Math.floor(p.y/64);
+   let flipX=false,flipY=false;
+   if(SOIL_PATTERN_MODE==="mirrorH")flipX=tileX%2!==0;
+   else if(SOIL_PATTERN_MODE==="mirrorV")flipY=tileY%2!==0;
+   else if(SOIL_PATTERN_MODE==="mirror2x2"){flipX=tileX%2!==0;flipY=tileY%2!==0;}
+   const imgW=soilImg.naturalWidth,imgH=soilImg.naturalHeight;
+   const targetRatio=targetW/targetH,imgRatio=imgW/imgH;
+   let sx=0,sy=0,sw=imgW,sh=imgH;
+   if(imgRatio>targetRatio){sw=imgH*targetRatio;sx=(imgW-sw)/2;}
+   else{sh=imgW/targetRatio;sy=(imgH-sh)/2;}
+   ctx.save();
+   ctx.translate(soilX+targetW/2,soilY+targetH/2);
+   ctx.scale(flipX?-1:1,flipY?-1:1);
+   ctx.imageSmoothingEnabled=false;
+   ctx.drawImage(soilImg,sx,sy,sw,sh,-targetW/2,-targetH/2,targetW,targetH);
+   ctx.restore();
+  }else{
+   // Exact original procedural soil fallback.
+   ctx.fillStyle="#3c291f";ctx.fillRect(x-29,y-18,58,39);
+   ctx.fillStyle=watered?"#49372f":"#805638";ctx.fillRect(x-28,y-21,56,37);
+   ctx.fillStyle=watered?"#594238":"#956744";ctx.fillRect(x-26,y-21,52,4);
+   ctx.fillStyle=watered?"#30231f":"#67432e";ctx.fillRect(x-28,y+12,56,5);
+   for(let i=0;i<9;i++){
+    const seed=Math.abs((p.x|0)*13+(p.y|0)*7+i*29);
+    const fx=x-22+(seed%45),fy=y-14+((seed*11+i*7)%27);
+    ctx.fillStyle=watered?(i%2?"rgba(12,20,22,.25)":"rgba(166,207,210,.13)"):(i%2?"rgba(44,27,18,.28)":"rgba(255,220,170,.16)");
+    ctx.fillRect(fx,fy,2+(i%3===0?1:0),2);
+   }
+   for(let row=-1;row<=1;row++){
+    const fy=y-10+row*11;
+    ctx.fillStyle=watered?"rgba(24,19,18,.45)":"rgba(57,35,24,.55)";
+    ctx.fillRect(x-23,fy,46,3);
+    ctx.fillStyle=watered?"rgba(178,210,210,.12)":"rgba(226,183,130,.22)";
+    ctx.fillRect(x-23,fy,46,1);
+   }
   }
-  // Furrows and their subtle raised edges.
-  for(let row=-1;row<=1;row++){
-   const fy=y-10+row*11;
-   ctx.fillStyle=watered?"rgba(24,19,18,.45)":"rgba(57,35,24,.55)";
-   ctx.fillRect(x-23,fy,46,3);
-   ctx.fillStyle=watered?"rgba(178,210,210,.12)":"rgba(226,183,130,.22)";
-   ctx.fillRect(x-23,fy,46,1);
-  }
-  // Water darkens the whole bed and leaves small reflective highlights.
+
+  // Keep the original watering overlay above either soil renderer.
   if(watered){
    ctx.fillStyle="rgba(61,139,160,.13)";ctx.fillRect(x-25,y-17,50,29);
    ctx.fillStyle="rgba(206,239,239,.62)";
@@ -2279,6 +2355,21 @@ function drawFarmPlots(){
     ctx.fillStyle="rgba(20,28,17,.28)";
     ctx.beginPath();ctx.ellipse(x,y+1,13,4,0,0,Math.PI*2);ctx.fill();
 
+    // Draw the custom four-stage strawberry sprite when its frame is valid.
+    let isStrawberryDrawn=false;
+    const berryBox=strawberryBoxes[stage-1];
+    if(p.crop==="strawberry"&&strawberryImg.complete&&strawberryImg.naturalWidth>0&&strawberryBoxes.length===4&&berryBox){
+     const maxW=56,maxH=64;
+     const scale=Math.min(maxW/berryBox.sw,maxH/berryBox.sh);
+     const dw=berryBox.sw*scale,dh=berryBox.sh*scale;
+     const dx=x-dw/2,dy=y+16-dh;
+     ctx.save();
+     ctx.imageSmoothingEnabled=false;
+     ctx.drawImage(strawberryImg,berryBox.sx,berryBox.sy,berryBox.sw,berryBox.sh,dx,dy,dw,dh);
+     ctx.restore();
+     isStrawberryDrawn=true;
+    }
+    if(!isStrawberryDrawn){
     if(stage===1){
      ctx.fillStyle="#397b43";ctx.fillRect(x-2,y-11,4,10);
      ctx.fillStyle="#70ad55";ctx.beginPath();ctx.ellipse(x-5,y-10,5,2,-.45,0,Math.PI*2);ctx.fill();
@@ -2318,6 +2409,7 @@ function drawFarmPlots(){
       ctx.fillRect(x-9,y-15,3,3);ctx.fillRect(x+4,y-22,3,3);ctx.fillRect(x-2,y-7,2,2);
      }
     }
+    } // end procedural fallback
    }
   }
 
