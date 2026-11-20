@@ -26,6 +26,8 @@ function startGame(saved) {
   }
   const context = vm.createContext({
     console, innerWidth: 1280, innerHeight: 800, devicePixelRatio: 1,
+    // The main game loads optional farm artwork with Image; keep the VM headless.
+    Image: class { constructor() { this.complete = false; this.naturalWidth = 0; this.naturalHeight = 0; this.src = ""; } },
     document: { getElementById: element, querySelectorAll: () => [], querySelector: () => null,
       createElement: () => element(Symbol()), body: { appendChild: noop } },
     localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)) },
