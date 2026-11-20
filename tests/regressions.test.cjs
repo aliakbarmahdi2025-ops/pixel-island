@@ -113,3 +113,88 @@ test('entry page links to both games without removing classic save access', () =
   assert.match(classic, /src="game\.js"/);
   assert.match(fs.readFileSync(path.join(root, 'game.js'), 'utf8'), /pixelIsland_crafting_save/);
 });
+
+test('forest boars spawn safely, stay on the map, and appear in the world map', () => {
+  const game = startGame();
+  for (const [x, y] of [[1200, 900], [1480, 690], [2200, 1500], [3100, 2200], [160, 750]]) {
+    game.run(`player.x=${x};player.y=${y};makeEnemies()`);
+    const boars = game.json('enemies.filter(e => e.kind === "forestBoar")');
+    assert.equal(boars.length, 3, `three boars spawn from player position ${x},${y}`);
+    assert.ok(boars.every(e => e.alive && e.hp === 3 && e.max === 3));
+    for (let i = 0; i < boars.length; i++) {
+      for (let j = i + 1; j < boars.length; j++) {
+        assert.ok(Math.hypot(boars[i].x - boars[j].x, boars[i].y - boars[j].y) >= 300);
+      }
+    }
+    assert.equal(game.json('getWorldMapState().points.filter(p => p.kind === "enemy").length'), 3);
+  }
+});
+
+test('defeating a forest boar grants XP, coins and the configured potion drop', () => {
+  const game = startGame();
+  const before = game.json('({coins: player.coins, xp: player.xp})');
+  game.run(`
+    updateUI=()=>{}; saveQuietly=()=>{}; showToast=()=>{};
+    playGameSound=()=>{}; triggerPlayerAction=()=>{}; useEnergy=()=>true;
+    spawnDamageText=()=>{}; spawnHitSpark=()=>{}; Math.random=()=>0.1;
+    attackCooldown=0; player.attackPower=3;
+    const boar=enemies.find(e=>e.kind==="forestBoar");
+    player.x=boar.x; player.y=boar.y; boar.hp=1;
+    attack(boar.id);
+  `);
+  const after = game.json('({coins: player.coins, xp: player.xp, alive: enemies.find(e=>e.kind==="forestBoar").alive, potionDrops: lootDrops.filter(d=>d.type==="potion").length})');
+  assert.equal(after.coins, before.coins + 6);
+  assert.equal(after.xp, before.xp + 12);
+  assert.equal(after.alive, false);
+  assert.equal(after.potionDrops, 1);
+});
+
+test('mobile help text explains tapping forest boars', () => {
+  const html = fs.readFileSync(path.join(root, 'adventure.html'), 'utf8');
+  assert.match(html, /گرازهای جنگلی/);
+});
+
+test('tapping a forest boar selects it and attacks through the canvas interaction', () => {
+  const game = startGame();
+  game.run(`
+    updateUI=()=>{}; saveQuietly=()=>{}; showToast=()=>{};
+    playGameSound=()=>{}; triggerPlayerAction=()=>{}; useEnergy=()=>true;
+    spawnDamageText=()=>{}; spawnHitSpark=()=>{};
+    attackCooldown=0; player.attackPower=1;
+    const boar=enemies.find(e=>e.kind==="forestBoar");
+    player.x=boar.x-76; player.y=boar.y;
+    camera.x=0; camera.y=0;
+    canvasWorldTap({clientX:boar.x,clientY:boar.y,preventDefault(){}});
+    tickWorldInteraction(0.01);
+  `);
+  const result = game.json('({target:moveTarget?.type,id:moveTarget?.id,hp:enemies.find(e=>e.kind==="forestBoar").hp,energy:player.energy})');
+  assert.equal(result.target, 'enemy');
+  assert.ok(result.id.startsWith('forest-boar-'));
+  assert.equal(result.hp, 2, 'the tap interaction reaches attack() and applies one hit');
+});
+
+
+test('forest boars chase at the configured speed and respect the player damage cooldown', () => {
+  const game = startGame();
+  game.run(`
+    updateUI=()=>{}; saveQuietly=()=>{}; showToast=()=>{};
+    updateFurnaces=()=>{}; updateWeather=()=>{}; updateCombatEffects=()=>{};
+    tickWorldInteraction=()=>{}; audioEnvironment=()=>{}; updateMineButton=()=>{};
+    const boar=enemies.find(e=>e.kind==="forestBoar");
+    enemies=[boar];
+    moveTarget=null; move.x=0; move.y=0; keys.clear();
+    player.x=boar.x-200; player.y=boar.y;
+    const beforeX=boar.x;
+    update(1);
+    globalThis.boarChaseDistance=beforeX-boar.x;
+    player.x=boar.x+20; player.y=boar.y; player.health=5; damageCooldown=0;
+    update(0.01);
+    globalThis.boarHealthAfterHit=player.health;
+    update(0.1);
+    globalThis.boarHealthAfterCooldown=player.health;
+  `);
+  const result = game.json('({chaseDistance:boarChaseDistance,afterHit:boarHealthAfterHit,afterCooldown:boarHealthAfterCooldown})');
+  assert.equal(result.chaseDistance, 58, 'boar moves at 58 world units per second');
+  assert.equal(result.afterHit, 4, 'boar contact removes one health point');
+  assert.equal(result.afterCooldown, 4, 'damage cooldown prevents an immediate second hit');
+});
