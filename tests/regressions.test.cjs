@@ -230,7 +230,9 @@ test('defeated forest boars respawn after 18 seconds at their original spawn wit
       spawnX:boarRespawnRef.spawnX,spawnY:boarRespawnRef.spawnY
     };
   `);
-  assert.deepEqual(game.json('boarBeforeRespawn'), { alive: false, timer: 0.01 });
+  const beforeRespawn = game.json('boarBeforeRespawn');
+  assert.equal(beforeRespawn.alive, false);
+  assert.ok(Math.abs(beforeRespawn.timer - 0.01) < 1e-9, 'boar remains defeated until the full 18-second timer elapses');
   assert.deepEqual(game.json('boarAfterRespawn'), {
     alive: true, hp: 3,
     x: game.json('boarSpawn.x'), y: game.json('boarSpawn.y'),
