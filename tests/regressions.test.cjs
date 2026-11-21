@@ -200,3 +200,40 @@ test('forest boars chase at the configured speed and respect the player damage c
   assert.equal(result.afterHit, 4, 'boar contact removes one health point');
   assert.equal(result.afterCooldown, 4, 'damage cooldown prevents an immediate second hit');
 });
+
+test('defeated forest boars respawn after 18 seconds at their original spawn with full health', () => {
+  const game = startGame();
+  game.run(`
+    updateUI=()=>{}; saveQuietly=()=>{}; showToast=()=>{};
+    playGameSound=()=>{}; triggerPlayerAction=()=>{}; useEnergy=()=>true;
+    spawnDamageText=()=>{}; spawnHitSpark=()=>{};
+    updateFurnaces=()=>{}; updateWeather=()=>{}; updateCombatEffects=()=>{};
+    tickWorldInteraction=()=>{}; audioEnvironment=()=>{}; updateMineButton=()=>{};
+    const boar=enemies.find(e=>e.kind==="forestBoar");
+    enemies=[boar];
+    player.x=boar.x; player.y=boar.y; player.attackPower=3; attackCooldown=0;
+    globalThis.boarSpawn={x:boar.spawnX,y:boar.spawnY};
+    attack(boar.id);
+    globalThis.boarRespawnRef=boar;
+  `);
+  assert.deepEqual(game.json('({alive:boarRespawnRef.alive,hp:boarRespawnRef.hp,respawnTimer:boarRespawnRef.respawnTimer})'), {
+    alive: false, hp: 0, respawnTimer: 18
+  });
+
+  game.run(`
+    update(17.99);
+    globalThis.boarBeforeRespawn={alive:boarRespawnRef.alive,timer:boarRespawnRef.respawnTimer};
+    update(0.02);
+    globalThis.boarAfterRespawn={
+      alive:boarRespawnRef.alive,hp:boarRespawnRef.hp,
+      x:boarRespawnRef.x,y:boarRespawnRef.y,
+      spawnX:boarRespawnRef.spawnX,spawnY:boarRespawnRef.spawnY
+    };
+  `);
+  assert.deepEqual(game.json('boarBeforeRespawn'), { alive: false, timer: 0.01 });
+  assert.deepEqual(game.json('boarAfterRespawn'), {
+    alive: true, hp: 3,
+    x: game.json('boarSpawn.x'), y: game.json('boarSpawn.y'),
+    spawnX: game.json('boarSpawn.x'), spawnY: game.json('boarSpawn.y')
+  });
+});
