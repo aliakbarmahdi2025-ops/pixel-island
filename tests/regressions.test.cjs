@@ -239,3 +239,33 @@ test('defeated forest boars respawn after 18 seconds at their original spawn wit
     spawnX: game.json('boarSpawn.x'), spawnY: game.json('boarSpawn.y')
   });
 });
+
+test('defeated forest boars disappear from the world map until they respawn', () => {
+  const game = startGame();
+  game.run(`
+    updateUI=()=>{}; saveQuietly=()=>{}; showToast=()=>{};
+    playGameSound=()=>{}; triggerPlayerAction=()=>{}; useEnergy=()=>true;
+    spawnDamageText=()=>{}; spawnHitSpark=()=>{};
+    updateFurnaces=()=>{}; updateWeather=()=>{}; updateCombatEffects=()=>{};
+    tickWorldInteraction=()=>{}; audioEnvironment=()=>{}; updateMineButton=()=>{};
+    const boar=enemies.find(e=>e.kind==="forestBoar");
+    enemies=[boar];
+    player.x=boar.x; player.y=boar.y; player.attackPower=3; attackCooldown=0;
+    globalThis.mapBoarSpawn={x:boar.spawnX,y:boar.spawnY};
+    globalThis.mapMarkersBefore= getWorldMapState().points.filter(p=>p.kind==="enemy").length;
+    attack(boar.id);
+    globalThis.mapMarkersDefeated= getWorldMapState().points.filter(p=>p.kind==="enemy").length;
+    globalThis.mapBoarRef=boar;
+    player.x=mapBoarSpawn.x; player.y=mapBoarSpawn.y;
+    update(18);
+    globalThis.mapMarkersRespawned= getWorldMapState().points.filter(p=>p.kind==="enemy").length;
+    globalThis.mapBoarRespawnState={alive:mapBoarRef.alive,hp:mapBoarRef.hp,x:mapBoarRef.x,y:mapBoarRef.y};
+  `);
+  assert.equal(game.json('mapMarkersBefore'), 1, 'living boar is visible on the forest map');
+  assert.equal(game.json('mapMarkersDefeated'), 0, 'defeated boar is removed from the map');
+  assert.equal(game.json('mapMarkersRespawned'), 1, 'respawned boar returns to the map');
+  assert.deepEqual(game.json('mapBoarRespawnState'), {
+    alive: true, hp: 3,
+    x: game.json('mapBoarSpawn.x'), y: game.json('mapBoarSpawn.y')
+  });
+});
