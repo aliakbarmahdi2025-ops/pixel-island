@@ -269,3 +269,25 @@ test('defeated forest boars disappear from the world map until they respawn', ()
     x: game.json('mapBoarSpawn.x'), y: game.json('mapBoarSpawn.y')
   });
 });
+
+test('forest boar rewards survive save/reload while defeated boars respawn as runtime enemies', () => {
+  const game = startGame();
+  game.run(`
+    updateUI=()=>{}; showToast=()=>{}; playGameSound=()=>{};
+    triggerPlayerAction=()=>{}; spawnDamageText=()=>{}; spawnHitSpark=()=>{};
+    useEnergy=()=>true; Math.random=()=>0.99;
+    const boar=enemies.find(e=>e.kind==="forestBoar");
+    player.x=boar.x; player.y=boar.y; player.attackPower=3; attackCooldown=0;
+    attack(boar.id);
+  `);
+
+  const saved = JSON.parse(game.saved());
+  assert.equal(saved.player.coins, 6, 'boar coins are included in the existing player save');
+  assert.equal(saved.player.xp, 12, 'boar XP is included in the existing player save');
+  assert.equal(Object.hasOwn(saved, 'forestBoars'), false, 'no boar-specific save field is introduced');
+
+  const restored = startGame(game.saved());
+  assert.deepEqual(restored.json('({coins:player.coins,xp:player.xp,alive:enemies.filter(e=>e.kind==="forestBoar"&&e.alive).length})'), {
+    coins: 6, xp: 12, alive: 3
+  });
+});
