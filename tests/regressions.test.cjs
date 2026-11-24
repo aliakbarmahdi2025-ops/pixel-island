@@ -291,3 +291,24 @@ test('forest boar rewards survive save/reload while defeated boars respawn as ru
     coins: 6, xp: 12, alive: 3
   });
 });
+
+
+test('forest boar spawn selection avoids saved farm plots, placed furnaces and nearby resources', () => {
+  const game = startGame();
+  game.run(`
+    // Simulate persistent player-built objects occupying three preferred spawn points.
+    farmPlots.push({id:"saved-plot",x:1480,y:690});
+    furnaces.push({id:"placed-furnace",x:1760,y:1170});
+    resources.push({id:"nearby-resource",x:2200,y:1240});
+    player.x=1200;player.y=900;
+    makeEnemies();
+  `);
+
+  const boars = game.json('enemies.filter(e=>e.kind==="forestBoar").map(e=>({x:e.x,y:e.y}))');
+  assert.equal(boars.length, 3, 'the fallback candidate list still supplies three boars');
+  for (const boar of boars) {
+    assert.ok(Math.hypot(boar.x-1480,boar.y-690)>=100, 'boar avoids saved farm plots');
+    assert.ok(Math.hypot(boar.x-1760,boar.y-1170)>=100, 'boar avoids placed furnaces');
+    assert.ok(Math.hypot(boar.x-2200,boar.y-1240)>=58, 'boar avoids nearby harvestable resources');
+  }
+});
