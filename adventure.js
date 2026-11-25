@@ -618,16 +618,13 @@ if(caveMode&&Math.hypot(player.x-800,player.y-1080)<8){player.x=800;player.y=101
 makeWorld();
 makeCave();
 if(caveMode&&!mineMode){caveMode=false;player.x=caveReturn.x;player.y=caveReturn.y;}
-function makeEnemies() {
-  // Stage 71 — deterministic forest encounters, clear of landmarks and saved farm objects.
-  const candidates = [
-    [1480,690],[1760,1170],[2200,1240],[1280,1380],
-    [2400,600],[900,1300],[2500,1400],[1600,1800],
-    [1980,700],[1150,1450],[2320,1550]
-  ];
-  enemies = [];
-  const safeLandmark = (x,y) =>
-    Math.hypot(x-playerHome.x,y-playerHome.y)>230 &&
+const FOREST_BOAR_SPAWN_CANDIDATES = [
+  [1480,690],[1760,1170],[2200,1240],[1280,1380],
+  [2400,600],[900,1300],[2500,1400],[1600,1800],
+  [1980,700],[1150,1450],[2320,1550]
+];
+function isSafeForestBoarSpawn(x,y,ignoreEnemy=null,minPlayerDistance=150,minBoarDistance=160) {
+  return Math.hypot(x-playerHome.x,y-playerHome.y)>230 &&
     Math.hypot(x-samanHome.x,y-samanHome.y)>230 &&
     Math.hypot(x-forestNpc.x,y-forestNpc.y)>170 &&
     Math.hypot(x-2310,y-900)>190 &&
@@ -635,26 +632,36 @@ function makeEnemies() {
     Math.hypot(x-CHEST_POS.x,y-CHEST_POS.y)>150 &&
     Math.hypot(x-LIVESTOCK_PEN.x,y-LIVESTOCK_PEN.y)>190 &&
     Math.hypot(x-2525,y-1710)>180 &&
-    Math.abs(x-2700)>140;
-  const safeTerrain = (x,y) =>
+    Math.abs(x-2700)>140 &&
+    Math.hypot(x-player.x,y-player.y)>=minPlayerDistance &&
     !resources.some(r=>Math.hypot(x-r.x,y-r.y)<58) &&
     !farmPlots.some(p=>Math.hypot(x-p.x,y-p.y)<100) &&
-    !furnaces.some(f=>Math.hypot(x-f.x,y-f.y)<100);
+    !furnaces.some(f=>Math.hypot(x-f.x,y-f.y)<100) &&
+    !enemies.some(e=>e!==ignoreEnemy&&e.alive&&Math.hypot(x-e.x,y-e.y)<minBoarDistance);
+}
+function findForestBoarRespawnPosition(enemy) {
+  const candidates = [[enemy.spawnX,enemy.spawnY],...FOREST_BOAR_SPAWN_CANDIDATES];
+  for(const [x,y] of candidates){
+    if(isSafeForestBoarSpawn(x,y,enemy,150,160))return {x,y};
+  }
+  return null;
+}
+function makeEnemies() {
+  // Stage 71 — deterministic forest encounters, clear of landmarks and saved farm objects.
+  enemies = [];
   const addBoar = (x,y) => enemies.push({
     id:"forest-boar-"+enemies.length,kind:"forestBoar",
     x,y,spawnX:x,spawnY:y,hp:3,max:3,alive:true,respawnTimer:0
   });
-  for(const [x,y] of candidates){
-    if(!safeLandmark(x,y)||Math.hypot(x-player.x,y-player.y)<220)continue;
-    if(!safeTerrain(x,y)||enemies.some(e=>Math.hypot(x-e.x,y-e.y)<300))continue;
+  for(const [x,y] of FOREST_BOAR_SPAWN_CANDIDATES){
+    if(!isSafeForestBoarSpawn(x,y,null,220,300))continue;
     addBoar(x,y);
     if(enemies.length===3)break;
   }
   // Fallback for saved positions that overlap the preferred spawn candidates.
   if(enemies.length<3){
-    for(const [x,y] of candidates){
-      if(!safeLandmark(x,y)||Math.hypot(x-player.x,y-player.y)<150)continue;
-      if(!safeTerrain(x,y)||enemies.some(e=>Math.hypot(x-e.x,y-e.y)<300))continue;
+    for(const [x,y] of FOREST_BOAR_SPAWN_CANDIDATES){
+      if(!isSafeForestBoarSpawn(x,y,null,150,300))continue;
       addBoar(x,y);
       if(enemies.length===3)break;
     }
