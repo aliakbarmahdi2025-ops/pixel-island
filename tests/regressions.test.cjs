@@ -215,6 +215,7 @@ test('defeated forest boars respawn after 18 seconds at their original spawn wit
     globalThis.boarSpawn={x:boar.spawnX,y:boar.spawnY};
     attack(boar.id);
     globalThis.boarRespawnRef=boar;
+    player.x=1200;player.y=900;
   `);
   assert.deepEqual(game.json('({alive:boarRespawnRef.alive,hp:boarRespawnRef.hp,respawnTimer:boarRespawnRef.respawnTimer})'), {
     alive: false, hp: 0, respawnTimer: 18
@@ -256,7 +257,7 @@ test('defeated forest boars disappear from the world map until they respawn', ()
     attack(boar.id);
     globalThis.mapMarkersDefeated= getWorldMapState().points.filter(p=>p.kind==="enemy").length;
     globalThis.mapBoarRef=boar;
-    player.x=mapBoarSpawn.x; player.y=mapBoarSpawn.y;
+    player.x=1200; player.y=900;
     update(18);
     globalThis.mapMarkersRespawned= getWorldMapState().points.filter(p=>p.kind==="enemy").length;
     globalThis.mapBoarRespawnState={alive:mapBoarRef.alive,hp:mapBoarRef.hp,x:mapBoarRef.x,y:mapBoarRef.y};
