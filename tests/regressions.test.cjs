@@ -312,3 +312,33 @@ test('forest boar spawn selection avoids saved farm plots, placed furnaces and n
     assert.ok(Math.hypot(boar.x-2200,boar.y-1240)>=58, 'boar avoids nearby harvestable resources');
   }
 });
+
+test('forest boar respawns at a safe alternate location when its original tile becomes a farm plot', () => {
+  const game = startGame();
+  game.run(`
+    updateUI=()=>{}; saveQuietly=()=>{}; showToast=()=>{};
+    playGameSound=()=>{}; triggerPlayerAction=()=>{}; useEnergy=()=>true;
+    spawnDamageText=()=>{}; spawnHitSpark=()=>{};
+    updateFurnaces=()=>{}; updateWeather=()=>{}; updateCombatEffects=()=>{};
+    tickWorldInteraction=()=>{}; audioEnvironment=()=>{}; updateMineButton=()=>{};
+    const boar=enemies.find(e=>e.kind==="forestBoar");
+    enemies=[boar];
+    player.x=boar.x; player.y=boar.y; player.attackPower=3; attackCooldown=0;
+    attack(boar.id);
+    farmPlots.push({id:"new-farm-plot",x:boar.spawnX,y:boar.spawnY});
+    player.x=1200; player.y=900;
+    update(18.01);
+    globalThis.boarAfterBlockedRespawn={
+      alive:boar.alive,hp:boar.hp,x:boar.x,y:boar.y,
+      spawnX:boar.spawnX,spawnY:boar.spawnY,
+      farmDistance:Math.hypot(boar.x-farmPlots[0].x,boar.y-farmPlots[0].y)
+    };
+  `);
+  const result = game.json('boarAfterBlockedRespawn');
+  assert.equal(result.alive, true, 'boar still respawns when another safe candidate exists');
+  assert.equal(result.hp, 3, 'respawn restores full health');
+  assert.deepEqual({x:result.spawnX,y:result.spawnY},{x:1760,y:1170},
+    'boar relocates to the next safe deterministic candidate');
+  assert.deepEqual({x:result.x,y:result.y},{x:1760,y:1170});
+  assert.ok(result.farmDistance >= 100, 'boar does not overlap the newly placed farm plot');
+});
