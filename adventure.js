@@ -1835,7 +1835,17 @@ function update(dt) {
   for(const enemy of activeEnemies){
     if(!enemy.alive){
       enemy.respawnTimer = Math.max(0, enemy.respawnTimer - dt);
-      if(enemy.respawnTimer <= 0 && enemy.kind!=="templeBoss"){ enemy.alive = true; enemy.hp = enemy.max; enemy.x = enemy.spawnX; enemy.y = enemy.spawnY; }
+      if(enemy.respawnTimer <= 0 && enemy.kind!=="templeBoss"){
+        if(enemy.kind==="forestBoar"){
+          const spawn=findForestBoarRespawnPosition(enemy);
+          if(spawn){
+            enemy.spawnX=spawn.x;enemy.spawnY=spawn.y;
+            enemy.alive=true;enemy.hp=enemy.max;enemy.x=spawn.x;enemy.y=spawn.y;
+          }
+        }else{
+          enemy.alive=true;enemy.hp=enemy.max;enemy.x=enemy.spawnX;enemy.y=enemy.spawnY;
+        }
+      }
       continue;
     }
     const ex=player.x-enemy.x,ey=player.y-enemy.y,distance=Math.hypot(ex,ey)||1;
