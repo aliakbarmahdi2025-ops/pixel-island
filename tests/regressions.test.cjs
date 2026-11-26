@@ -355,6 +355,7 @@ test('forest boar keeps retrying a blocked respawn and returns when a safe tile 
     tickWorldInteraction=()=>{}; audioEnvironment=()=>{}; updateMineButton=()=>{};
     const boar=enemies.find(e=>e.kind==="forestBoar");
     enemies=[boar];
+    globalThis.boarOriginalSpawn={x:boar.spawnX,y:boar.spawnY};
     player.x=boar.x; player.y=boar.y; player.attackPower=3; attackCooldown=0;
     attack(boar.id);
     for (let i=0;i<FOREST_BOAR_SPAWN_CANDIDATES.length;i++) {
@@ -378,7 +379,8 @@ test('forest boar keeps retrying a blocked respawn and returns when a safe tile 
   `);
 
   assert.deepEqual(game.json('boarWithNoSafeTile'), {
-    alive:false,hp:0,timer:0,x:game.json('boarSpawnX'),y:game.json('boarSpawnY')
+    alive:false,hp:0,timer:0,
+    x:game.json('boarOriginalSpawn.x'),y:game.json('boarOriginalSpawn.y')
   });
   assert.deepEqual(game.json('boarAfterSafeTileOpens'), {
     alive:true,hp:3,x:1760,y:1170,spawnX:1760,spawnY:1170
