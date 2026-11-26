@@ -343,3 +343,44 @@ test('forest boar respawns at a safe alternate location when its original tile b
   assert.deepEqual({x:result.x,y:result.y},{x:1760,y:1170});
   assert.ok(result.farmDistance >= 100, 'boar does not overlap the newly placed farm plot');
 });
+
+
+test('forest boar keeps retrying a blocked respawn and returns when a safe tile opens', () => {
+  const game = startGame();
+  game.run(`
+    updateUI=()=>{}; saveQuietly=()=>{}; showToast=()=>{};
+    playGameSound=()=>{}; triggerPlayerAction=()=>{}; useEnergy=()=>true;
+    spawnDamageText=()=>{}; spawnHitSpark=()=>{};
+    updateFurnaces=()=>{}; updateWeather=()=>{}; updateCombatEffects=()=>{};
+    tickWorldInteraction=()=>{}; audioEnvironment=()=>{}; updateMineButton=()=>{};
+    const boar=enemies.find(e=>e.kind==="forestBoar");
+    enemies=[boar];
+    player.x=boar.x; player.y=boar.y; player.attackPower=3; attackCooldown=0;
+    attack(boar.id);
+    for (let i=0;i<FOREST_BOAR_SPAWN_CANDIDATES.length;i++) {
+      const [x,y]=FOREST_BOAR_SPAWN_CANDIDATES[i];
+      farmPlots.push({id:"blocked-spawn-"+i,x,y});
+    }
+    farmPlots.push({id:"blocked-original-spawn",x:boar.spawnX,y:boar.spawnY});
+    player.x=1200;player.y=900;
+    update(18.01);
+    globalThis.boarWithNoSafeTile={
+      alive:boar.alive,hp:boar.hp,timer:boar.respawnTimer,
+      x:boar.x,y:boar.y
+    };
+    // Open the next deterministic fallback tile; the next update must retry.
+    farmPlots.splice(farmPlots.findIndex(p=>p.id==="blocked-spawn-1"),1);
+    update(0.01);
+    globalThis.boarAfterSafeTileOpens={
+      alive:boar.alive,hp:boar.hp,x:boar.x,y:boar.y,
+      spawnX:boar.spawnX,spawnY:boar.spawnY
+    };
+  `);
+
+  assert.deepEqual(game.json('boarWithNoSafeTile'), {
+    alive:false,hp:0,timer:0,x:game.json('boarSpawnX'),y:game.json('boarSpawnY')
+  });
+  assert.deepEqual(game.json('boarAfterSafeTileOpens'), {
+    alive:true,hp:3,x:1760,y:1170,spawnX:1760,spawnY:1170
+  });
+});
