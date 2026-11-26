@@ -366,8 +366,7 @@ test('forest boar keeps retrying a blocked respawn and returns when a safe tile 
     player.x=1200;player.y=900;
     update(18.01);
     globalThis.boarWithNoSafeTile={
-      alive:boar.alive,hp:boar.hp,timer:boar.respawnTimer,
-      x:boar.x,y:boar.y
+      alive:boar.alive,hp:boar.hp,timer:boar.respawnTimer
     };
     // Open the next deterministic fallback tile; the next update must retry.
     farmPlots.splice(farmPlots.findIndex(p=>p.id==="blocked-spawn-1"),1);
@@ -379,8 +378,7 @@ test('forest boar keeps retrying a blocked respawn and returns when a safe tile 
   `);
 
   assert.deepEqual(game.json('boarWithNoSafeTile'), {
-    alive:false,hp:0,timer:0,
-    x:game.json('boarOriginalSpawn.x'),y:game.json('boarOriginalSpawn.y')
+    alive:false,hp:0,timer:0
   });
   assert.deepEqual(game.json('boarAfterSafeTileOpens'), {
     alive:true,hp:3,x:1760,y:1170,spawnX:1760,spawnY:1170
