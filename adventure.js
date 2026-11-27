@@ -651,7 +651,8 @@ function makeEnemies() {
   enemies = [];
   const addBoar = (x,y) => enemies.push({
     id:"forest-boar-"+enemies.length,kind:"forestBoar",
-    x,y,spawnX:x,spawnY:y,hp:3,max:3,alive:true,respawnTimer:0
+    x,y,spawnX:x,spawnY:y,hp:3,max:3,alive:true,respawnTimer:0,
+    facing:player.x<x?-1:1
   });
   for(const [x,y] of FOREST_BOAR_SPAWN_CANDIDATES){
     if(!isSafeForestBoarSpawn(x,y,null,220,300))continue;
@@ -1849,6 +1850,7 @@ function update(dt) {
       continue;
     }
     const ex=player.x-enemy.x,ey=player.y-enemy.y,distance=Math.hypot(ex,ey)||1;
+    if(enemy.kind==="forestBoar"&&Math.abs(ex)>2)enemy.facing=ex<0?-1:1;
     let chaseSpeed = templeMode ? 56+templeFloor*6+(enemy.kind==="templeBoss"?12:0) : caveMode ? 48 : 72;
     if(enemy.kind==="worm")chaseSpeed=62;
     if(enemy.kind==="forestBoar")chaseSpeed=58;
@@ -3546,10 +3548,10 @@ function drawRock(r) {
  ctx.strokeStyle="rgba(25,36,33,.55)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+1,y-12);ctx.lineTo(x-2,y-7);ctx.lineTo(x+1,y-3);ctx.stroke();
 }
 function drawForestBoar(e) {
-  const x=e.x-camera.x,y=e.y-camera.y,bob=Math.sin(animTime*4+e.spawnX*.01)*1.2;
+  const x=e.x-camera.x,y=e.y-camera.y,bob=Math.sin(animTime*4+e.spawnX*.01)*1.2,facing=e.facing===-1?-1:1;
   ctx.fillStyle="rgba(10,18,12,.34)";
   ctx.beginPath();ctx.ellipse(x,y+13,23,7,0,0,Math.PI*2);ctx.fill();
-  ctx.save();ctx.translate(x,y+bob);
+  ctx.save();ctx.translate(x,y+bob);ctx.scale(facing,1);
   ctx.fillStyle="#332a22";ctx.fillRect(-19,-11,34,20);
   ctx.fillStyle="#62442f";ctx.fillRect(-16,-17,27,12);
   ctx.fillStyle="#80583a";ctx.fillRect(-11,-18,16,5);
