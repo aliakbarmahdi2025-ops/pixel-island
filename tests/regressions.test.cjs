@@ -13,7 +13,10 @@ function startGame(saved) {
   const storage = new Map(saved ? [[SAVE_KEY, saved]] : []);
   const nodes = new Map();
   const noop = () => {};
-  const drawing = new Proxy({}, { get: () => noop });
+  const drawingCalls = [];
+  const drawing = new Proxy({}, {
+    get: (target, key) => key === 'scale' ? (...args) => drawingCalls.push(args) : noop
+  });
   function element(id) {
     if (!nodes.has(id)) nodes.set(id, {
       hidden: true, style: {}, dataset: {}, innerHTML: '', textContent: '', scrollLeft: 0,
@@ -41,7 +44,8 @@ function startGame(saved) {
   return {
     run: code => context.inspectGame(code),
     json: code => JSON.parse(context.inspectGame(`JSON.stringify(${code})`)),
-    saved: () => storage.get(SAVE_KEY)
+    saved: () => storage.get(SAVE_KEY),
+    drawingCalls
   };
 }
 
@@ -399,17 +403,15 @@ test('forest boars face the player and render the matching horizontal sprite ori
     player.x=boar.x-200; player.y=boar.y; damageCooldown=100;
     update(0.1);
     const facingLeft=boar.facing;
-    const scales=[];
-    ctx.scale=(x,y)=>scales.push([x,y]);
     drawForestBoar(boar);
     player.x=boar.x+200; player.y=boar.y; damageCooldown=100;
     update(0.1);
     const facingRight=boar.facing;
     drawForestBoar(boar);
-    globalThis.boarFacingCheck={facingLeft,facingRight,scales};
+    globalThis.boarFacingCheck={facingLeft,facingRight};
   `);
   const result = game.json('boarFacingCheck');
   assert.equal(result.facingLeft, -1, 'boar turns left when the player is to its left');
   assert.equal(result.facingRight, 1, 'boar turns right when the player is to its right');
-  assert.deepEqual(result.scales, [[-1, 1], [1, 1]], 'sprite rendering mirrors around its center');
+  assert.deepEqual(game.drawingCalls, [[-1, 1], [1, 1]], 'sprite rendering mirrors around its center');
 });
