@@ -384,3 +384,32 @@ test('forest boar keeps retrying a blocked respawn and returns when a safe tile 
     alive:true,hp:3,x:1760,y:1170,spawnX:1760,spawnY:1170
   });
 });
+
+
+test('forest boars face the player and render the matching horizontal sprite orientation', () => {
+  const game = startGame();
+  game.run(`
+    updateUI=()=>{}; saveQuietly=()=>{}; showToast=()=>{};
+    playGameSound=()=>{}; triggerPlayerAction=()=>{}; useEnergy=()=>true;
+    spawnDamageText=()=>{}; spawnHitSpark=()=>{};
+    updateFurnaces=()=>{}; updateWeather=()=>{}; updateCombatEffects=()=>{};
+    tickWorldInteraction=()=>{}; audioEnvironment=()=>{}; updateMineButton=()=>{};
+    const boar=enemies.find(e=>e.kind==="forestBoar");
+    enemies=[boar]; moveTarget=null; move.x=0; move.y=0; keys.clear();
+    player.x=boar.x-200; player.y=boar.y; damageCooldown=100;
+    update(0.1);
+    const facingLeft=boar.facing;
+    const scales=[];
+    ctx.scale=(x,y)=>scales.push([x,y]);
+    drawForestBoar(boar);
+    player.x=boar.x+200; player.y=boar.y; damageCooldown=100;
+    update(0.1);
+    const facingRight=boar.facing;
+    drawForestBoar(boar);
+    globalThis.boarFacingCheck={facingLeft,facingRight,scales};
+  `);
+  const result = game.json('boarFacingCheck');
+  assert.equal(result.facingLeft, -1, 'boar turns left when the player is to its left');
+  assert.equal(result.facingRight, 1, 'boar turns right when the player is to its right');
+  assert.deepEqual(result.scales, [[-1, 1], [1, 1]], 'sprite rendering mirrors around its center');
+});
